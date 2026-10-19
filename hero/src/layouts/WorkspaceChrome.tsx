@@ -1,6 +1,7 @@
 import { Button, Chip } from "@heroui/react";
 import {
   CalendarDays,
+  BookOpen,
   ChevronRight,
   Clapperboard,
   Library,
@@ -23,6 +24,7 @@ const navIcons = {
   emby: Library,
   search: Search,
   discover: Telescope,
+  reading: BookOpen,
   rankings: Trophy,
   anime: Clapperboard,
   calendar: CalendarDays,
@@ -53,7 +55,7 @@ export function WorkspaceSidebar({
           MediaHub<small>你的私人影视空间</small>
         </span>
       </div>
-      <nav>
+      <nav aria-label="主导航">
         {navigation.map(([id, label, Icon, section], index) => (
           <div key={id}>
             {(index === 0 || navigation[index - 1][3] !== section) && (
@@ -112,6 +114,7 @@ export function WorkspaceHeader({
           variant="ghost"
           isIconOnly
           aria-label="展开导航"
+          aria-expanded={mobile}
           className="media-mobile-toggle"
           onPress={() => setMobile(!mobile)}
         >

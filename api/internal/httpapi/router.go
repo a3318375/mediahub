@@ -109,6 +109,7 @@ func NewRouterWithOrganizer(db *store.Store, updater *animesync.Updater, downloa
 	v1.PUT("/settings/:section", api.putSettings)
 	v1.GET("/logs", api.listLogs)
 	api.mountAnime(v1)
+	api.mountReading(v1)
 	api.mountDownloads(v1)
 	api.mountOrganize(v1)
 	if len(resourceSearch) > 0 && resourceSearch[0] != nil {

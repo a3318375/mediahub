@@ -1,8 +1,9 @@
-// Product structure follows web/src/layouts/media-shell/navigation-data.ts.
+// Preserve legacy product navigation and add the local reading library.
 export const navigationItems = [
   ["emby", "Emby 看板", "首页"],
   ["search", "搜索历史", "首页"],
   ["discover", "影视探索", "功能模块"],
+  ["reading", "漫文书库", "功能模块"],
   ["rankings", "榜单推荐", "功能模块"],
   ["anime", "动漫订阅", "功能模块"],
   ["calendar", "追剧日历", "功能模块"],

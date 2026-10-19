@@ -121,3 +121,23 @@ CREATE TABLE IF NOT EXISTS organize_plans (id TEXT PRIMARY KEY, rule_id TEXT NOT
 CREATE TABLE IF NOT EXISTS organize_bindings (account_id TEXT NOT NULL, file_id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY(account_id,file_id));
 
 CREATE TABLE IF NOT EXISTS tv_subscriptions (id TEXT PRIMARY KEY, data BLOB NOT NULL);
+
+CREATE TABLE IF NOT EXISTS reading_items (
+ id TEXT PRIMARY KEY,
+ kind TEXT NOT NULL,
+ root TEXT NOT NULL,
+ path TEXT NOT NULL,
+ title TEXT NOT NULL,
+ format TEXT NOT NULL,
+ size INTEGER NOT NULL,
+ modified_at TEXT NOT NULL,
+ imported_at TEXT NOT NULL,
+ available INTEGER NOT NULL DEFAULT 1,
+ UNIQUE(kind, root, path)
+);
+CREATE INDEX IF NOT EXISTS idx_reading_kind ON reading_items(kind, title);
+CREATE TABLE IF NOT EXISTS reading_scans (
+ kind TEXT PRIMARY KEY,
+ completed_at TEXT NOT NULL,
+ found INTEGER NOT NULL
+);

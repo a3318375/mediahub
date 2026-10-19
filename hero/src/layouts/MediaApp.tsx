@@ -63,6 +63,8 @@ const Emby = lazy(() =>
   import("../pages/emby/Emby").then((m) => ({ default: m.Emby })),
 );
 
+const ReadingLibrary = lazy(() => import("../pages/reading/ReadingLibrary").then((m) => ({ default: m.ReadingLibrary })));
+
 export type Page =
   | (typeof navigationItems)[number][0]
   | "home"
@@ -194,6 +196,7 @@ export default function MediaApp() {
                       organize: "预览文件命名和目标目录，确认后整理到媒体库。",
                       logs: "查询服务运行记录，定位同步与下载问题。",
                       discover: "从不同来源出发，找到值得花时间的作品。",
+                      reading: "收藏漫画与小说，让好故事各归其位。",
                       rankings:
                         "跟随网站榜单与平台片库，发现正在被关注的故事。",
                       search: "搜索网盘分享与磁力资源，把发现连接到收藏。",
@@ -248,6 +251,7 @@ export default function MediaApp() {
             )}
             <Suspense fallback={<Empty>正在加载功能页面…</Empty>}>
               {page === "emby" && <Emby session={session} open={setDetail} />}
+              {page === "reading" && <ReadingLibrary session={session} />}
               {page === "anime" && (
                 <AnimeSubscriptions open={setDetail} session={session} />
               )}

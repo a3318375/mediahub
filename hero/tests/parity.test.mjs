@@ -16,7 +16,7 @@ const { navigationItems, settingsTabs, resolvePage } = await load(
   "../src/lib/parity.ts",
 );
 
-test("HeroUI navigation follows the current shadcn menu, including removed entries", async () => {
+test("HeroUI preserves legacy navigation and adds the local reading library", async () => {
   const original = await readFile(
     new URL(
       "../../web/src/layouts/media-shell/navigation-data.ts",
@@ -28,7 +28,7 @@ test("HeroUI navigation follows the current shadcn menu, including removed entri
     (match) => match[1],
   );
   assert.deepEqual(
-    navigationItems.map(([, label]) => label),
+    navigationItems.filter(([id]) => id !== "reading").map(([, label]) => label),
     labels,
   );
   assert.equal(resolvePage("downloads"), "settings");
@@ -39,6 +39,8 @@ test("HeroUI navigation follows the current shadcn menu, including removed entri
   assert.equal(resolvePage("discover/calendar"), "calendar");
   assert.equal(resolvePage("subscriptions"), "calendar");
   assert.equal(resolvePage(""), "emby");
+  assert.equal(resolvePage("reading"), "reading");
+  assert.deepEqual(navigationItems.find(([id]) => id === "reading"), ["reading", "漫文书库", "功能模块"]);
 });
 
 test("settings categories and order follow the customized shadcn settings", async () => {

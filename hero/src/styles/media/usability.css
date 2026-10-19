@@ -1,0 +1,110 @@
+/* Workspace polish: preserve the established brand and component layouts. */
+:root {
+  --accent: #0670ce;
+  --muted: #626875;
+  --control-border: #858d9c;
+  --workspace-focus: #0670ce;
+  --workspace-danger: #b42332;
+}
+:root.dark {
+  --accent: #70b7ff;
+  --accent-foreground: #102033;
+  --muted: #adb4c1;
+  --control-border: #788396;
+  --workspace-focus: #70b7ff;
+  --workspace-danger: #ff9ba5;
+}
+.media-sidebar {
+  padding: 20px 16px 12px;
+  overflow: hidden;
+}
+.media-brand { padding-bottom: 20px; flex-shrink: 0; }
+.media-sidebar nav {
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding: 4px;
+  margin: -4px;
+}
+.media-sidebar nav > div:not(:first-child) .media-nav-label { padding-top: 10px; }
+.media-nav-label { padding-bottom: 6px; font-size: 11px; line-height: 1.5; }
+.media-sidebar nav button {
+  position: relative;
+  min-height: 44px;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+.media-sidebar nav button.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 4px;
+  background: currentColor;
+}
+.media-sidebar-bottom { flex-shrink: 0; padding-top: 16px; }
+.media-mode { margin-bottom: 8px; padding: 12px; font-size: 12px; }
+.media-mode small { font-size: 11px; margin-top: 4px; line-height: 1.6; }
+.media-topbar { min-height: 65px; height: auto; padding-block: 10px; }
+.media-main .media-heading { gap: 16px; flex-wrap: wrap; }
+.media-main .media-heading h1 { font-size: 26px; font-weight: 650; }
+.media-main .media-heading p { max-width: 65ch; }
+.media-shell :is(input, select, textarea):focus-visible,
+.service-login :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
+}
+.media-shell :is(button, a):focus-visible,
+.service-login button:focus-visible {
+  outline: 2px solid var(--workspace-focus);
+  outline-offset: 3px;
+}
+.header-menu-search input,
+.management-field select,
+.management-field textarea { border-color: var(--control-border); }
+.media-error,
+.service-login-card .media-error { color: var(--workspace-danger); font-size: 13px; }
+.media-empty { border: 1px dashed var(--border); border-radius: 14px; background: var(--surface); }
+.media-empty p { max-width: 48ch; font-size: 14px; }
+.service-login { min-height: 100svh; background: var(--background); padding: 24px; }
+.service-login-card {
+  max-width: 440px;
+  padding: 36px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 16px 48px color-mix(in srgb, var(--foreground) 7%, transparent);
+  gap: 16px;
+}
+.service-login-card h1 { font-size: 28px; line-height: 1.4; }
+.service-login-card p { font-size: 14px; }
+.service-login-card small { font-size: 12px; }
+.service-login-card form { margin-block: 8px; gap: 20px; }
+.service-login label { font-size: 14px; color: var(--foreground); font-weight: 500; }
+.service-login label.management-toggle { flex-direction: row; align-items: center; font-weight: 400; }
+.service-login .input { min-height: 46px; border: 1px solid var(--control-border); }
+.service-login form > .button { min-height: 46px; border-radius: 12px; }
+@media (max-width: 767px) {
+  .media-main .media-heading h1 { font-size: 23px; }
+  .media-topbar > div { min-width: 0; }
+  .media-topbar .button--icon-only { min-width: 44px; min-height: 44px; }
+}
+@media (pointer: coarse) {
+  .media-shell .button,
+  .media-shell .tabs__tab { min-height: 44px; }
+  .media-shell .button--icon-only { min-width: 44px; }
+  .tv-subscription-card .tv-card-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px 44px;
+    gap: 6px;
+  }
+}
+@media (max-width: 480px) {
+  .service-login { padding: 16px; }
+  .service-login-card { padding: 28px 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .media-sidebar nav button { transition: none; }
+}

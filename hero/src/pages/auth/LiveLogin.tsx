@@ -85,6 +85,10 @@ export function LiveLogin({
               value={account}
               onChange={(e) => setAccount(e.target.value)}
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              aria-invalid={error && setup !== null ? true : undefined}
+              aria-describedby={error ? "service-login-error" : undefined}
               required
             />
           </label>
@@ -96,6 +100,8 @@ export function LiveLogin({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={setup ? "new-password" : "current-password"}
+              aria-invalid={error && setup !== null ? true : undefined}
+              aria-describedby={error ? "service-login-error" : undefined}
               required
             />
           </label>
@@ -132,7 +138,7 @@ export function LiveLogin({
             </Button>
           )}
           {error && (
-            <p role="alert" className="media-error">
+            <p id="service-login-error" role="alert" className="media-error">
               {error}
             </p>
           )}
