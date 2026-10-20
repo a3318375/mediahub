@@ -7,6 +7,7 @@ import (
 )
 
 type ReadingItem struct {
+	Root       string `json:"-"`
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
 	Path       string `json:"path"`
@@ -16,6 +17,15 @@ type ReadingItem struct {
 	ModifiedAt string `json:"modifiedAt"`
 	ImportedAt string `json:"importedAt"`
 	Available  bool   `json:"available"`
+}
+
+func (s *Store) GetReading(ctx context.Context, kind, id string) (ReadingItem, error) {
+	var item ReadingItem
+	err := s.db.QueryRowContext(ctx, `SELECT id,kind,root,path,title,format,size,modified_at,imported_at,available FROM reading_items WHERE id=? AND kind=?`, id, kind).Scan(&item.ID, &item.Kind, &item.Root, &item.Path, &item.Title, &item.Format, &item.Size, &item.ModifiedAt, &item.ImportedAt, &item.Available)
+	if err == sql.ErrNoRows {
+		err = ErrNotFound
+	}
+	return item, err
 }
 
 type ReadingQuery struct {

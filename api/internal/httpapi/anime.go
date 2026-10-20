@@ -25,7 +25,7 @@ func (s *API) mountAnime(v1 *gin.RouterGroup) {
 		}
 		c.Status(http.StatusNoContent)
 	})
-	service := anime.New()
+	service := s.animeSource
 	for _, source := range []string{"ani-bt", "anime-garden"} {
 		v1.GET("/anime/sources/"+source+"/catalog", func(c *gin.Context) {
 			ctx, cancel := context.WithTimeout(c.Request.Context(), 20*time.Second)

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -20,6 +21,7 @@ import (
 	"mediahub/internal/pansoubridge"
 	"mediahub/internal/providers/douban"
 	"mediahub/internal/store"
+	"mediahub/internal/taskgroup"
 	"mediahub/internal/tmdb"
 
 	"github.com/gin-gonic/gin"
@@ -27,6 +29,8 @@ import (
 )
 
 type API struct {
+	background      *taskgroup.Group
+	animeSource     *anime.Service
 	organizer       *organize.Service
 	downloads       *download.Service
 	animeUpdater    *animesync.Updater
@@ -61,7 +65,18 @@ func NewRouterWithServices(db *store.Store, updater *animesync.Updater, download
 	return NewRouterWithOrganizer(db, updater, downloads, &organize.Service{Store: db, Factory: downloads.Factory}, resourceSearch...)
 }
 func NewRouterWithOrganizer(db *store.Store, updater *animesync.Updater, downloads *download.Service, organizer *organize.Service, resourceSearch ...gin.HandlerFunc) *gin.Engine {
-	api := &API{store: db, tmdb: tmdb.NewClient(), animeUpdater: updater, downloads: downloads, organizer: organizer}
+	return NewRouterWithBackground(db, updater, downloads, organizer, nil, resourceSearch...)
+}
+
+func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downloads *download.Service, organizer *organize.Service, background *taskgroup.Group, resourceSearch ...gin.HandlerFunc) *gin.Engine {
+	if background == nil {
+		background = taskgroup.New(context.Background())
+	}
+	source, ok := updater.Source.(*anime.Service)
+	if !ok {
+		source = anime.New()
+	}
+	api := &API{store: db, tmdb: tmdb.NewClient(), animeUpdater: updater, downloads: downloads, organizer: organizer, background: background, animeSource: source}
 	organizer.Resolve = api.resolveOrganizeMedia
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())

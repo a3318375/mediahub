@@ -19,6 +19,7 @@ import (
 	"mediahub/internal/organize"
 	"mediahub/internal/pansoubridge"
 	"mediahub/internal/store"
+	"mediahub/internal/taskgroup"
 	"mediahub/internal/tmdb"
 	"mediahub/internal/tv"
 )
@@ -58,23 +59,24 @@ func run() error {
 	if addr == "" {
 		addr = ":18080"
 	}
-	updater := animesync.New(db, anime.New())
-	schedulerCtx, stopScheduler := context.WithCancel(context.Background())
-	schedulerDone := make(chan struct{})
-	go func() {
-		defer close(schedulerDone)
-		updater.Run(schedulerCtx, func(message string) { _ = db.RecordLog("刷新", "WARN", message) })
+	background := taskgroup.New(context.Background())
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := background.Shutdown(ctx); err != nil {
+			log.Printf("background shutdown: %v", err)
+		}
 	}()
-	defer func() { stopScheduler(); <-schedulerDone }()
+	source := anime.New()
+	updater := animesync.New(db, source)
+	background.Go(func(ctx context.Context) {
+		updater.Run(ctx, func(message string) { _ = db.RecordLog("刷新", "WARN", message) })
+	})
 	downloads := download.New(db)
-	downloads.FetchTorrent = anime.New().Fetch
-	downloadCtx, stopDownloads := context.WithCancel(context.Background())
-	downloadDone := make(chan struct{})
-	go func() {
-		defer close(downloadDone)
-		downloads.Run(downloadCtx, func(message string) { _ = db.RecordLog("下载", "WARN", message) })
-	}()
-	defer func() { stopDownloads(); <-downloadDone }()
+	downloads.FetchTorrent = source.Fetch
+	background.Go(func(ctx context.Context) {
+		downloads.Run(ctx, func(message string) { _ = db.RecordLog("下载", "WARN", message) })
+	})
 	organizer := &organize.Service{Store: db, Factory: downloads.Factory}
 	tvUpdater := tv.New(db)
 	tvClient := tmdb.NewClient()
@@ -87,27 +89,19 @@ func run() error {
 	}
 	tvUpdater.Search = search.SearchTV
 	tvUpdater.TGSearch = tv.NewChannelReader().Search
-	tvCtx, stopTV := context.WithCancel(context.Background())
-	tvDone := make(chan struct{})
-	go func() {
-		defer close(tvDone)
-		tvUpdater.Run(tvCtx, func(message string) { _ = db.RecordLog("追剧", "WARN", message) })
-	}()
-	defer func() { stopTV(); <-tvDone }()
-	handler := httpapi.NewRouterWithOrganizer(db, updater, downloads, organizer, search.Handler(), search.MetaHandler(), search.CheckHandler())
+	background.Go(func(ctx context.Context) {
+		tvUpdater.Run(ctx, func(message string) { _ = db.RecordLog("追剧", "WARN", message) })
+	})
+	handler := httpapi.NewRouterWithBackground(db, updater, downloads, organizer, background, search.Handler(), search.MetaHandler(), search.CheckHandler())
 	httpapi.MountTV(handler, db, tvUpdater)
 	if staticDir := os.Getenv("MEDIAHUB_WEB_DIR"); staticDir != "" {
 		if err := httpapi.MountFrontend(handler, staticDir); err != nil {
 			return err
 		}
 	}
-	organizeCtx, stopOrganize := context.WithCancel(context.Background())
-	organizeDone := make(chan struct{})
-	go func() {
-		defer close(organizeDone)
-		organizer.Run(organizeCtx, func(message string) { _ = db.RecordLog("整理", "WARN", message) })
-	}()
-	defer func() { stopOrganize(); <-organizeDone }()
+	background.Go(func(ctx context.Context) {
+		organizer.Run(ctx, func(message string) { _ = db.RecordLog("整理", "WARN", message) })
+	})
 	server := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	serverDone := make(chan error, 1)
 	go func() { serverDone <- server.ListenAndServe() }()
@@ -124,6 +118,7 @@ func run() error {
 		return err
 	case <-stopped:
 	}
+	background.Stop()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := server.Shutdown(ctx); err != nil {

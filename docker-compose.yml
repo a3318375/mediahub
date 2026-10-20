@@ -5,20 +5,17 @@ services:
       - "5173:18080"
     volumes:
       - ./data:/data
-      # Set host directories in .env; source libraries are mounted read-only.
+      # Mount existing host libraries read-only at the fixed container paths.
       - type: bind
-        source: ${MEDIAHUB_COMICS_PATH:-./library/comics}
+        source: ./library/comics
         target: /comics
         read_only: true
         bind:
           create_host_path: false
       - type: bind
-        source: ${MEDIAHUB_NOVELS_PATH:-./library/novels}
-        target: /novels
+        source: ./library/book
+        target: /book
         read_only: true
         bind:
           create_host_path: false
-    environment:
-      MEDIAHUB_COMICS_DIR: /comics
-      MEDIAHUB_NOVELS_DIR: /novels
     restart: unless-stopped

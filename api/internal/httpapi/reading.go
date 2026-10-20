@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -27,14 +26,8 @@ type readingLibrary struct {
 }
 
 func (a *API) mountReading(v1 *gin.RouterGroup) {
-	library := &readingLibrary{db: a.store, jobs: map[string]readingJob{}, roots: map[string]string{"comics": strings.TrimSpace(os.Getenv("MEDIAHUB_COMICS_DIR")), "novels": strings.TrimSpace(os.Getenv("MEDIAHUB_NOVELS_DIR"))}}
-	for kind, root := range library.roots {
-		if root != "" {
-			if absolute, err := filepath.Abs(root); err == nil {
-				library.roots[kind] = filepath.Clean(absolute)
-			}
-		}
-	}
+	library := &readingLibrary{db: a.store, jobs: map[string]readingJob{}, roots: reading.Roots()}
+	log.Printf("reading libraries: comics=%s novels=%s", library.roots["comics"], library.roots["novels"])
 	group := v1.Group("/reading/:kind")
 	group.Use(func(c *gin.Context) {
 		if !reading.ValidKind(c.Param("kind")) {
@@ -42,6 +35,7 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			c.Abort()
 		}
 	})
+	library.mountReader(group)
 	group.GET("", func(c *gin.Context) {
 		page := 1
 		if raw := c.Query("page"); raw != "" {
@@ -84,13 +78,15 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			fail(c, 500, "读取刷新状态失败")
 			return
 		}
-		c.JSON(200, gin.H{"configured": library.roots[kind] != "", "running": job.Running, "error": job.Error, "completedAt": scan.CompletedAt, "found": scan.Found})
+		info, pathErr := os.Stat(library.roots[kind])
+		available := pathErr == nil && info.IsDir()
+		c.JSON(200, gin.H{"configured": available, "running": job.Running, "error": job.Error, "completedAt": scan.CompletedAt, "found": scan.Found})
 	})
 	group.POST("/refresh", func(c *gin.Context) {
 		kind := c.Param("kind")
 		root := library.roots[kind]
 		if root == "" {
-			fail(c, 400, "尚未配置书库目录，请配置对应的目录挂载和环境变量")
+			fail(c, 400, "书库目录不可用，请检查目录挂载")
 			return
 		}
 		library.mu.Lock()
@@ -101,8 +97,8 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 		}
 		library.jobs[kind] = readingJob{Running: true}
 		library.mu.Unlock()
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		if !a.background.Go(func(parent context.Context) {
+			ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
 			defer cancel()
 			items, err := reading.Scan(ctx, kind, root)
 			if err == nil {
@@ -116,7 +112,13 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			library.mu.Lock()
 			library.jobs[kind] = job
 			library.mu.Unlock()
-		}()
+		}) {
+			library.mu.Lock()
+			library.jobs[kind] = readingJob{}
+			library.mu.Unlock()
+			fail(c, 503, "服务正在停止，请稍后重试")
+			return
+		}
 		c.JSON(202, gin.H{"running": true})
 	})
 }
