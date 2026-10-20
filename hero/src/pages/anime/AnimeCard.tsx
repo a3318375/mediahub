@@ -1,5 +1,5 @@
 import { Button, Card, Chip } from "@heroui/react";
-import { Clock3, Download, RefreshCw } from "lucide-react";
+import { Clock3, RefreshCw, Trash2 } from "lucide-react";
 import { MediaImage } from "../../components/media/MediaUI";
 import { Notice } from "../../components/ui/ManagementUI";
 import { presentAnime, type SavedAnimeSubscription } from "../../lib/anime-api";
@@ -10,13 +10,13 @@ export function AnimeCard({
   busy,
   open,
   action,
-  downloads,
+  remove,
 }: {
   anime: SavedAnimeSubscription;
   busy: boolean;
   open: () => void;
   action: (refresh: boolean) => void;
-  downloads: () => void;
+  remove: () => void;
 }) {
   const view = presentAnime(anime);
   return (
@@ -33,7 +33,6 @@ export function AnimeCard({
           <Chip size="sm">{view.status}</Chip>
           <Chip size="sm">{view.rating}</Chip>
         </div>
-        <span className="anime-card-rss">RSS 订阅</span>
       </button>
       <div className="anime-card-body">
         <button className="anime-card-title" onClick={open}>
@@ -60,25 +59,6 @@ export function AnimeCard({
             isIconOnly
             size="sm"
             variant="ghost"
-            aria-label={`查看《${anime.title}》下载记录`}
-            onPress={downloads}
-          >
-            <Download size={16} />
-          </Button>
-          {!anime.completed && (
-            <Button
-              size="sm"
-              variant="ghost"
-              isDisabled={busy}
-              onPress={() => action(false)}
-            >
-              {anime.enabled ? "暂停" : "恢复"}
-            </Button>
-          )}
-          <Button
-            isIconOnly
-            size="sm"
-            variant="ghost"
             isDisabled={busy || anime.completed}
             aria-label={`刷新《${anime.title}》订阅`}
             onPress={() => action(true)}
@@ -87,6 +67,10 @@ export function AnimeCard({
               className={busy ? "animate-spin" : undefined}
               size={16}
             />
+          </Button>
+          <Button isIconOnly size="sm" variant="ghost" isDisabled={busy}
+            aria-label={`删除《${anime.title}》订阅`} onPress={remove}>
+            <Trash2 size={16} />
           </Button>
         </div>
         <Notice error={anime.lastError} />

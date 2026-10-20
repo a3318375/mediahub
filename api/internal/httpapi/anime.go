@@ -14,6 +14,17 @@ import (
 )
 
 func (s *API) mountAnime(v1 *gin.RouterGroup) {
+	v1.DELETE("/subscriptions/anime/:id", func(c *gin.Context) {
+		if err := s.downloads.DeleteAnime(c.Param("id")); err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				fail(c, 404, "订阅不存在")
+			} else {
+				fail(c, 500, "删除订阅失败")
+			}
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
 	service := anime.New()
 	for _, source := range []string{"ani-bt", "anime-garden"} {
 		v1.GET("/anime/sources/"+source+"/catalog", func(c *gin.Context) {

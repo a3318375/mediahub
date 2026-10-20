@@ -121,12 +121,15 @@ export function Downloads({
           .includes(query.toLowerCase())),
   );
   return (
-    <section className="management-stack">
-      <div className="media-section-heading">
-        <h2>
-          下载任务 <small>{tasks.length} 项</small>
-        </h2>
-        <div className="management-actions">
+    <section className="management-stack downloads-page">
+      <div className="media-section-heading downloads-toolbar">
+        <h1 className="downloads-title">
+          {recordsOnly ? "下载记录" : "下载管理"} <small>{tasks.length} 项</small>
+        </h1>
+        <div className="management-actions downloads-controls">
+          <Field label="搜索任务" value={query} onChange={setQuery} placeholder="搜索任务…" />
+          <SelectField label="任务状态" value={filter}
+            options={[["all", "全部"], ...Object.entries(states)]} onChange={setFilter} />
           <Button variant="secondary" onPress={() => setRevision((n) => n + 1)}>
             刷新状态
           </Button>
@@ -134,15 +137,6 @@ export function Downloads({
             <Button onPress={() => setManual(true)}>新建下载</Button>
           )}
         </div>
-      </div>
-      <div className="management-grid">
-        <Field label="搜索任务" value={query} onChange={setQuery} />
-        <SelectField
-          label="任务状态"
-          value={filter}
-          options={[["all", "全部"], ...Object.entries(states)]}
-          onChange={setFilter}
-        />
       </div>
       <p className="media-note">
         显示最近 200 条任务。停止跟踪不会删除 115 任务或网盘文件；115
@@ -158,11 +152,11 @@ export function Downloads({
               : "还没有符合条件的任务。"}
         </Empty>
       ) : (
-        <div className="resource-grid">
+        <div className="resource-grid downloads-grid">
           {visible.map((t) => {
             const task = t as DownloadTask;
             return (
-              <Card key={t.id} className="resource-card">
+              <Card key={t.id} className="resource-card download-task-card">
                 <div>
                   <Chip size="sm" variant="soft">
                     {states[t.state] || t.state}
@@ -171,37 +165,24 @@ export function Downloads({
                     {task.kind === "share_transfer" ? "分享转存" : "离线下载"}
                   </small>
                 </div>
-                <h3>
+                <h3 title={task.references?.find((r) => r.media.title)?.media.title || t.resourceId || t.id}>
                   {task.references?.find((r) => r.media.title)?.media.title ||
                     t.resourceId ||
                     t.id}
                 </h3>
                 <progress aria-label="下载进度" max="100" value={t.progress} />
-                <p>
+                <p className="download-task-meta">
                   {task.kind === "share_transfer" && task.state !== "completed"
                     ? "转存确认中"
                     : `${Math.round(t.progress)}%`}{" "}
                   · {time(t.createdAt)}
+                  {task.speed > 0 && ` · ${(task.speed / 1024 / 1024).toFixed(1)} MB/s`}
                 </p>
-                <small>
-                  {task.references?.length || 0} 个来源 · 目录{" "}
-                  {task.directoryId || "自动分类"}
-                </small>
-                {!!task.artifacts?.length && (
-                  <details>
-                    <summary>{task.artifacts.length} 个文件</summary>
-                    {task.artifacts.map((f) => (
-                      <p key={f.id}>{f.name}</p>
-                    ))}
-                  </details>
-                )}
-                {task.speed > 0 && (
-                  <small>{(task.speed / 1024 / 1024).toFixed(1)} MB/s</small>
-                )}
-                <Notice error={t.error} />
+                {t.error && <p className="download-task-error" title={t.error} role="alert">{t.error}</p>}
                 <div className="management-actions">
+                  <small className="download-task-count">{task.artifacts?.length || 0} 个文件 · {task.references?.length || 0} 个来源</small>
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
                     onPress={() => setDetail(task)}
                   >

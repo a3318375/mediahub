@@ -36,6 +36,16 @@ func (s *Store) CreateDownload(account, hash string, r download.Request) (downlo
 		return download.Task{}, false, err
 	}
 	defer tx.Rollback()
+	// Recheck inside the enqueue transaction: deletion can happen after a
+	// candidate was read or its torrent was fetched.
+	if r.Reference.Source == "anime_subscription" {
+		var exists int
+		if err = tx.QueryRow(`SELECT 1 FROM anime_subscriptions WHERE id=?`, r.Reference.SourceID).Scan(&exists); errors.Is(err, sql.ErrNoRows) {
+			return download.Task{}, false, ErrNotFound
+		} else if err != nil {
+			return download.Task{}, false, err
+		}
+	}
 	t, err := scanDownload(tx.QueryRow(`SELECT data,revision FROM download_tasks WHERE account_id=? AND resource_id=?`, account, hash))
 	created := false
 	if errors.Is(err, download.ErrNotFound) {

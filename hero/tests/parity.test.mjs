@@ -16,6 +16,17 @@ const { navigationItems, settingsTabs, resolvePage } = await load(
   "../src/lib/parity.ts",
 );
 
+test("anime season follows Shanghai quarter boundaries and offers only dated seasons", async () => {
+  const { currentAnimeSeason, animeSeasonOptions } = await load("../src/lib/anime-season.ts");
+  assert.equal(currentAnimeSeason(new Date("2026-09-30T15:59:59Z")), "2026 夏");
+  assert.equal(currentAnimeSeason(new Date("2026-09-30T16:00:00Z")), "2026 秋");
+  assert.equal(currentAnimeSeason(new Date("2026-12-31T16:00:00Z")), "2027 冬");
+  const options = animeSeasonOptions("2026 秋");
+  assert.equal(options[0], "2026 秋");
+  assert.equal(options.at(-1), "2000 冬");
+  assert.ok(options.every((value) => /^\d{4} [春夏秋冬]$/.test(value)));
+});
+
 test("HeroUI preserves legacy navigation and adds the local reading library", async () => {
   const original = await readFile(
     new URL(
@@ -28,18 +39,20 @@ test("HeroUI preserves legacy navigation and adds the local reading library", as
     (match) => match[1],
   );
   assert.deepEqual(
-    navigationItems.filter(([id]) => id !== "reading").map(([, label]) => label),
+    navigationItems.filter(([id]) => !["reading", "music", "downloads"].includes(id)).map(([, label]) => label),
     labels,
   );
-  assert.equal(resolvePage("downloads"), "settings");
+  assert.equal(resolvePage("downloads"), "downloads");
   assert.equal(resolvePage("organize"), "settings");
-  assert.equal(resolvePage("tools/downloads"), "settings");
+  assert.equal(resolvePage("tools/downloads"), "downloads");
   assert.equal(resolvePage("tools/organize"), "settings");
   assert.equal(resolvePage("discover/explore"), "discover");
   assert.equal(resolvePage("discover/calendar"), "calendar");
   assert.equal(resolvePage("subscriptions"), "calendar");
   assert.equal(resolvePage(""), "emby");
   assert.equal(resolvePage("reading"), "reading");
+  assert.equal(resolvePage("music"), "music");
+  assert.deepEqual(navigationItems.slice(-6, -1).map(([, label]) => label), ["追剧日历", "音乐中心", "漫文书库", "下载管理", "日志中心"]);
   assert.deepEqual(navigationItems.find(([id]) => id === "reading"), ["reading", "漫文书库", "功能模块"]);
 });
 

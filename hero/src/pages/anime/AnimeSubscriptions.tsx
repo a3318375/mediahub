@@ -15,8 +15,8 @@ import type { MediaSummary } from "../../lib/media-contract";
 
 import { Empty, FilterTabs, errorText } from "../../components/media/MediaUI";
 import { animeMedia } from "../../lib/anime-presentation";
-import { AnimeDownloads } from "./AnimeDownloads";
 import { AnimeEditor } from "./AnimeEditor";
+import { Overlay } from "../../components/ui/Overlay";
 
 export function AnimeSubscriptions({
   session,
@@ -27,9 +27,9 @@ export function AnimeSubscriptions({
 }) {
   const [items, setItems] = useState<SavedAnimeSubscription[]>([]);
   const [add, setAdd] = useState(false);
-  const [downloads, setDownloads] = useState<SavedAnimeSubscription | null>(
-    null,
-  );
+  const [remove, setRemove] = useState<SavedAnimeSubscription | null>(null);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [weekday, setWeekday] = useState("all");
@@ -61,6 +61,25 @@ export function AnimeSubscriptions({
   function update(next: SavedAnimeSubscription[]) {
     setItems(next);
     if (session.mode === "demo") save("mediahub.hero.anime", next);
+  }
+  async function confirmRemove() {
+    if (!remove || removing) return;
+    setRemoving(true);
+    setRemoveError("");
+    try {
+      if (session.mode === "live") await animeApi.remove(remove.id);
+      setItems((old) => {
+        const next = old.filter((item) => item.id !== remove.id);
+        if (session.mode === "demo") save("mediahub.hero.anime", next);
+        return next;
+      });
+      setRemove(null);
+      setRevision((n) => n + 1);
+    } catch (e) {
+      setRemoveError(errorText(e));
+    } finally {
+      setRemoving(false);
+    }
   }
   async function action(item: SavedAnimeSubscription, refresh: boolean) {
     if (busy.has(item.id) || item.completed) return;
@@ -190,7 +209,7 @@ export function AnimeSubscriptions({
                 busy={busy.has(a.id)}
                 open={() => open(animeMedia(a))}
                 action={(refresh) => void action(a, refresh)}
-                downloads={() => setDownloads(a)}
+                remove={() => { setRemoveError(""); setRemove(a); }}
               />
             ))}
         </div>
@@ -205,13 +224,15 @@ export function AnimeSubscriptions({
           }}
         />
       )}
-      {downloads && (
-        <AnimeDownloads
-          anime={downloads}
-          session={session}
-          close={() => setDownloads(null)}
-        />
-      )}
+      {remove && <Overlay title="删除动漫订阅" onClose={() => { if (!removing) setRemove(null); }} footer={<>
+        <Button variant="secondary" isDisabled={removing} onPress={() => setRemove(null)}>取消</Button>
+        <Button variant="danger" isDisabled={removing} onPress={() => void confirmRemove()}>{removing ? "正在删除…" : "确认删除"}</Button>
+      </>}>
+        <p>确定删除《{remove.title}》的订阅？此操作无法撤销。</p>
+        <p>将移除系统内的订阅卡片、定时更新、自动下载规则、资源与候选记录，以及该订阅独占的下载任务和记录。其他订阅共用的任务将保留。</p>
+        <p>网盘内已有的文件和任务不会删除。</p>
+        <Notice error={removeError} />
+      </Overlay>}
     </section>
   );
 }

@@ -8,6 +8,7 @@ import {
   type MikanItem,
 } from "../lib/anime-api";
 import { errorText } from "../lib/formatters";
+import { currentAnimeSeason } from "../lib/anime-season";
 export function useAnimeEditor() {
   const [step, setStep] = useState<"source" | "browse" | "match" | "edit">(
     "source",
@@ -19,7 +20,7 @@ export function useAnimeEditor() {
   const [excludeText, setExcludeText] = useState("");
   const [catalogPage, setCatalogPage] = useState(1);
   const [query, setQuery] = useState("");
-  const [season, setSeason] = useState("");
+  const [season, setSeason] = useState(currentAnimeSeason);
   const [seasons, setSeasons] = useState<string[]>([]);
   const [catalog, setCatalog] = useState<MikanItem[]>([]);
   const [groups, setGroups] = useState<MikanGroup[]>([]);
@@ -63,14 +64,14 @@ export function useAnimeEditor() {
       setStep("edit");
     });
   }
-  async function browse(refresh = false) {
+  async function browse(refresh = false, selectedSeason = season) {
     setStep("browse");
     setSelected(null);
     setGroups([]);
     await act(async () => {
       const r = await animeApi.catalog(
         query,
-        season,
+        selectedSeason,
         refresh,
         controller.current?.signal,
         draft.source,

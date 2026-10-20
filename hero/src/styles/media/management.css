@@ -220,3 +220,31 @@
     gap: 16px;
   }
 }
+.downloads-page { gap: 14px; }
+.downloads-toolbar { gap: 16px; flex-wrap: wrap; }
+.downloads-controls { flex-wrap: wrap; align-items: end; gap: 10px; }
+.downloads-controls .management-field:first-child { width: 260px; }
+.downloads-controls .management-field:nth-child(2) { width: 160px; }
+.downloads-page .downloads-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 360px)); gap: 14px; align-items: start; }
+.downloads-page .resource-card { padding: 16px; gap: 10px; }
+@media (max-width: 600px) {
+  .downloads-controls { width: 100%; }
+  .downloads-controls .management-field:first-child { width: auto; flex: 1; min-width: 150px; }
+  .downloads-controls .management-field:nth-child(2) { width: 130px; }
+  .downloads-page .downloads-grid { grid-template-columns: minmax(0, 1fr); }
+}
+.media-main[data-page="downloads"] > div > .media-heading { display: none; }
+.downloads-page > .downloads-toolbar { margin: 0; align-items: center; gap: 12px; }
+.downloads-title { font-size: 24px; line-height: 1.4; font-weight: 650; margin: 0; white-space: nowrap; }
+.downloads-title small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 8px; }
+.downloads-controls { align-items: center; }
+.downloads-controls .management-field > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.downloads-page > .media-note { margin: 0 0 2px; }
+@media (max-width: 600px) { .downloads-title { font-size: 22px; } }
+.downloads-page .download-task-card { padding: 12px 14px; gap: 7px; }
+.downloads-page .download-task-card h3 { font-size: 14px; line-height: 20px; margin: 0; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.downloads-page .download-task-card > progress { height: 4px; margin: 2px 0; border-radius: 4px; overflow: hidden; }
+.downloads-page .download-task-card .download-task-meta { margin: 0; font-size: 11px; line-height: 16px; }
+.downloads-page .download-task-card > .management-actions { gap: 6px; align-items: center; flex-wrap: wrap; }
+.download-task-count { margin-right: auto; }
+.downloads-page .download-task-card .download-task-error { color: var(--danger); font-size: 12px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0; }

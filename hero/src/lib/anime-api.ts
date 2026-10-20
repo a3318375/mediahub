@@ -123,6 +123,7 @@ async function request<T>(
   return data as T;
 }
 export const animeApi = {
+  remove: (id: string) => request<void>(`subscriptions/anime/${encodeURIComponent(id)}`, undefined, undefined, "DELETE"),
   list: (signal?: AbortSignal) =>
     request<SavedAnimeSubscription[]>("subscriptions/anime", signal).then(
       (items) => (items ?? []).map(normalizeAnime),

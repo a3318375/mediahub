@@ -21,10 +21,10 @@ export function AnimeMatchStep({
         <h3>
           {selected?.title} · {selectedGroup.label}
         </h3>
-        <p>
+        <p className="anime-step-hint">
           所选组合的全部条件都需要命中；全部表示不增加匹配条件，排除规则仍然生效。
         </p>
-        {[[], ...(selectedGroup.groupRegex?.regexList || [])].map(
+        <div className="anime-match-grid">{[[], ...(selectedGroup.groupRegex?.regexList || [])].map(
           (rules, i) => (
             <label className={`anime-rule-card ${selectedRule === i - 1 ? "is-selected" : ""}`} key={i}>
               <input
@@ -42,7 +42,7 @@ export function AnimeMatchStep({
                 : "全部版本"}</span>
             </label>
           ),
-        )}
+        )}</div>
         <div className="anime-step-actions">
           <Button variant="secondary" onPress={() => setStep("browse")}>
             返回字幕组
@@ -73,7 +73,7 @@ export function AnimeMatchStep({
               })
             }
           >
-            下一步
+            确定
           </Button>
         </div>
       </div>

@@ -26,22 +26,22 @@ export function AnimeEditor({
   return (
     <Overlay
       title="添加动漫订阅"
-      wide={step !== "source"}
+      wide
       onClose={() => {
         if (!running.current) close();
       }}
     >
-      <div className="management-stack anime-editor">
-        <p role="status" className="anime-step-caption">
+      <div className={`management-stack anime-editor ${step === "source" ? "anime-source-editor" : ""}`}>
+        {step !== "source" && <p role="status" className="anime-step-caption">
           {
             {
               source: "1 · 选择来源",
               browse: "2 · 选择番剧与字幕组",
-              match: "3 · 选择匹配版本",
+              match: "2 · 选择番剧与字幕组",
               edit: "4 · 确认订阅参数",
             }[step]
           }
-        </p>
+        </p>}
         <Notice error={error} />
         {busy && <p role="status">正在读取来源，请稍候…</p>}
         <fieldset disabled={busy} className="management-stack">
@@ -53,7 +53,7 @@ export function AnimeEditor({
               created={created}
             />
           )}
-          {step === "browse" && (
+          {(step === "browse" || step === "match") && (
             <AnimeBrowseStep
               {...state}
               session={session}
@@ -62,12 +62,18 @@ export function AnimeEditor({
             />
           )}
           {step === "match" && (
+            <Overlay title="匹配版本" onClose={() => { if (!running.current) state.setStep("browse"); }}>
+            <Notice error={error} />
+            {busy && <p role="status">正在解析订阅，请稍候…</p>}
+            <fieldset disabled={busy} className="management-stack anime-match-options">
             <AnimeMatchStep
               {...state}
               session={session}
               close={close}
               created={created}
             />
+            </fieldset>
+            </Overlay>
           )}
           {step === "edit" && (
             <AnimeEditStep

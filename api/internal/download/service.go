@@ -48,6 +48,18 @@ func (s *Service) Wake() {
 	default:
 	}
 }
+
+// Serialize local subscription cleanup with the worker so already-read tasks
+// cannot be submitted after the delete request completes.
+func (s *Service) DeleteAnime(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	repo, ok := s.Store.(interface{ DeleteAnime(string) error })
+	if !ok {
+		return errors.New("subscription deletion unavailable")
+	}
+	return repo.DeleteAnime(id)
+}
 func (s *Service) Enqueue(r Request) (Task, bool, error) {
 	return s.enqueue(r, "")
 }

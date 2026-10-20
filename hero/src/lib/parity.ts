@@ -3,10 +3,12 @@ export const navigationItems = [
   ["emby", "Emby 看板", "首页"],
   ["search", "搜索历史", "首页"],
   ["discover", "影视探索", "功能模块"],
-  ["reading", "漫文书库", "功能模块"],
   ["rankings", "榜单推荐", "功能模块"],
   ["anime", "动漫订阅", "功能模块"],
   ["calendar", "追剧日历", "功能模块"],
+  ["music", "音乐中心", "功能模块"],
+  ["reading", "漫文书库", "功能模块"],
+  ["downloads", "下载管理", "功能模块"],
   ["logs", "日志中心", "功能模块"],
   ["settings", "全局设置", "管理"],
 ] as const;
@@ -26,13 +28,13 @@ export function resolvePage(value: string) {
     "discover/anime": "anime",
     "discover/calendar": "calendar",
     "tools/logs": "logs",
-    "tools/downloads": "settings",
+    "tools/downloads": "downloads",
     "tools/organize": "settings",
   };
   value = originalPaths[value] || value;
   if (value === "home") return "emby";
   if (value === "subscriptions") return "calendar";
-  if (value === "downloads" || value === "organize") return "settings";
+  if (value === "organize") return "settings";
   return navigationItems.some(([id]) => id === value) ? value : "emby";
 }
 export const cloudLabels: Record<string, string> = {

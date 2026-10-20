@@ -14,6 +14,49 @@ import (
 
 var ErrSubscriptionExists = errors.New("subscription already exists")
 
+// DeleteAnime only removes local tracking. No cloud operation is performed.
+func (s *Store) DeleteAnime(id string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var raw string
+	if err = tx.QueryRow(`SELECT data FROM anime_subscriptions WHERE id=?`, id).Scan(&raw); errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	} else if err != nil {
+		return err
+	}
+	var subscription anime.Subscription
+	if err = json.Unmarshal([]byte(raw), &subscription); err != nil {
+		return err
+	}
+	// A download can be shared by several subscriptions or a manual request.
+	// Remove exclusive tasks first; their events, secrets and references cascade.
+	if _, err = tx.Exec(`DELETE FROM download_tasks WHERE id IN (
+		SELECT task_id FROM download_references WHERE json_extract(data,'$.source')='anime_subscription' AND json_extract(data,'$.sourceId')=?
+	) AND NOT EXISTS (
+		SELECT 1 FROM download_references r WHERE r.task_id=download_tasks.id
+		AND NOT (COALESCE(json_extract(r.data,'$.source'),'')='anime_subscription' AND COALESCE(json_extract(r.data,'$.sourceId'),'')=?)
+	)`, id, id); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`DELETE FROM download_references WHERE json_extract(data,'$.source')='anime_subscription' AND json_extract(data,'$.sourceId')=?`, id); err != nil {
+		return err
+	}
+	// Rules, account bindings and candidates cascade from the subscription.
+	if _, err = tx.Exec(`DELETE FROM anime_subscriptions WHERE id=?`, id); err != nil {
+		return err
+	}
+	// Keep deletion and its audit entry atomic, without pruning existing logs.
+	if _, err = tx.Exec(`INSERT INTO activity_logs(occurred_at,source,level,message) VALUES(?,?,?,?)`,
+		time.Now().UTC().Format(time.RFC3339Nano), "订阅", "INFO",
+		"删除动漫订阅：《"+subscription.Title+"》（ID："+id+"）；已清理订阅、定时更新、下载规则、候选记录及独占下载任务；共用任务保留，网盘内容未删除"); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (s *Store) ListAnime() ([]anime.Subscription, error) {
 	rows, e := s.db.Query(`SELECT data FROM anime_subscriptions ORDER BY updated_at DESC`)
 	if e != nil {

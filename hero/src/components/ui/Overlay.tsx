@@ -23,7 +23,7 @@ export function Overlay({
       }}
     >
       <Modal.Container size="md" className={wide ? "anime-editor-modal" : undefined}>
-        <Modal.Dialog>
+        <Modal.Dialog className={wide ? "anime-editor-dialog" : undefined}>
           <Modal.CloseTrigger aria-label="Close dialog" onPress={onClose} />
           <Modal.Header>
             <Modal.Heading>{title}</Modal.Heading>
