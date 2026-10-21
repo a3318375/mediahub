@@ -99,6 +99,11 @@ func mediaForFile(m download.MediaContext, name string) (download.MediaContext, 
 	}
 	return m, nil
 }
+
+// FileMedia shares the existing season/episode parser with output jobs.
+func FileMedia(m download.MediaContext, name string) (download.MediaContext, error) {
+	return mediaForFile(m, name)
+}
 func naming(r Rule, m download.MediaContext, name string) ([]string, string, error) {
 	title := cleanName(m.Title)
 	if title == "" {

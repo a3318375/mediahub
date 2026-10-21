@@ -122,6 +122,38 @@ CREATE TABLE IF NOT EXISTS organize_bindings (account_id TEXT NOT NULL, file_id 
 
 CREATE TABLE IF NOT EXISTS tv_subscriptions (id TEXT PRIMARY KEY, data BLOB NOT NULL);
 
+CREATE TABLE IF NOT EXISTS media_processing_records (
+ account_id TEXT NOT NULL,
+ media_id TEXT NOT NULL,
+ media_type TEXT NOT NULL,
+ title TEXT NOT NULL,
+ resource_count INTEGER NOT NULL DEFAULT 0,
+ organized_count INTEGER NOT NULL DEFAULT 0,
+ pending_count INTEGER NOT NULL DEFAULT 0,
+ strm_count INTEGER,
+ scraped_count INTEGER,
+ incomplete_scrape_count INTEGER,
+ active INTEGER NOT NULL DEFAULT 0,
+ created_at TEXT NOT NULL,
+ last_activity_at TEXT NOT NULL,
+ data TEXT NOT NULL,
+ PRIMARY KEY(account_id, media_id)
+);
+CREATE INDEX IF NOT EXISTS idx_processing_recent ON media_processing_records(account_id, last_activity_at DESC, media_id);
+
+CREATE TABLE IF NOT EXISTS media_output_jobs (
+ kind TEXT PRIMARY KEY,
+ config TEXT NOT NULL,
+ status TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS media_output_files (
+ account_id TEXT NOT NULL,
+ file_id TEXT NOT NULL,
+ root TEXT NOT NULL,
+ data TEXT NOT NULL,
+ PRIMARY KEY(account_id,file_id,root)
+);
+
 CREATE TABLE IF NOT EXISTS reading_items (
  id TEXT PRIMARY KEY,
  kind TEXT NOT NULL,

@@ -234,6 +234,29 @@
   .downloads-page .downloads-grid { grid-template-columns: minmax(0, 1fr); }
 }
 .media-main[data-page="downloads"] > div > .media-heading { display: none; }
+.organize-overview { padding-top: 12px; }
+.organize-overview h2 small { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+.organize-work-list { display: grid; gap: 12px; }
+.organize-work-row { display: flex; flex-direction: row; align-items: center; gap: 20px; padding: 16px 20px; }
+.organize-work-art { width: 56px; height: 78px; border-radius: 8px; overflow: hidden; flex-shrink: 0; display: grid; place-items: center; background: var(--surface-secondary); color: var(--muted); }
+.organize-work-art img { width: 100%; height: 100%; object-fit: cover; }
+.organize-work-title { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.organize-work-title h3 { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+.organize-work-title small, .organize-work-title span { color: var(--muted); font-size: 12px; }
+.organize-work-counts { display: flex; gap: 28px; text-align: center; }
+.organize-work-counts > div { display: grid; gap: 4px; min-width: 44px; }
+.organize-work-counts strong { font-size: 21px; font-variant-numeric: tabular-nums; }
+.organize-work-counts span { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.organize-preview-files { max-height: 50vh; overflow: auto; overflow-wrap: anywhere; }
+.processing-download-tasks { margin-top: 24px; }
+.processing-download-tasks > summary { cursor: pointer; padding: 12px 0; font-weight: 600; }
+@media (max-width: 700px) {
+ .organize-work-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; padding: 14px; }
+ .organize-work-art { width: 48px; height: 68px; }
+ .organize-work-title { grid-column: 2 / 4; }
+ .organize-work-counts { grid-column: 1 / 4; justify-content: space-around; gap: 12px; }
+ .organize-work-row > button { grid-column: 3; }
+}
 .downloads-page > .downloads-toolbar { margin: 0; align-items: center; gap: 12px; }
 .downloads-title { font-size: 24px; line-height: 1.4; font-weight: 650; margin: 0; white-space: nowrap; }
 .downloads-title small { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 8px; }

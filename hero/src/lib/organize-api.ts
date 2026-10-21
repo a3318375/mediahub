@@ -28,6 +28,7 @@ export type OrganizePlan = {
   actions: {
     id: string;
     source: DownloadFile;
+    media?: DownloadMediaContext;
     targetRootId: string;
     targetDirectories: string[];
     targetName: string;
@@ -58,6 +59,8 @@ async function request<T>(
   return result as T;
 }
 export const organizeApi = {
+  items: (signal?: AbortSignal) => request<{items: OrganizeMediaItem[]}>("items", "GET", undefined, signal),
+  run: () => request<{message: string}>("run", "POST"),
   config: (signal?: AbortSignal) =>
     request<{
       id?: string;
@@ -95,4 +98,21 @@ export const organizeApi = {
       media,
       ready,
     }),
+};
+
+export type OrganizeMediaItem = {
+  id: string;
+  media: DownloadMediaContext;
+  poster: string;
+  createdAt: string;
+  subscribed: boolean;
+  downloaded: number;
+  organized: number;
+  pending: number;
+  processing: number;
+  lastActivityAt: string;
+  active: boolean;
+  strmCount: number | null;
+  scrapedCount: number | null;
+  incompleteScrapeCount: number | null;
 };

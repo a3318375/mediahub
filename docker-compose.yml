@@ -5,6 +5,7 @@ services:
       - "5173:18080"
     volumes:
       - ./data:/data
+      - ./strm:/strm
       # Mount existing host libraries read-only at the fixed container paths.
       - type: bind
         source: ./library/comics

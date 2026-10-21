@@ -138,6 +138,7 @@ func (s *Store) SaveOrganizeRule(r organize.Rule) (organize.Rule, error) {
 	return r, e
 }
 func (s *Store) CreateOrganizePlan(p organize.Plan) (organize.Plan, error) {
+	defer s.NotifyProcessing()
 	p.ID = organizeID()
 	p.Revision = 1
 	p.CreatedAt = time.Now().UTC().Format(time.RFC3339Nano)
@@ -192,6 +193,7 @@ func (s *Store) OrganizePlans(active bool) ([]organize.Plan, error) {
 	return out, rows.Err()
 }
 func (s *Store) SaveOrganizePlan(p organize.Plan) error {
+	defer s.NotifyProcessing()
 	previous, e := s.OrganizePlan(p.ID)
 	if e != nil {
 		return e

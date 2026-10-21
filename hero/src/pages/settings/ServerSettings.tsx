@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Card } from "@heroui/react";
 
@@ -6,13 +6,14 @@ import { type Session } from "../../lib/media-service";
 
 import { FilterTabs } from "../../components/media/MediaUI";
 
-import { settingsTabs } from "../../lib/parity";
+import { routePath, settingsTabs } from "../../lib/parity";
 
 import { SettingsForm } from "../../components/settings/SettingsForm";
 import { AccountSettings } from "./AccountSettings";
 import { APIKeys } from "./APIKeys";
 import { MediaLibrarySettings } from "./MediaLibrarySettings";
 import { ResourceSettings } from "./ResourceSettings";
+import { MediaOutputSettings } from "./MediaOutputSettings";
 
 import { embyDemoEnabled } from "../../mocks/emby-dashboard";
 
@@ -23,7 +24,9 @@ export function ServerSettings({
   session: Session;
   onSession: (s: Session) => void;
 }) {
-  const [tab, setTab] = useState("basic");
+  const fromHash=()=>{const id=routePath(window.location.hash).split("/")[1];return settingsTabs.some(([key])=>key===id)?id:"basic";};
+  const [tab, setTab] = useState(fromHash);
+  useEffect(()=>{const change=()=>setTab(fromHash());window.addEventListener("hashchange",change);return ()=>window.removeEventListener("hashchange",change);},[]);
   return (
     <section className="management-stack">
       <p className="management-notice">
@@ -35,7 +38,7 @@ export function ServerSettings({
         label="全局设置分类"
         value={tab}
         options={settingsTabs}
-        onChange={setTab}
+        onChange={(value)=>{setTab(value);window.location.hash=`/settings/${value}`;}}
       />
       <div hidden={tab !== "basic"}>
         <SettingsForm
@@ -44,12 +47,11 @@ export function ServerSettings({
           basic
         />
       </div>
-      <div hidden={tab !== "organize"}>
-        {tab === "organize" && <MediaLibrarySettings session={session} />}
-      </div>
       <div hidden={tab !== "search"}>
         <SettingsForm sections={["search"]} session={session} />
       </div>
+      {tab === "organize" && <MediaLibrarySettings session={session} />}
+      {(tab==="strm"||tab==="scraping")&&<MediaOutputSettings session={session} kind={tab}/>}
       <div hidden={tab !== "pansou"}>
         <ResourceSettings session={session} />
       </div>

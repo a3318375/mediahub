@@ -8,33 +8,40 @@ export const navigationItems = [
   ["calendar", "追剧日历", "功能模块"],
   ["music", "音乐中心", "功能模块"],
   ["reading", "漫文书库", "功能模块"],
-  ["downloads", "下载管理", "功能模块"],
+  ["processing", "媒体处理", "功能模块"],
   ["logs", "日志中心", "功能模块"],
   ["settings", "全局设置", "管理"],
 ] as const;
 export const settingsTabs = [
   ["basic", "基础配置"],
   ["organize", "媒体整理"],
+  ["strm", "STRM 生成"],
+  ["scraping", "元数据刮削"],
   ["search", "搜索规则"],
   ["pansou", "资源搜索"],
   ["account", "账号与安全"],
   ["api-keys", "API 密钥"],
   ["notifications", "通知与机器人"],
 ];
+export function routePath(value: string) {
+  return value.replace(/^#?\/*/, "").replace(/\/+$/, "");
+}
 export function resolvePage(value: string) {
+  value = routePath(value);
+  if(value.startsWith("settings/"))return "settings";
   const originalPaths: Record<string, string> = {
     "discover/explore": "discover",
     "discover/rankings": "rankings",
     "discover/anime": "anime",
     "discover/calendar": "calendar",
     "tools/logs": "logs",
-    "tools/downloads": "downloads",
-    "tools/organize": "settings",
+    "tools/downloads": "processing",
+    "tools/organize": "processing",
   };
   value = originalPaths[value] || value;
   if (value === "home") return "emby";
   if (value === "subscriptions") return "calendar";
-  if (value === "organize") return "settings";
+  if (value === "organize" || value === "downloads" || value.startsWith("processing/")) return "processing";
   return navigationItems.some(([id]) => id === value) ? value : "emby";
 }
 export const cloudLabels: Record<string, string> = {

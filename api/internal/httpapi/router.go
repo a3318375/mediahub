@@ -79,7 +79,7 @@ func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downlo
 	api := &API{store: db, tmdb: tmdb.NewClient(), animeUpdater: updater, downloads: downloads, organizer: organizer, background: background, animeSource: source}
 	organizer.Resolve = api.resolveOrganizeMedia
 	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{Skip: func(c *gin.Context) bool { return strings.HasPrefix(c.Request.URL.Path, "/api/stream/") }}), gin.Recovery())
 	router.GET("/api/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 
 	auth := router.Group("/api/auth")
@@ -127,6 +127,7 @@ func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downlo
 	api.mountReading(v1)
 	api.mountDownloads(v1)
 	api.mountOrganize(v1)
+	api.mountMediaOutput(router, v1)
 	if len(resourceSearch) > 0 && resourceSearch[0] != nil {
 		v1.POST("/resources/search", resourceSearch[0])
 	}

@@ -34,6 +34,28 @@ const { organizeApi } = await load("organize-api");
 const { apiKeysApi } = await load("api-keys-api");
 const { settingsApi } = await load("settings-api");
 const { getLogs } = await load("logs-api");
+const { mediaOutputApi } = await load("media-output-api");
+
+test("global media processing buttons wake shared workers without changing settings", async () => {
+  const calls=fixture({message:"accepted"},202);
+  await organizeApi.run();
+  await downloadApi.run();
+  assert.deepEqual(calls.map(({url,method,body})=>[url,method,body]),[
+    ["/api/v1/organize/run","POST",undefined],
+    ["/api/v1/downloads/run","POST",undefined],
+  ]);
+});
+test("STRM and scraping use explicit configuration and manual task endpoints", async()=>{
+  const calls=fixture({message:"accepted"},202);
+  await mediaOutputApi.config("strm");
+  await mediaOutputApi.run("strm");
+  await mediaOutputApi.run("scraping");
+  assert.deepEqual(calls.map(({url,method,body})=>[url,method,body]),[
+    ["/api/v1/processing/strm/config","GET",undefined],
+    ["/api/v1/processing/strm/run","POST",undefined],
+    ["/api/v1/processing/scraping/run","POST",undefined],
+  ]);
+});
 const fetchOriginal = globalThis.fetch;
 const storage = new Map();
 globalThis.sessionStorage = { getItem: (k) => storage.get(k) ?? null };

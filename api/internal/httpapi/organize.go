@@ -22,6 +22,34 @@ func organizeFailure(c *gin.Context, e error) {
 	}
 }
 func (a *API) mountOrganize(v1 *gin.RouterGroup) {
+	v1.GET("/organize/items", func(c *gin.Context) {
+		items, err := a.store.ProcessingRecords()
+		if err != nil {
+			fail(c, 500, "读取作品整理进度失败")
+			return
+		}
+		c.JSON(200, gin.H{"items": items})
+	})
+	v1.POST("/organize/run", func(c *gin.Context) {
+		rule, err := a.store.SimpleOrganizeRule()
+		if err != nil {
+			fail(c, 422, "请先在全局设置中配置整理目录")
+			return
+		}
+		cookie, err := a.store.ReadSecret("115", "115.cookie")
+		if err != nil {
+			fail(c, 503, "读取 115 凭据失败")
+			return
+		}
+		account, err := pan115.AccountID(cookie)
+		if err != nil || account != rule.AccountID {
+			fail(c, 422, "115 账号与整理配置不匹配，请检查全局设置")
+			return
+		}
+		a.organizer.Trigger()
+		a.store.NotifyProcessing()
+		c.JSON(202, gin.H{"message": "已触发全局整理任务，使用全局设置中的目录与规则。"})
+	})
 	v1.GET("/organize/config", func(c *gin.Context) {
 		r, e := a.store.SimpleOrganizeRule()
 		if errors.Is(e, organize.ErrNotFound) {

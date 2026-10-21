@@ -48,6 +48,7 @@ func (s *Store) GetTV(id string) (tv.Subscription, error) {
 }
 
 func (s *Store) CreateTV(d tv.Draft) (tv.Subscription, error) {
+	defer s.NotifyProcessing()
 	if err := tv.Validate(&d); err != nil {
 		return tv.Subscription{}, err
 	}

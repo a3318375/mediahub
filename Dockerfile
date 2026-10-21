@@ -22,6 +22,6 @@ COPY --from=backend /out/mediahub /app/mediahub
 COPY --from=frontend /web/dist /app/web
 ENV HTTP_ADDR=:18080 MEDIAHUB_DATA_DIR=/data MEDIAHUB_WEB_DIR=/app/web TZ=Asia/Hong_Kong GIN_MODE=release
 EXPOSE 18080
-VOLUME ["/data"]
+VOLUME ["/data", "/strm"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD curl -fsS http://127.0.0.1:18080/api/health || exit 1
 ENTRYPOINT ["/app/mediahub"]

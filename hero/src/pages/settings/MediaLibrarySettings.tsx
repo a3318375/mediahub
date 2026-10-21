@@ -16,7 +16,7 @@ import {
 import { organizeApi, type OrganizePlan } from "../../lib/organize-api";
 import { Downloads } from "../downloads/Downloads";
 
-// Mirrors the active MediaLibrarySettings flow, not the retired OrganizePage.
+// Global configuration owns directory rules, previews and exceptional file handling.
 export function MediaLibrarySettings({ session }: { session: Session }) {
   const [config, setConfig] = useState({
     id: "",

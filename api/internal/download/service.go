@@ -197,6 +197,9 @@ func (s *Service) Run(ctx context.Context, report func(string)) {
 	}
 }
 func (s *Service) Tick(ctx context.Context) (resultErr error) {
+	if notifier, ok := s.Store.(interface{ NotifyProcessing() }); ok {
+		defer notifier.NotifyProcessing()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var submissions sync.WaitGroup

@@ -30,6 +30,11 @@ func downloadFailure(c *gin.Context, err error) {
 	}
 }
 func (a *API) mountDownloads(v1 *gin.RouterGroup) {
+	v1.POST("/downloads/run", func(c *gin.Context) {
+		a.downloads.Wake()
+		a.store.NotifyProcessing()
+		c.JSON(202, gin.H{"message": "已唤醒下载调度，处理已启用订阅的候选与下载队列。"})
+	})
 	v1.POST("/downloads/:id/retry", func(c *gin.Context) {
 		t, err := a.downloads.Retry(c.Param("id"))
 		if err != nil {

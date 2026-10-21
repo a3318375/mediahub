@@ -37,7 +37,7 @@ import { Calendar, TVEditor, TVList } from "../pages/tv/TVSubscriptions";
 import { ResourceSearch } from "../pages/resources/ResourceSearch";
 
 import { LiveLogin } from "../pages/auth/LiveLogin";
-import { DownloadDialog, Downloads } from "../pages/downloads/Downloads";
+import { DownloadDialog } from "../pages/downloads/Downloads";
 
 const ServerSettings = lazy(() =>
   import("../pages/settings/ServerSettings").then((m) => ({
@@ -51,8 +51,8 @@ const AnimeSubscriptions = lazy(() =>
   })),
 );
 
-const Organize = lazy(() =>
-  import("../pages/organize/Organize").then((m) => ({ default: m.Organize })),
+const MediaProcessing = lazy(() =>
+  import("../pages/processing/MediaProcessing").then((m) => ({ default: m.MediaProcessing })),
 );
 
 const Logs = lazy(() =>
@@ -206,7 +206,8 @@ export default function MediaApp() {
                         "按季追踪更新，使用你选择的 TG 或 PanSou 搜索规则。",
                       calendar: "以北京时间查看播出计划与资源进展。",
                       downloads: "查看已提交到 115 的离线下载与转存任务。",
-                      settings: "管理基础配置、媒体整理、资源搜索和账号安全。",
+                      processing: "集中管理下载、媒体整理、STRM 生成与元数据刮削。",
+                      settings: "管理基础配置、资源搜索和账号安全。",
                     }[page]
                   }
                 </p>
@@ -258,7 +259,6 @@ export default function MediaApp() {
               {page === "anime" && (
                 <AnimeSubscriptions open={setDetail} session={session} />
               )}
-              {page === "organize" && <Organize session={session} />}
               {page === "logs" && <Logs session={session} />}
             </Suspense>
             {page === "home" && (
@@ -442,13 +442,15 @@ export default function MediaApp() {
                 }}
               />
             )}
-            {page === "downloads" && (
-              <Downloads
+            {page === "processing" && (
+              <Suspense fallback={<Empty>正在加载媒体处理…</Empty>}>
+              <MediaProcessing
                 tasks={downloads}
                 session={session}
                 update={setDownloads}
                 notify={notify}
               />
+              </Suspense>
             )}
             {page === "settings" && (
               <Suspense fallback={<Empty>正在加载设置…</Empty>}>

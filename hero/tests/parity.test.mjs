@@ -12,9 +12,20 @@ async function load(path) {
     `data:text/javascript;base64,${Buffer.from(js).toString("base64")}`
   );
 }
-const { navigationItems, settingsTabs, resolvePage } = await load(
+const { navigationItems, settingsTabs, resolvePage, routePath } = await load(
   "../src/lib/parity.ts",
 );
+
+test("settings subroutes stay in settings across hash formats and reloads", () => {
+  for (const [tab] of settingsTabs) {
+    for (const prefix of ["", "/", "#/", "#"]) {
+      const path = `${prefix}settings/${tab}`;
+      assert.equal(resolvePage(path), "settings", path);
+      assert.equal(routePath(path).split("/")[1], tab, path);
+    }
+  }
+  assert.equal(resolvePage("#/processing/strm"), "processing");
+});
 
 test("anime season follows Shanghai quarter boundaries and offers only dated seasons", async () => {
   const { currentAnimeSeason, animeSeasonOptions } = await load("../src/lib/anime-season.ts");
@@ -39,20 +50,23 @@ test("HeroUI preserves legacy navigation and adds the local reading library", as
     (match) => match[1],
   );
   assert.deepEqual(
-    navigationItems.filter(([id]) => !["reading", "music", "downloads"].includes(id)).map(([, label]) => label),
+    navigationItems.filter(([id]) => !["reading", "music", "processing"].includes(id)).map(([, label]) => label),
     labels,
   );
-  assert.equal(resolvePage("downloads"), "downloads");
-  assert.equal(resolvePage("organize"), "settings");
-  assert.equal(resolvePage("tools/downloads"), "downloads");
-  assert.equal(resolvePage("tools/organize"), "settings");
+  assert.equal(resolvePage("downloads"), "processing");
+  assert.equal(resolvePage("organize"), "processing");
+  assert.equal(resolvePage("tools/downloads"), "processing");
+  assert.equal(resolvePage("tools/organize"), "processing");
+  for (const tab of ["downloads", "organize", "strm", "scraping"]) {
+    assert.equal(resolvePage(`processing/${tab}`), "processing");
+  }
   assert.equal(resolvePage("discover/explore"), "discover");
   assert.equal(resolvePage("discover/calendar"), "calendar");
   assert.equal(resolvePage("subscriptions"), "calendar");
   assert.equal(resolvePage(""), "emby");
   assert.equal(resolvePage("reading"), "reading");
   assert.equal(resolvePage("music"), "music");
-  assert.deepEqual(navigationItems.slice(-6, -1).map(([, label]) => label), ["追剧日历", "音乐中心", "漫文书库", "下载管理", "日志中心"]);
+  assert.deepEqual(navigationItems.slice(-6, -1).map(([, label]) => label), ["追剧日历", "音乐中心", "漫文书库", "媒体处理", "日志中心"]);
   assert.deepEqual(navigationItems.find(([id]) => id === "reading"), ["reading", "漫文书库", "功能模块"]);
 });
 
@@ -68,7 +82,7 @@ test("settings categories and order follow the customized shadcn settings", asyn
   const categories = [
     ...tabs.matchAll(/\{ value: "([^"]+)", label: "([^"]+)" \}/g),
   ].map((match) => [match[1], match[2]]);
-  assert.deepEqual(settingsTabs, categories);
+  assert.deepEqual(settingsTabs.filter(([id])=>id!=="strm"&&id!=="scraping"), categories);
 });
 
 test("resource history stays compatible with original media searches and preserves both kinds", async () => {

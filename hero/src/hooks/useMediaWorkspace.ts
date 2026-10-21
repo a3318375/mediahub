@@ -26,7 +26,7 @@ export function useMediaWorkspace() {
   const [session, setSession] = useState<Session | null>(readSession);
   const [liveLogin, setLiveLogin] = useState(true);
   const [page, setPage] = useState<Page>(() => {
-    const hash = window.location.hash.slice(2);
+    const hash = window.location.hash;
     return resolvePage(hash) as Page;
   });
   const [catalogVisited, setCatalogVisited] = useState<string[]>(
@@ -89,7 +89,7 @@ export function useMediaWorkspace() {
   }, [toast]);
   useEffect(() => {
     const change = () => {
-      const hash = window.location.hash.slice(2);
+      const hash = window.location.hash;
       setPage(resolvePage(hash) as Page);
       setDetail(null);
     };

@@ -104,6 +104,7 @@ func (s *Store) CreateAnimeWithDownload(d anime.Draft) (anime.Subscription, erro
 	return s.createAnime(d, true)
 }
 func (s *Store) createAnime(d anime.Draft, automatic bool) (anime.Subscription, error) {
+	defer s.NotifyProcessing()
 	account := ""
 	if automatic {
 		cookie, e := s.ReadSecret("115", "115.cookie")

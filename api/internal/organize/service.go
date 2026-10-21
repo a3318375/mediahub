@@ -27,6 +27,8 @@ type Service struct {
 	Store   Repository
 	Factory download.Factory
 	mu      sync.Mutex
+	wakeMu  sync.Mutex
+	wake    chan struct{}
 }
 
 func (s *Service) gateway(ctx context.Context, account string) (pan115.FileGateway, error) {
@@ -145,6 +147,22 @@ func (s *Service) Start(id string) (Plan, error) {
 	if p.State != "preview" && p.State != "paused" {
 		return p, ErrConflict
 	}
+	running, err := s.Store.OrganizePlans(true)
+	if err != nil {
+		return p, err
+	}
+	for _, other := range running {
+		if other.ID == p.ID || other.Rule.AccountID != p.Rule.AccountID {
+			continue
+		}
+		for _, existing := range other.Actions {
+			for _, action := range p.Actions {
+				if existing.Source.ID == action.Source.ID && existing.State != "completed" && existing.State != "conflict" {
+					return p, fmt.Errorf("该文件正在其他整理任务中处理，请稍后刷新")
+				}
+			}
+		}
+	}
 	p.State = "running"
 	p.Error = ""
 	e = s.Store.SaveOrganizePlan(p)
@@ -153,12 +171,30 @@ func (s *Service) Start(id string) (Plan, error) {
 	}
 	return p, e
 }
+func (s *Service) wakeChannel() chan struct{} {
+	s.wakeMu.Lock()
+	defer s.wakeMu.Unlock()
+	if s.wake == nil {
+		s.wake = make(chan struct{}, 1)
+	}
+	return s.wake
+}
+
+func (s *Service) Trigger() {
+	select {
+	case s.wakeChannel() <- struct{}{}:
+	default:
+	}
+}
+
 func (s *Service) Run(ctx context.Context, report func(string)) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
+	wake := s.wakeChannel()
+	manual := false
 	for {
 		child, cancel := context.WithTimeout(ctx, 50*time.Second)
-		e := s.Tick(child)
+		e := s.tick(child, manual)
 		cancel()
 		if e != nil && ctx.Err() == nil && report != nil {
 			report("公共整理任务处理失败，请查看整理计划")
@@ -167,10 +203,20 @@ func (s *Service) Run(ctx context.Context, report func(string)) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			manual = false
+		case <-wake:
+			manual = true
 		}
 	}
 }
 func (s *Service) Tick(ctx context.Context) error {
+	return s.tick(ctx, false)
+}
+
+func (s *Service) tick(ctx context.Context, manual bool) error {
+	if notifier, ok := s.Store.(interface{ NotifyProcessing() }); ok {
+		defer notifier.NotifyProcessing()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	rules, e := s.Store.OrganizeRules()
@@ -188,14 +234,18 @@ func (s *Service) Tick(ctx context.Context) error {
 	}
 	for _, r := range rules {
 		date := DueSlot(r, now)
-		if date == "" || activeRules[r.ID] {
+		force := manual && r.Simple
+		if date == "" && !force || activeRules[r.ID] {
 			continue
+		}
+		if force {
+			date = ""
 		}
 		ran, e := s.Store.OrganizeRan(r.ID, date)
 		if e != nil {
 			return e
 		}
-		if ran {
+		if ran && !force {
 			continue
 		}
 		if _, e = s.preview(ctx, r.ID, date, true); e != nil {

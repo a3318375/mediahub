@@ -31,6 +31,7 @@ func scanDownload(row interface{ Scan(...any) error }) (download.Task, error) {
 	return t, err
 }
 func (s *Store) CreateDownload(account, hash string, r download.Request) (download.Task, bool, error) {
+	defer s.NotifyProcessing()
 	tx, err := s.db.Begin()
 	if err != nil {
 		return download.Task{}, false, err
@@ -175,6 +176,7 @@ func (s *Store) ListDownloads(active bool) ([]download.Task, error) {
 	return out, nil
 }
 func (s *Store) SaveDownload(t download.Task) error {
+	defer s.NotifyProcessing()
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err

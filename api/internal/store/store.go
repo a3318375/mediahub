@@ -27,8 +27,9 @@ var ErrNotFound = errors.New("not found")
 var ErrAlreadyInitialized = errors.New("account is already initialized")
 
 type Store struct {
-	db        *sql.DB
-	secretKey []byte
+	db              *sql.DB
+	secretKey       []byte
+	processingDirty chan struct{}
 }
 
 type User struct {
@@ -95,7 +96,7 @@ func Open(dataDir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("initialize schema: %w", err)
 	}
-	return &Store{db: db, secretKey: key}, nil
+	return &Store{db: db, secretKey: key, processingDirty: make(chan struct{}, 1)}, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }

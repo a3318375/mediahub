@@ -60,6 +60,12 @@ func run() error {
 		addr = ":18080"
 	}
 	background := taskgroup.New(context.Background())
+	if err := db.SyncProcessing(); err != nil {
+		return fmt.Errorf("refresh media processing records: %w", err)
+	}
+	background.Go(func(ctx context.Context) {
+		db.RunProcessing(ctx, func(err error) { log.Printf("media processing statistics: %v", err) })
+	})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
