@@ -253,7 +253,7 @@ export default function MediaApp() {
               </div>
             )}
             <Suspense fallback={<Empty>正在加载功能页面…</Empty>}>
-              {page === "emby" && <Emby session={session} open={setDetail} />}
+              {page === "emby" && <Emby session={session} />}
               {page === "reading" && <ReadingLibrary session={session} />}
               {page === "music" && <MusicCenter />}
               {page === "anime" && (

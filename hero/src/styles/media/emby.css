@@ -1,4 +1,6 @@
 .emby-dashboard { gap: 16px; }
+.emby-dashboard a.emby-library-card, .emby-dashboard a.poster-card { color: var(--foreground); text-decoration: none; cursor: pointer; }
+.emby-dashboard a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .emby-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .emby-overview { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; }
 .emby-overview h2 { font-size: 15px; font-weight: 650; }

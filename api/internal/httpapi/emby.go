@@ -40,6 +40,7 @@ type EmbyStats struct {
 	Hours    int `json:"hours"`
 }
 type EmbyLibrary struct {
+	URL    string `json:"url"`
 	ID     string `json:"id"`
 	Title  string `json:"title"`
 	Type   string `json:"type"`
@@ -47,6 +48,7 @@ type EmbyLibrary struct {
 	SiteID string `json:"siteId"`
 }
 type EmbyDashboardItem struct {
+	URL          string `json:"url"`
 	ID           string `json:"id"`
 	Title        string `json:"title"`
 	ArtworkTitle string `json:"artworkTitle"`
@@ -66,6 +68,7 @@ type EmbyResumeItem struct {
 }
 
 type embyItem struct {
+	ServerID        string   `json:"ServerId"`
 	ID              string   `json:"Id"`
 	Name            string   `json:"Name"`
 	Type            string   `json:"Type"`
@@ -295,7 +298,7 @@ func (a *API) fetchEmbyDashboard(ctx context.Context, base, key, preferredAccoun
 				response.Warnings = append(response.Warnings, view.Name+"数量读取失败："+countErr.Error())
 			}
 		}
-		response.Libraries = append(response.Libraries, EmbyLibrary{ID: view.ID, Title: view.Name, Type: libType, Count: count, SiteID: "main"})
+		response.Libraries = append(response.Libraries, EmbyLibrary{URL: embyWebURL(base, view.ID, view.ServerID, true), ID: view.ID, Title: view.Name, Type: libType, Count: count, SiteID: "main"})
 		knownLibraries[view.ID] = true
 	}
 	for _, library := range response.Libraries {
@@ -322,6 +325,7 @@ func (a *API) fetchEmbyDashboard(ctx context.Context, base, key, preferredAccoun
 	}
 	for _, item := range recentItems {
 		entry := normalizeEmbyItem(item, knownLibraries)
+		entry.URL = embyWebURL(base, item.ID, item.ServerID, false)
 		if libraryID := libraryForItem[item.ID]; libraryID != "" {
 			entry.LibraryID = libraryID
 		}
@@ -329,6 +333,7 @@ func (a *API) fetchEmbyDashboard(ctx context.Context, base, key, preferredAccoun
 	}
 	for _, item := range resumeItems {
 		entry := normalizeEmbyItem(item, knownLibraries)
+		entry.URL = embyWebURL(base, item.ID, item.ServerID, false)
 		if libraryID := libraryForItem[item.ID]; libraryID != "" {
 			entry.LibraryID = libraryID
 		}
@@ -359,6 +364,33 @@ func (a *API) fetchEmbyDashboard(ctx context.Context, base, key, preferredAccoun
 		response.ContinueWatching = append(response.ContinueWatching, EmbyResumeItem{EmbyDashboardItem: entry, Progress: progress, ResumeLabel: label, Remaining: remaining})
 	}
 	return response, nil
+}
+
+// embyWebURL links to the server's own web client without exposing API credentials.
+func embyWebURL(base, id, serverID string, library bool) string {
+	parsed, err := url.Parse(strings.TrimSpace(base))
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" || id == "" {
+		return ""
+	}
+	path := strings.TrimRight(parsed.Path, "/")
+	path = strings.TrimSuffix(path, "/emby")
+	path = strings.TrimSuffix(path, "/web/index.html")
+	path = strings.TrimSuffix(path, "/web")
+	parsed.Path = path + "/web/index.html"
+	parsed.RawPath, parsed.RawQuery, parsed.Fragment = "", "", ""
+	parsed.User = nil
+	query := url.Values{}
+	route := "item"
+	if library {
+		route = "videos"
+		query.Set("parentId", id)
+	} else {
+		query.Set("id", id)
+	}
+	if serverID != "" {
+		query.Set("serverId", serverID)
+	}
+	return parsed.String() + "#!/" + route + "?" + query.Encode()
 }
 
 func viewCount(ctx context.Context, api *API, base, key, id string) (int, error) {

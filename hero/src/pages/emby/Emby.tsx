@@ -1,5 +1,5 @@
 import { Button, Card } from "@heroui/react";
-import { Film, Tv, Clapperboard, Play, Users, Clock, RefreshCw, Check } from "lucide-react";
+import { Film, Tv, Clapperboard, Play, Users, Clock, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Empty,
@@ -8,10 +8,10 @@ import {
   time,
 } from "../../components/media/MediaUI";
 import { Notice } from "../../components/ui/ManagementUI";
-import type { MediaSummary } from "../../lib/media-contract";
 import { request, type Session } from "../../lib/media-service";
 import { embyDemoEnabled, embySites, embyStats, embyLibraries, recentlyAdded, continueWatching } from "../../mocks/emby-dashboard";
 type Item = {
+  url?: string;
   id: string;
   title: string;
   kind: string;
@@ -30,6 +30,7 @@ type Dashboard = {
   sites: { id: string; label: string }[];
   stats: Record<string, Record<string, number>>;
   libraries: {
+    url?: string;
     id: string;
     title: string;
     type: string;
@@ -85,15 +86,12 @@ function EmbyArtwork({
 }
 export function Emby({
   session,
-  open,
 }: {
   session: Session;
-  open: (m: MediaSummary) => void;
 }) {
   const demo = embyDemoEnabled || session.mode === "demo";
   const [data, setData] = useState<Dashboard | null>(null);
   const [site, setSite] = useState("all");
-  const [library, setLibrary] = useState("");
   const [revision, setRevision] = useState(0);
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -124,33 +122,7 @@ export function Emby({
     };
   }, [session, revision, demo]);
   const visible = (list: Item[]) =>
-    list.filter(
-      (i) =>
-        (site === "all" || i.siteId === site) &&
-        (!library || i.libraryId === library),
-    );
-  function media(item: Item): MediaSummary {
-    return {
-      mediaId: item.id,
-      source: "emby",
-      sourceId: item.id,
-      provider: "emby",
-      providerId: item.id,
-      title: item.title,
-      mediaType:
-        item.kind === "电影"
-          ? "movie"
-          : item.kind === "动画"
-            ? "anime"
-            : item.kind === "纪录片"
-              ? "documentary"
-              : "tv",
-      year: item.year,
-      ratings: [],
-      genres: [],
-      overview: item.summary,
-    };
-  }
+    list.filter((i) => site === "all" || i.siteId === site);
   return (
     <section className="management-stack emby-dashboard">
       <div className="emby-toolbar">
@@ -177,7 +149,6 @@ export function Emby({
             options={data.sites.map((s) => [s.id, s.label])}
             onChange={(v) => {
               setSite(v);
-              setLibrary("");
             }}
           />
           <div className="media-stat-grid">
@@ -197,26 +168,22 @@ export function Emby({
           </div>
           <div className="media-section-heading">
             <h2>媒体库分类</h2>
-            {library && (
-              <Button variant="ghost" onPress={() => setLibrary("")}>
-                显示全部
-              </Button>
-            )}
           </div>
           <div className="emby-library-grid">
             {data.libraries
               .filter((l) => site === "all" || l.siteId === site)
               .map((l) => (
-                <button
-                  type="button"
+                <a
+                  href={demo ? undefined : l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`在 Emby 打开${l.title}媒体库（新标签页）`}
                   key={l.id}
                   className="emby-library-card"
-                  aria-pressed={library === l.id}
-                  onClick={() => setLibrary(library === l.id ? "" : l.id)}
                 >
-                  <div className="emby-library-cover"><EmbyArtwork id={l.id} title={l.title} session={session} />{library === l.id && <span className="emby-library-selected"><Check size={14} /></span>}</div>
+                  <div className="emby-library-cover"><EmbyArtwork id={l.id} title={l.title} session={session} /></div>
                   <div className="emby-library-caption"><strong>{l.title}</strong><span>{l.count.toLocaleString()} 部作品</span></div>
-                </button>
+                </a>
               ))}
           </div>
           <div className="emby-activity-grid">
@@ -229,10 +196,13 @@ export function Emby({
               {(items as Item[]).length ? (
                 <div className="poster-grid">
                   {(items as Item[]).slice(0, 10).map((i) => (
-                    <button
+                    <a
+                      href={demo ? undefined : i.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`在 Emby 打开${i.title}播放页（新标签页）`}
                       key={i.id}
                       className="poster-card"
-                      onClick={() => { if (!demo) open(media(i)); }}
                     >
                       <div className="poster-art">
                         <EmbyArtwork
@@ -257,7 +227,7 @@ export function Emby({
                           </small>
                         </>
                       )}
-                    </button>
+                    </a>
                   ))}
                 </div>
               ) : (
