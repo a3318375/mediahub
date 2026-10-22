@@ -71,10 +71,12 @@ export function save(key: string, value: unknown) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 export function isDemoEntry() {
-  return typeof window !== "undefined" &&
+  return import.meta.env?.STATIC_DEMO || typeof window !== "undefined" &&
     new URLSearchParams(window.location?.search || "").get("demo") === "1";
 }
 export function readSession(): Session | null {
+  // Static builds never restore credentials or connect to a backend.
+  if (import.meta.env?.STATIC_DEMO) return { mode: "demo", name: "演示访客" };
   const sessions: Session[] = [];
   for (const storage of [sessionStorage, localStorage]) {
     try {
@@ -136,6 +138,8 @@ export async function request<T>(
   timeoutMs = 30_000,
   signal?: AbortSignal,
 ): Promise<T> {
+  if (import.meta.env?.STATIC_DEMO)
+    throw new Error("在线演示不连接后端，此功能请在自行部署后使用");
   const controller = new AbortController();
   const abort = () => controller.abort();
   if (signal?.aborted) controller.abort();

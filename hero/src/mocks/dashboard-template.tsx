@@ -1261,7 +1261,7 @@ export default function App() {
           )}
           {(dialog.kind === "help" || dialog.kind === "forgot") && (
             <div className="help-content">
-              <img src="/favicon.svg" alt="" />
+              <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
               <h3>
                 {dialog.kind === "forgot"
                   ? "Your demo credentials"

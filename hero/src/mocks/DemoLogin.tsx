@@ -48,7 +48,7 @@ export function Login({
     <div className="login-layout">
       <section className="login-main">
         <a className="login-brand" href="#/login">
-          <img src="/favicon.svg" alt="" />
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           <span>
             hero<span className="brand-dot">.</span>
           </span>

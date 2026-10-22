@@ -114,6 +114,18 @@ export default function MediaApp() {
     saveTV,
     tvAction,
   } = useMediaWorkspace();
+  if (!session && import.meta.env.STATIC_DEMO)
+    return (
+      <main className="media-main">
+        <Card className="management-card">
+          <h1>MediaHub 在线演示</h1>
+          <p>无需账号，使用示例数据体验界面。真实下载、转存和服务连接需要自行部署。</p>
+          <Button onPress={() => login({ mode: "demo", name: "演示访客" })}>
+            进入演示
+          </Button>
+        </Card>
+      </main>
+    );
   if (!session)
     return liveLogin ? (
       <LiveLogin onLogin={login} onDemo={isDemoEntry() ? () => setLiveLogin(false) : undefined} />
@@ -162,6 +174,14 @@ export default function MediaApp() {
           setDark={setDark}
         />
         <main className="media-main" data-page={page}>
+          {import.meta.env.STATIC_DEMO && (
+            <p className="management-notice" role="note">
+              在线演示 · 使用示例数据，修改仅保存在当前浏览器。下载、转存和服务连接请自行部署。{" "}
+              <a href="https://github.com/a3318375/MediaHub" target="_blank" rel="noreferrer">
+                查看项目与部署说明
+              </a>
+            </p>
+          )}
           {detail && (
             <Detail
               media={detail}

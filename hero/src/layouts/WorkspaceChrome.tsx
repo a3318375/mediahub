@@ -54,7 +54,7 @@ export function WorkspaceSidebar({
   return (
     <aside className="sidebar media-sidebar">
       <div className="media-brand">
-        <img src="/favicon.svg" alt="" />
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
         <span>
           MediaHub<small>你的私人影视空间</small>
         </span>

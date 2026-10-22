@@ -30,6 +30,12 @@
 
 当前下载、分享转存与整理主要围绕 **115 网盘**，外部服务按需配置。
 
+## 在线演示
+
+[打开无需后端的演示版](https://a3318375.github.io/mediahub/)。使用示例数据，修改仅保存在浏览器；真实下载、转存、账号与服务连接需自行部署。
+
+演示版与正式版共用界面，通过独立构建模式区分。`hero` 目录执行 `pnpm build:demo` 输出 `dist-demo/`，可部署到 GitHub Pages 等静态托管；正常 `pnpm build` 仍输出 `dist/`，保持正式登录和后端接口行为。推送前端更新到 `main` 后，Pages 工作流自动更新演示站。首次需在仓库 Settings → Pages 中将 Source 设为 GitHub Actions。
+
 ## Docker 部署
 
 前后端已打包为一个镜像。将以下内容保存为 `docker-compose.yml`：

@@ -20,7 +20,7 @@ export function ReadingLibrary({ session }: { session: Session }) {
   const [kind, setKind] = useState<Kind>("comics");
   const demo = new URLSearchParams(window.location.search).get("readingDemo") === "1" || session.mode === "demo";
   return <section className="reading-library" aria-label="漫文书库">
-    {demo && <p className="reading-hint"><strong>书库示例预览</strong> · 以下为虚构作品，刷新仅演示交互，不扫描目录、不写入数据库。<a href="/#/reading">返回真实书库</a></p>}
+    {demo && <p className="reading-hint"><strong>书库示例预览</strong> · 以下为虚构作品，刷新仅演示交互，不扫描目录、不写入数据库。{!import.meta.env.STATIC_DEMO && <a href={`${import.meta.env.BASE_URL}#/reading`}>返回真实书库</a>}</p>}
     <FilterTabs label="书库" value={kind} options={[["comics", "漫画"], ["novels", "小说"]]} onChange={(v) => setKind(v as Kind)} />
     <LibraryTab key={kind} kind={kind} session={session} demo={demo} />
   </section>;

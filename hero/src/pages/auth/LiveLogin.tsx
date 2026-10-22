@@ -70,7 +70,7 @@ export function LiveLogin({
   return (
     <div className="service-login">
       <Card className="service-login-card">
-        <img src="/favicon.svg" alt="" width="38" />
+        <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width="38" />
         <h1>{setup ? "创建管理员账号" : "连接 MediaHub"}</h1>
         <p>
           {setup
