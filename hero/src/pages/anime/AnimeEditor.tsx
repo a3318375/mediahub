@@ -31,7 +31,7 @@ export function AnimeEditor({
         if (!running.current) close();
       }}
     >
-      <div className={`management-stack anime-editor ${step === "source" ? "anime-source-editor" : ""}`}>
+      <div className={`management-stack anime-editor ${step === "source" ? "anime-source-editor" : ""} ${step === "browse" ? "anime-browse-editor" : ""}`}>
         {step !== "source" && <p role="status" className="anime-step-caption">
           {
             {

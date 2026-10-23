@@ -23,14 +23,12 @@ export function AnimeBrowseStep({ selectAnime, setStep, setSelectedGroup, setSel
     : Array.from(new Set([season, ...seasons])).filter(Boolean);
   if (session.mode !== "live" || draft.source === "other") return null;
   return <div className="anime-mikan-browser">
-    <form className="anime-mikan-search" onSubmit={(e) => { e.preventDefault(); void browse(); }}>
+    <form className="anime-mikan-toolbar" onSubmit={(e) => { e.preventDefault(); void browse(); }}>
+      <SelectField label="播出季度" value={season} options={options.map((s) => [s, s])} onChange={(value) => { setSeason(value); void browse(false, value); }} />
       <Field label="搜索番剧" value={query} onChange={setQuery} placeholder="输入番剧标题" />
       <Button type="submit" variant="secondary" isDisabled={busy}><Search size={16} />搜索</Button>
+      <Button type="button" variant="secondary" isDisabled={busy} onPress={() => void browse(true)}><RefreshCw size={16} />刷新来源</Button>
     </form>
-    <div className="anime-mikan-tools">
-      <SelectField label="播出季度" value={season} options={options.map((s) => [s, s])} onChange={(value) => { setSeason(value); void browse(false, value); }} />
-      <Button variant="ghost" isDisabled={busy} onPress={() => void browse(true)}><RefreshCw size={15} />刷新来源</Button>
-    </div>
     {!!labels.length && <div className="anime-week-tabs" role="tablist" aria-label="播出分类">
       {labels.map((label) => <button type="button" role="tab" aria-selected={weekday === label} key={label} onClick={() => { setWeekday(label); setSelected(null); setGroups([]); }}>{label}</button>)}
     </div>}

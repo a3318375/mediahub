@@ -1,4 +1,6 @@
 .anime-editor { gap: 18px; }
+.anime-editor.anime-browse-editor { gap: 10px; }
+.anime-editor.anime-browse-editor .anime-step-caption { padding-bottom: 0; border-bottom: 0; }
 .anime-editor .anime-step-caption { color: var(--muted); font-size: 13px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
 .anime-step-hint, .anime-selection-heading p { color: var(--muted); font-size: 13px; line-height: 1.6; }
 .anime-editor h3 { font-size: 16px; font-weight: 650; }
@@ -46,14 +48,18 @@
 /* The dialog, rather than only its positioning container, owns the width. */
 .anime-editor-modal .anime-editor-dialog { width: min(820px, calc(100vw - 32px)); max-width: min(820px, calc(100vw - 32px)); }
 .anime-editor-modal { width: 100%; max-width: none; }
-.anime-mikan-browser { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.anime-mikan-browser { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.anime-mikan-toolbar { display: grid; grid-template-columns: 125px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; }
+.anime-mikan-toolbar .management-field { min-width: 0; gap: 0; }
+.anime-mikan-toolbar .management-field > span { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.anime-mikan-toolbar button { white-space: nowrap; }
 .anime-mikan-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }
 .anime-mikan-tools { display: flex; justify-content: space-between; align-items: end; gap: 12px; }
 .anime-mikan-tools > label { width: 160px; }
 .anime-week-tabs { display: flex; gap: 16px; overflow-x: auto; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .anime-week-tabs button { flex-shrink: 0; padding: 10px 2px; border-bottom: 2px solid transparent; font-size: 13px; cursor: pointer; color: var(--muted); }
 .anime-week-tabs button[aria-selected=true] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-.anime-mikan-list { height: clamp(180px, calc(100dvh - 540px), 400px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.anime-mikan-list { height: clamp(180px, calc(100dvh - 410px), 480px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .anime-mikan-title { display: flex; align-items: center; width: 100%; gap: 12px; text-align: left; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
 .anime-mikan-title:hover { background: var(--surface-secondary); }
 .anime-mikan-title img { width: 42px; height: 54px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
@@ -79,6 +85,7 @@
 .anime-match-grid .anime-rule-tag { padding: 3px 5px; font-size: 11px; }
 @media (max-width: 600px) {
   .anime-week-tabs { gap: 14px; }
+  .anime-mikan-toolbar { grid-template-columns: 110px minmax(0, 1fr) auto auto; gap: 6px; }
   .anime-mikan-group-line { flex-wrap: wrap; }
   .anime-mikan-group-name { flex-basis: 60%; }
   .anime-mikan-tags { order: 3; max-width: 100%; justify-content: flex-start; }

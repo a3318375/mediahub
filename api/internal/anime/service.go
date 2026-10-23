@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,33 @@ type cacheEntry struct {
 	Body  []byte
 	Until time.Time
 }
+
+var resourceSizePattern = regexp.MustCompile(`(?i)^\s*(\d+(?:\.\d+)?)\s*(B|KIB|MIB|GIB|TIB|KB|MB|GB|TB)\s*$`)
+
+func parseResourceSize(raw string) int64 {
+	match := resourceSizePattern.FindStringSubmatch(raw)
+	if match == nil {
+		return 0
+	}
+	value, err := strconv.ParseFloat(match[1], 64)
+	if err != nil {
+		return 0
+	}
+	unit := strings.ToUpper(match[2])
+	for i, prefix := range []string{"K", "M", "G", "T"} {
+		if strings.HasPrefix(unit, prefix) {
+			for n := 0; n <= i; n++ {
+				value *= 1024
+			}
+			break
+		}
+	}
+	if value >= 9223372036854775808.0 {
+		return 0
+	}
+	return int64(value)
+}
+
 type Service struct {
 	mu    sync.Mutex
 	cache map[string]cacheEntry
@@ -431,7 +459,7 @@ func (s *Service) Groups(ctx context.Context, id string, refresh bool) ([]Group,
 				link = magnet
 			}
 			if title != "" && len(items) < 20 {
-				items = append(items, Entry{Title: title, URL: link, PublishedAt: strings.TrimSpace(row.Find("td").Eq(3).Text())})
+				items = append(items, Entry{Title: title, URL: link, ContentLength: parseResourceSize(row.Find("td").Eq(2).Text()), PublishedAt: strings.TrimSpace(row.Find("td").Eq(3).Text())})
 			}
 		})
 		out = append(out, Group{Label: label, URL: absolute(rss), BangumiID: bgm, Items: items, GroupRegex: BuildGroupRegex(titles)})
