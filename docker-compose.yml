@@ -6,17 +6,6 @@ services:
     volumes:
       - ./data:/data
       - ./strm:/strm
-      # Mount existing host libraries read-only at the fixed container paths.
-      - type: bind
-        source: ./library/comics
-        target: /comics
-        read_only: true
-        bind:
-          create_host_path: false
-      - type: bind
-        source: ./library/book
-        target: /book
-        read_only: true
-        bind:
-          create_host_path: false
+      - ./comics:/comics
+      - ./book:/book
     restart: unless-stopped

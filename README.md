@@ -51,8 +51,21 @@ services:
     volumes:
       - ./data:/data
       - ./strm:/strm
+      - ./comics:/comics
+      - ./book:/book
     restart: unless-stopped
 ```
+
+将映射左侧的 `./comics`、`./book` 改成自己的漫画、小说目录即可。
+
+| 主机目录（可修改） | 容器目录 | 用途 |
+| :--- | :--- | :--- |
+| `./data` | `/data` | 数据库、密钥和配置，需持久化 |
+| `./strm` | `/strm` | STRM 输出目录，可读写 |
+| `./comics` | `/comics` | 漫画书库 |
+| `./book` | `/book` | 小说书库 |
+
+漫画和小说的容器目录固定为 `/comics` 和 `/book`，无需配置目录环境变量。启动后进入「漫文书库」，点击“刷新库”扫描文件。支持格式和阅读限制见[漫文书库说明](docs/reading-library.md)。
 
 启动或更新：
 
@@ -63,7 +76,7 @@ docker compose up -d
 
 打开 `http://服务器IP:5173`，首次访问创建管理员账号，再到全局设置配置所需服务。
 
-账号、订阅、任务和配置保存在 `./data`。升级时保留整个目录，备份时同时保存数据库与 `master.key`。漫画、小说挂载方式见[漫文书库说明](docs/reading-library.md)；仓库自带的 Compose 另包含书库挂载，使用前需准备对应目录。
+账号、订阅、任务和配置保存在 `./data`。升级时保留整个目录，备份时同时保存数据库与 `master.key`。
 
 ## 页面预览
 

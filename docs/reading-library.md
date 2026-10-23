@@ -4,10 +4,10 @@
 
 ## 固定目录
 
-- Docker：漫画 `/comics`，小说 `/book`。将自己的主机目录只读挂载到这两个容器目录即可，无需配置目录环境变量。
+- Docker：漫画 `/comics`，小说 `/book`。将自己的主机目录挂载到这两个容器目录即可，无需配置目录环境变量。
 - Windows 本地开发：漫画 `D:\tmp\res\comics`，小说 `D:\tmp\res\book`，由后端直接使用。
 
-Compose 示例使用 `./library/comics:/comics` 和 `./library/book:/book` 的只读绑定。主机目录必须已存在，可以直接修改挂载源路径；不自动创建目录。
+Compose 示例使用 `./comics:/comics` 和 `./book:/book` 的目录映射。将左侧路径改成自己的书库目录即可。
 
 ## 在线阅读
 
