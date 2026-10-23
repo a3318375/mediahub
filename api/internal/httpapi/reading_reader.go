@@ -57,6 +57,17 @@ func (library *readingLibrary) mountReader(group *gin.RouterGroup) {
 		c.JSON(200, gin.H{"title": book.Chapters[index].Title, "paragraphs": paragraphs})
 	})
 	serveImage := func(c *gin.Context, cover bool) {
+		if cover && c.Param("kind") == "comics" {
+			item, err := library.db.GetReading(c.Request.Context(), "comics", c.Param("id"))
+			if err == nil && item.Available && item.Root == library.roots[item.Kind] {
+				if data, contentType, err := library.db.ReadingCover(c.Request.Context(), item); err == nil {
+					c.Header("Cache-Control", "private, max-age=300")
+					c.Header("X-Content-Type-Options", "nosniff")
+					c.Data(200, contentType, data)
+					return
+				}
+			}
+		}
 		item, book, ok := open(c)
 		if !ok {
 			return

@@ -6,7 +6,7 @@ import {
   Toggle,
 } from "../../components/ui/ManagementUI";
 import { useAnimeEditor } from "../../hooks/useAnimeEditor";
-import { animeApi, type SavedAnimeSubscription } from "../../lib/anime-api";
+import { animeApi, animeResourceSize, type SavedAnimeSubscription } from "../../lib/anime-api";
 import { image, type Session } from "../../lib/media-service";
 export function AnimeEditStep({
   setStep,
@@ -272,7 +272,7 @@ export function AnimeEditStep({
             {preview.items.map((r, i) => (
               <p key={i}>
                 {r.accepted ? "✓" : "—"} {r.title} · 第 {r.episode ?? "?"} 集{" "}
-                {r.reason} · {r.fileName}
+                {r.reason} · {r.fileName} · {animeResourceSize(r.contentLength)}
               </p>
             ))}
           </div>

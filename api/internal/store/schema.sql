@@ -168,6 +168,13 @@ CREATE TABLE IF NOT EXISTS reading_items (
  UNIQUE(kind, root, path)
 );
 CREATE INDEX IF NOT EXISTS idx_reading_kind ON reading_items(kind, title);
+CREATE TABLE IF NOT EXISTS reading_covers (
+ item_id TEXT PRIMARY KEY REFERENCES reading_items(id),
+ size INTEGER NOT NULL,
+ modified_at TEXT NOT NULL,
+ content_type TEXT NOT NULL,
+ image BLOB NOT NULL
+);
 CREATE TABLE IF NOT EXISTS reading_scans (
  kind TEXT PRIMARY KEY,
  completed_at TEXT NOT NULL,

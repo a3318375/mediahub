@@ -4,7 +4,7 @@ import { ChevronDown, ChevronRight, Plus, RefreshCw, Search } from "lucide-react
 import { Empty } from "../../components/media/MediaUI";
 import { Field, SelectField } from "../../components/ui/ManagementUI";
 import { useAnimeEditor } from "../../hooks/useAnimeEditor";
-import { type SavedAnimeSubscription } from "../../lib/anime-api";
+import { animeResourceSize, type SavedAnimeSubscription } from "../../lib/anime-api";
 import { animeSeasonOptions, currentAnimeSeason } from "../../lib/anime-season";
 import { type Session } from "../../lib/media-service";
 
@@ -51,7 +51,7 @@ export function AnimeBrowseStep({ selectAnime, setStep, setSelectedGroup, setSel
               <div className="anime-mikan-tags">{group.groupRegex?.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div>
               <Button size="sm" variant="secondary" aria-label={`添加 ${group.label}`} onPress={() => { setSelectedGroup(group); setSelectedRule(-1); setStep("match"); }}><Plus size={14} />添加</Button>
             </div>
-            <details><summary>发布记录（{group.items.length}）</summary>{group.items.map((entry, n) => <p key={n}>{entry.title}</p>)}</details>
+            <details><summary>发布记录（{group.items.length}）</summary>{group.items.map((entry, n) => <p key={n}>{entry.title}<span className="anime-release-meta">{animeResourceSize(entry.contentLength)}{entry.publishedAt && ` · ${new Date(entry.publishedAt).toLocaleString("zh-CN")}`}</span></p>)}</details>
           </div>)}
         </div>}
       </div>)}

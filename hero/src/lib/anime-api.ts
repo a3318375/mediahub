@@ -36,6 +36,7 @@ export type SavedAnimeSubscription = AnimeDraft & {
   resources: AnimeEntry[];
 };
 export type AnimeEntry = {
+  contentLength?: number;
   title: string;
   url: string;
   publishedAt: string;
@@ -45,6 +46,12 @@ export type AnimeEntry = {
   fileName: string;
   feed: string;
 };
+export function animeResourceSize(bytes?: number): string {
+  if (!bytes || !Number.isFinite(bytes) || bytes <= 0) return "大小未知";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${Number((bytes / 1024 ** unit).toFixed(unit >= 2 ? 1 : 0))} ${units[unit]}`;
+}
 export type AnimePreview = {
   items: AnimeEntry[];
   accepted: number;

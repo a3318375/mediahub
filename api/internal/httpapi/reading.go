@@ -104,6 +104,33 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			if err == nil {
 				err = library.db.SaveReadingScan(ctx, kind, root, items)
 			}
+			if err == nil && kind == "comics" {
+				reader := &reading.Reader{}
+				for _, item := range items {
+					if ctx.Err() != nil {
+						err = ctx.Err()
+						break
+					}
+					if item.Format != "CBZ" {
+						continue
+					}
+					if _, _, cached := library.db.ReadingCover(ctx, item); cached == nil {
+						continue
+					}
+					book, coverErr := reader.Book(root, item.Path, item.Format)
+					if coverErr == nil {
+						var data []byte
+						var contentType string
+						data, contentType, coverErr = reader.Image(ctx, root, item.Path, book, 0, true)
+						if coverErr == nil {
+							coverErr = library.db.SaveReadingCover(ctx, item, data, contentType)
+						}
+					}
+					if coverErr != nil {
+						log.Printf("reading cover %s: %v", item.ID, coverErr)
+					}
+				}
+			}
 			job := readingJob{}
 			if err != nil {
 				log.Printf("reading library %s scan failed: %v", kind, err)
