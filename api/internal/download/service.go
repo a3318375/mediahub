@@ -37,7 +37,9 @@ type Service struct {
 }
 
 func New(r Repository) *Service {
-	limiter := rate.NewLimiter(rate.Every(time.Second), 1)
+	// Shared across downloads, organizing and output; allow steady file operations
+	// without the old one-second delay on every directory/readback request.
+	limiter := rate.NewLimiter(rate.Every(250*time.Millisecond), 1)
 	return &Service{Store: r, Now: time.Now, wake: make(chan struct{}, 1), Factory: func(ctx context.Context, cookie string) (pan115.Gateway, error) {
 		return pan115.New(ctx, cookie, limiter, nil)
 	}}

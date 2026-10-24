@@ -54,6 +54,11 @@ services:
       - ./comics:/comics
       - ./book:/book
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 ```
 
 将映射左侧的 `./comics`、`./book` 改成自己的漫画、小说目录即可。
@@ -73,6 +78,10 @@ services:
 docker compose pull
 docker compose up -d
 ```
+
+整理进度直接输出到 Docker 日志：包含待整理检测、计划编号、原始文件名、偏移前后集数、115 操作耗时及跳过/失败原因。复制一次点击后从 `[整理] 收到手动整理请求` 到 `整理计划结束` 的日志即可排查；出现 `115开始` 而没有对应的 `115结束`，可定位正在等待的操作。成功的健康检查和整理状态轮询不再刷屏，错误请求仍记录。
+
+上面的 `logging` 配置将容器日志限制为每份 10 MB、最多 3 份并自动轮转。已有 NAS 部署需要将配置加到自己的 Compose 中，再执行 `docker compose up -d` 使容器配置生效；只更新镜像不会改变已有容器的日志策略。通过 NAS 界面部署的用户可设置同等的日志大小和份数限制。轮转仅管理容器日志，不处理数据库、密钥、下载文件或 STRM。
 
 打开 `http://服务器IP:5173`，首次访问创建管理员账号，再到全局设置配置所需服务。
 

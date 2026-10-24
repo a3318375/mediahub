@@ -15,6 +15,15 @@ import (
 type Lookup func(context.Context, pan115.File) (Binding, error)
 
 func Preview(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup) (Plan, error) {
+	return preview(ctx, g, r, lookup, nil, false)
+}
+
+// PreviewFiles verifies only known pending artifacts instead of crawling the drive.
+func PreviewFiles(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup, candidates []pan115.File) (Plan, error) {
+	return preview(ctx, g, r, lookup, candidates, true)
+}
+
+func preview(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup, candidates []pan115.File, targeted bool) (Plan, error) {
 	p := Plan{Rule: r, State: "preview", Actions: []Action{}, Issues: []Issue{}}
 	if err := ValidateRule(r); err != nil {
 		return p, err
@@ -90,7 +99,84 @@ func Preview(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup) (Plan
 		}
 		return nil
 	}
-	if err = scan(r.SourceID, 0); err != nil {
+	if targeted {
+		parents := map[string]pan115.File{source.ID: source}
+		listings := map[string]map[string]pan115.File{}
+		seenFiles := map[string]bool{}
+		for _, candidate := range candidates {
+			if err = ctx.Err(); err != nil {
+				return p, err
+			}
+			if seenFiles[candidate.ID] {
+				continue
+			}
+			seenFiles[candidate.ID] = true
+			var f pan115.File
+			var e error
+			found := false
+			if candidate.ParentID != "" {
+				listing, ok := listings[candidate.ParentID]
+				if !ok {
+					var items []pan115.File
+					items, e = g.ListFiles(candidate.ParentID)
+					if e != nil {
+						return p, pan115.SafeError(e)
+					}
+					listing = map[string]pan115.File{}
+					for _, item := range items {
+						if item.ParentID != candidate.ParentID {
+							return p, fmt.Errorf("115 文件父目录不匹配")
+						}
+						listing[item.ID] = item
+					}
+					listings[candidate.ParentID] = listing
+				}
+				f, found = listing[candidate.ID]
+			}
+			if !found {
+				f, e = g.GetFile(candidate.ID)
+			}
+			if e != nil {
+				if ctx.Err() != nil {
+					return p, ctx.Err()
+				}
+				p.Issues = append(p.Issues, Issue{candidate, "source", pan115.SafeError(e).Error()})
+				continue
+			}
+			id, eligible := f.ParentID, false
+			seen := map[string]bool{}
+			for depth := 0; id != "" && id != "0"; depth++ {
+				if targets[id] {
+					break
+				}
+				if id == r.SourceID {
+					eligible = true
+					break
+				}
+				if !r.Recursive || depth >= 8 || seen[id] {
+					break
+				}
+				seen[id] = true
+				parent, ok := parents[id]
+				if !ok {
+					parent, e = g.GetFile(id)
+					if e != nil {
+						return p, pan115.SafeError(e)
+					}
+					parents[id] = parent
+				}
+				if !parent.Directory || skipDirectory(parent.Name) {
+					break
+				}
+				id = parent.ParentID
+			}
+			if eligible && !f.Directory {
+				files = append(files, f)
+			} else if !f.Directory {
+				p.Issues = append(p.Issues, Issue{f, "scope", "文件不在此规则的未整理目录内，或位于目标/排除目录"})
+			}
+		}
+	} else if err = scan(r.SourceID, 0); err != nil {
 		return p, err
 	}
 	issue := func(f pan115.File, code, message string) { p.Issues = append(p.Issues, Issue{f, code, message}) }

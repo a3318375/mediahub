@@ -3,6 +3,7 @@ package organize
 import (
 	"context"
 	"fmt"
+	"log"
 	"mediahub/internal/download"
 	"mediahub/internal/pan115"
 	"strings"
@@ -47,14 +48,15 @@ func (s *Service) gateway(ctx context.Context, account string) (pan115.FileGatew
 	if e != nil {
 		return nil, e
 	}
-	if e = g.CheckAccount(); e != nil {
-		return nil, pan115.SafeError(e)
-	}
 	files, ok := g.(pan115.FileGateway)
 	if !ok {
 		return nil, fmt.Errorf("115 文件操作不可用")
 	}
-	return files, nil
+	traced := &tracedFiles{FileGateway: files, service: s}
+	if e = traced.CheckAccount(); e != nil {
+		return nil, pan115.SafeError(e)
+	}
+	return traced, nil
 }
 func (s *Service) Preview(ctx context.Context, id string) (Plan, error) {
 	s.mu.Lock()
@@ -62,9 +64,30 @@ func (s *Service) Preview(ctx context.Context, id string) (Plan, error) {
 	return s.preview(ctx, id, "", false)
 }
 func (s *Service) preview(ctx context.Context, id, date string, execute bool) (Plan, error) {
+	started := time.Now()
 	r, e := s.Store.OrganizeRule(id)
 	if e != nil {
 		return Plan{}, e
+	}
+	s.trace("开始整理 rule=%s name=%q source=%s mode=%s", r.ID, r.Name, r.SourceID, map[bool]string{true: "执行", false: "预览"}[execute])
+	var candidates []pan115.File
+	targeted := false
+	if repo, ok := s.Store.(interface {
+		OrganizePending(string) ([]pan115.File, error)
+	}); ok && !r.AllowExisting && r.Binding == nil {
+		candidates, e = repo.OrganizePending(r.AccountID)
+		if e != nil {
+			return Plan{}, e
+		}
+		targeted = true
+		s.trace("待整理检测 rule=%s pending_files=%d scan=仅待整理文件", r.ID, len(candidates))
+		if len(candidates) == 0 {
+			s.trace("整理计划结束 rule=%s state=无待整理文件 requests=0", r.ID)
+			if !execute {
+				return s.Store.CreateOrganizePlan(Plan{Rule: r, State: "preview", Actions: []Action{}, Issues: []Issue{}})
+			}
+			return Plan{}, nil
+		}
 	}
 	g, e := s.gateway(ctx, r.AccountID)
 	if e != nil {
@@ -82,7 +105,7 @@ func (s *Service) preview(ctx context.Context, id, date string, execute bool) (P
 		}
 	}
 	ancestorBlocked := map[string]bool{}
-	p, e := Preview(ctx, g, r, func(ctx context.Context, f pan115.File) (Binding, error) {
+	lookupFile := func(ctx context.Context, f pan115.File) (Binding, error) {
 		id := f.ParentID
 		if value, ok := ancestorBlocked[id]; ok {
 			if value {
@@ -116,8 +139,16 @@ func (s *Service) preview(ctx context.Context, id, date string, execute bool) (P
 			b.Media, e = s.Resolve(ctx, b.Media, f)
 		}
 		return b, e
-	})
+	}
+	var p Plan
+	if targeted {
+		p, e = PreviewFiles(ctx, g, r, lookupFile, candidates)
+	} else {
+		s.trace("扫描目录 rule=%s scan=递归扫描历史文件", r.ID)
+		p, e = Preview(ctx, g, r, lookupFile)
+	}
 	if e != nil {
+		s.trace("整理检测失败 rule=%s elapsed=%s reason=%q", r.ID, time.Since(started).Round(time.Millisecond), e.Error())
 		return p, e
 	}
 	p.Mode = "manual"
@@ -128,7 +159,14 @@ func (s *Service) preview(ctx context.Context, id, date string, execute bool) (P
 	if execute {
 		p.State = "running"
 	}
-	return s.Store.CreateOrganizePlan(p)
+	p, e = s.Store.CreateOrganizePlan(p)
+	if e == nil {
+		s.trace("整理检测完成 plan=%s actions=%d issues=%d elapsed=%s", p.ID, len(p.Actions), len(p.Issues), time.Since(started).Round(time.Millisecond))
+		for _, issue := range p.Issues {
+			s.trace("跳过文件 plan=%s file=%q id=%s code=%s reason=%q", p.ID, issue.File.Name, issue.File.ID, issue.Code, issue.Message)
+		}
+	}
+	return p, e
 }
 func (s *Service) Start(id string) (Plan, error) {
 	s.mu.Lock()
@@ -181,6 +219,7 @@ func (s *Service) wakeChannel() chan struct{} {
 }
 
 func (s *Service) Trigger() {
+	s.trace("收到手动整理请求，唤醒整理队列")
 	select {
 	case s.wakeChannel() <- struct{}{}:
 	default:
@@ -193,11 +232,28 @@ func (s *Service) Run(ctx context.Context, report func(string)) {
 	wake := s.wakeChannel()
 	manual := false
 	for {
-		child, cancel := context.WithTimeout(ctx, 50*time.Second)
+		child, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		e := s.tick(child, manual)
 		cancel()
 		if e != nil && ctx.Err() == nil && report != nil {
 			report("公共整理任务处理失败，请查看整理计划")
+		}
+		if e != nil {
+			s.trace("整理执行异常 reason=%q", e.Error())
+		}
+		// Continue persisted work immediately; the minute ticker only schedules new runs.
+		active, activeErr := s.Store.OrganizePlans(true)
+		if activeErr == nil && len(active) > 0 && ctx.Err() == nil {
+			s.trace("整理计划尚未完成 active_plans=%d，立即继续，不等待分钟调度", len(active))
+			if e != nil {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(time.Second):
+				}
+			}
+			manual = false
+			continue
 		}
 		select {
 		case <-ctx.Done():
@@ -281,17 +337,15 @@ func (s *Service) tick(ctx context.Context, manual bool) error {
 			}
 			continue
 		}
-		processed := 0
 		for i := range p.Actions {
 			a := &p.Actions[i]
 			if a.State == "completed" || a.State == "conflict" {
 				continue
 			}
-			if processed >= 3 {
-				break
-			}
-			processed++
+			started := time.Now()
+			s.trace("开始整理文件 plan=%s file=%q id=%s original=%v offset=%d episode=%v target=%q", p.ID, a.Source.Name, a.ID, a.Media.OriginalEpisodes, a.Media.Offset, a.Media.Episodes, a.TargetName)
 			if e = s.execute(ctx, g, &p, i); e != nil {
+				s.trace("整理文件失败 plan=%s file=%q stage=%s elapsed=%s reason=%q", p.ID, a.Source.Name, a.State, time.Since(started).Round(time.Millisecond), e.Error())
 				if ctx.Err() != nil {
 					return ctx.Err()
 				}
@@ -301,6 +355,7 @@ func (s *Service) tick(ctx context.Context, manual bool) error {
 				_ = s.Store.SaveOrganizePlan(p)
 				break
 			}
+			s.trace("整理文件完成 plan=%s file=%q elapsed=%s", p.ID, a.Source.Name, time.Since(started).Round(time.Millisecond))
 			fresh, e := s.Store.OrganizePlan(p.ID)
 			if e != nil {
 				return e
@@ -318,8 +373,14 @@ func (s *Service) tick(ctx context.Context, manual bool) error {
 				continue
 			}
 			p.State = "completed"
-			if e = s.cleanupEmptyDirectories(ctx, g, p.Rule); e != nil {
-				p.Issues = append(p.Issues, Issue{Code: "cleanup", Message: "空目录清理未完成：" + e.Error()})
+			// Incremental runs must not crawl the whole source again for empty folders.
+			_, incremental := s.Store.(interface {
+				OrganizePending(string) ([]pan115.File, error)
+			})
+			if !incremental || p.Rule.AllowExisting || p.Rule.Binding != nil {
+				if e = s.cleanupEmptyDirectories(ctx, g, p.Rule); e != nil {
+					p.Issues = append(p.Issues, Issue{Code: "cleanup", Message: "空目录清理未完成：" + e.Error()})
+				}
 			}
 			for _, a := range p.Actions {
 				if a.State == "conflict" {
@@ -332,9 +393,23 @@ func (s *Service) tick(ctx context.Context, manual bool) error {
 			if e = s.Store.SaveOrganizePlan(p); e != nil {
 				return e
 			}
+			completed, conflicts := 0, 0
+			for _, a := range p.Actions {
+				if a.State == "completed" {
+					completed++
+				}
+				if a.State == "conflict" {
+					conflicts++
+				}
+			}
+			s.trace("整理计划结束 plan=%s state=%s files=%d completed=%d conflicts=%d issues=%d", p.ID, p.State, len(p.Actions), completed, conflicts, len(p.Issues))
 		}
 	}
 	return nil
+}
+
+func (s *Service) trace(format string, args ...any) {
+	log.Printf("[整理] "+format, args...)
 }
 func (s *Service) save(p *Plan) error {
 	if e := s.Store.SaveOrganizePlan(*p); e != nil {

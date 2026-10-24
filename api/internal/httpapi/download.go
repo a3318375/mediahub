@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"log"
 	"net/http"
 	"time"
 
@@ -31,6 +32,7 @@ func downloadFailure(c *gin.Context, err error) {
 }
 func (a *API) mountDownloads(v1 *gin.RouterGroup) {
 	v1.POST("/downloads/run", func(c *gin.Context) {
+		log.Print("[下载] 收到立即下载请求，唤醒下载调度（不是手动整理）")
 		a.downloads.Wake()
 		a.store.NotifyProcessing()
 		c.JSON(202, gin.H{"message": "已唤醒下载调度，处理已启用订阅的候选与下载队列。"})
