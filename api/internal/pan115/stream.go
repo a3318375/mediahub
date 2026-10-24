@@ -26,19 +26,25 @@ func ValidStreamURL(raw string) bool {
 	return false
 }
 func (c *Client) Stream(id, ua string) (StreamLocation, error) {
+	_, location, err := c.StreamFile(id, ua)
+	return location, err
+}
+
+// StreamFile returns the metadata used to resolve the link, avoiding a second lookup.
+func (c *Client) StreamFile(id, ua string) (File, StreamLocation, error) {
 	f, err := c.sdk.GetFile(id)
 	if err != nil {
-		return StreamLocation{}, SafeError(err)
+		return File{}, StreamLocation{}, SafeError(err)
 	}
 	if f == nil || f.FileID != id || f.IsDirectory || f.PickCode == "" {
-		return StreamLocation{}, fmt.Errorf("播放文件不可用")
+		return File{}, StreamLocation{}, fmt.Errorf("播放文件不可用")
 	}
 	result, err := c.sdk.DownloadWithUA(f.PickCode, ua)
 	if err != nil {
-		return StreamLocation{}, SafeError(err)
+		return File{}, StreamLocation{}, SafeError(err)
 	}
 	if result == nil || !ValidStreamURL(result.Url.Url) {
-		return StreamLocation{}, fmt.Errorf("115 未返回受支持的安全播放地址")
+		return File{}, StreamLocation{}, fmt.Errorf("115 未返回受支持的安全播放地址")
 	}
-	return StreamLocation{result.Url.Url, result.Header}, nil
+	return fromFile(f), StreamLocation{result.Url.Url, result.Header}, nil
 }

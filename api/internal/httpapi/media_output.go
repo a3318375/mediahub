@@ -2,10 +2,11 @@ package httpapi
 
 import (
 	"context"
-	"io"
+	"errors"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"mediahub/internal/mediaoutput"
@@ -92,6 +93,7 @@ func (a *API) mountMediaOutput(router *gin.Engine, v1 *gin.RouterGroup) {
 	})
 
 	// Signed file links grant access only to successfully generated files, never arbitrary IDs.
+	streamLinks := &streamLinkCache{}
 	streamSlots := make(chan struct{}, 4)
 	stream := func(c *gin.Context) {
 		c.Header("Cache-Control", "private, no-store")
@@ -120,81 +122,59 @@ func (a *API) mountMediaOutput(router *gin.Engine, v1 *gin.RouterGroup) {
 			fail(c, 404, "STRM 文件不可用")
 			return
 		}
-		select {
-		case streamSlots <- struct{}{}:
-			defer func() { <-streamSlots }()
-		default:
-			fail(c, 429, "播放连接已满，请稍后重试")
-			return
-		}
-		ctx, cancel := context.WithCancel(c.Request.Context())
-		defer cancel()
-		gateway, err := a.downloads.Factory(ctx, cookie)
-		if err != nil {
-			fail(c, 502, "连接 115 失败")
-			return
-		}
-		if err = gateway.CheckAccount(); err != nil {
-			fail(c, 503, "115 账号校验失败")
-			return
-		}
-		source, err := gateway.GetFile(id)
-		if err != nil || source.Directory || source.Size != output.File.Size || !strings.EqualFold(source.SHA1, output.File.SHA1) {
-			fail(c, 409, "来源文件已变化，请重新生成 STRM")
-			return
-		}
-		g, ok := gateway.(interface {
-			Stream(string, string) (pan115.StreamLocation, error)
+		ua := c.Request.UserAgent()
+		requestContext := c.Request.Context()
+		link, err := streamLinks.resolve(requestContext, []any{cookie, account, id, ua, output.File.Size, output.File.SHA1}, func() (string, error) {
+			select {
+			case streamSlots <- struct{}{}:
+				defer func() { <-streamSlots }()
+			default:
+				return "", &streamResolveError{429, "播放地址解析繁忙，请稍后重试"}
+			}
+			// Shared resolution survives a cancelled HEAD/range probe, but is bounded.
+			ctx, cancel := context.WithTimeout(context.WithoutCancel(requestContext), 30*time.Second)
+			defer cancel()
+			gateway, err := a.downloads.Factory(ctx, cookie)
+			if err != nil {
+				return "", &streamResolveError{502, "连接 115 失败"}
+			}
+			if err = gateway.CheckAccount(); err != nil {
+				return "", &streamResolveError{503, "115 账号校验失败"}
+			}
+			g, ok := gateway.(interface {
+				StreamFile(string, string) (pan115.File, pan115.StreamLocation, error)
+			})
+			if !ok {
+				return "", &streamResolveError{503, "115 播放服务不可用"}
+			}
+			source, location, err := g.StreamFile(id, ua)
+			if err != nil {
+				return "", &streamResolveError{502, "获取 115 播放地址失败"}
+			}
+			if source.Directory || source.ID != id || source.Size != output.File.Size || !strings.EqualFold(source.SHA1, output.File.SHA1) {
+				return "", &streamResolveError{409, "来源文件已变化，请重新生成 STRM"}
+			}
+			if !pan115.ValidStreamURL(location.URL) {
+				return "", &streamResolveError{502, "播放地址不可用"}
+			}
+			return location.URL, nil
 		})
-		if !ok {
-			fail(c, 503, "115 播放服务不可用")
-			return
-		}
-		location, err := g.Stream(id, c.Request.UserAgent())
 		if err != nil {
-			fail(c, 502, "获取 115 播放地址失败")
-			return
-		}
-		if !pan115.ValidStreamURL(location.URL) {
-			fail(c, 502, "播放地址不可用")
-			return
-		}
-		req, err := http.NewRequestWithContext(ctx, c.Request.Method, location.URL, nil)
-		if err != nil {
-			fail(c, 502, "播放请求失败")
-			return
-		}
-		for _, key := range []string{"User-Agent", "Cookie", "Referer"} {
-			if value := location.Header.Get(key); value != "" {
-				req.Header.Set(key, value)
+			if c.Request.Context().Err() != nil {
+				return
 			}
-		}
-		for _, key := range []string{"Range", "If-Range", "If-None-Match", "If-Modified-Since"} {
-			if value := c.GetHeader(key); value != "" {
-				req.Header.Set(key, value)
+			var resolution *streamResolveError
+			if errors.As(err, &resolution) {
+				fail(c, resolution.status, resolution.message)
+			} else {
+				fail(c, 502, "获取播放地址失败")
 			}
-		}
-		req.Header.Set("Accept-Encoding", "identity")
-		client := &http.Client{Transport: http.DefaultTransport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
-		resp, err := client.Do(req)
-		if err != nil {
-			fail(c, 502, "读取视频失败")
 			return
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 && resp.StatusCode != 206 && resp.StatusCode != 304 && resp.StatusCode != 416 {
-			fail(c, 502, "视频服务暂不可用")
-			return
-		}
-		for _, key := range []string{"Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified"} {
-			if value := resp.Header.Get(key); value != "" {
-				c.Header(key, value)
-			}
-		}
-		c.Status(resp.StatusCode)
-		if c.Request.Method != "HEAD" {
-			_, _ = io.Copy(c.Writer, resp.Body)
-		}
+		// The player keeps its own UA and Range headers when following the redirect.
+		// Do not forward account cookies or download headers to the client.
+		c.Header("Location", link)
+		c.Status(http.StatusFound)
 	}
 	router.GET("/api/stream/115/:id", stream)
 	router.HEAD("/api/stream/115/:id", stream)
