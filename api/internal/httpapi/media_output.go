@@ -65,6 +65,25 @@ func (a *API) mountMediaOutput(router *gin.Engine, v1 *gin.RouterGroup) {
 			fail(c, 404, "任务类型不存在")
 			return
 		}
+		if kind == "strm" && c.Request.ContentLength != 0 {
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2048)
+			var body struct {
+				BaseURL string `json:"baseUrl"`
+			}
+			if c.ShouldBindJSON(&body) != nil || strings.TrimSpace(body.BaseURL) == "" {
+				fail(c, 400, "需要当前页面的播放服务地址")
+				return
+			}
+			origin, err := mediaoutput.PlaybackOrigin(body.BaseURL)
+			if err != nil {
+				fail(c, 400, err.Error())
+				return
+			}
+			if err = a.store.RememberPlaybackURL(origin); err != nil {
+				fail(c, 500, "保存播放服务地址失败")
+				return
+			}
+		}
 		if err := jobs.Trigger(kind); err != nil {
 			fail(c, 422, err.Error())
 			return

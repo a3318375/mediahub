@@ -3,7 +3,7 @@ export type OutputKind = "strm" | "scraping";
 export type OutputConfig = {sourceId: string; outputDir: string; baseUrl: string; cron: string};
 export type OutputStatus = {state: string; startedAt: string; finishedAt: string; scanned: number; completed: number; skipped: number; failed: number; error?: string; issues: string[]};
 export type OutputJob = {config: OutputConfig; status: OutputStatus; configured: boolean};
-async function request<T>(kind: OutputKind, action: string, method = "GET", body?: OutputConfig, signal?: AbortSignal): Promise<T> {
+async function request<T>(kind: OutputKind, action: string, method = "GET", body?: OutputConfig | {baseUrl: string}, signal?: AbortSignal): Promise<T> {
   const token=getAccessToken();
   const response=await fetch(`/api/v1/processing/${kind}/${action}`, {method, signal, cache:"no-store", headers:{Authorization:`Bearer ${token}`, ...(body?{"Content-Type":"application/json"}:{})}, ...(body?{body:JSON.stringify(body)}:{})});
   const result=await response.json().catch(()=>null);
@@ -13,6 +13,6 @@ async function request<T>(kind: OutputKind, action: string, method = "GET", body
 }
 export const mediaOutputApi = {
   config:(kind:OutputKind,signal?:AbortSignal)=>request<OutputJob>(kind,"config","GET",undefined,signal),
-  save:(kind:OutputKind,config:OutputConfig)=>request<{config:OutputConfig;configured:boolean}>(kind,"config","PUT",config),
-  run:(kind:OutputKind)=>request<{message:string}>(kind,"run","POST"),
+  save:(kind:OutputKind,config:OutputConfig)=>request<{config:OutputConfig;configured:boolean}>(kind,"config","PUT",kind==="strm"?{...config,baseUrl:window.location.origin}:config),
+  run:(kind:OutputKind)=>request<{message:string}>(kind,"run","POST",kind==="strm"?{baseUrl:window.location.origin}:undefined),
 };

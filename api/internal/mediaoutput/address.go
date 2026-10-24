@@ -3,10 +3,21 @@ package mediaoutput
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
 )
+
+// PlaybackOrigin accepts the explicit browser origin, not proxy/Host headers.
+func PlaybackOrigin(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	u, err := url.Parse(raw)
+	if len(raw) > 2048 || err != nil || u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || (u.Path != "" && u.Path != "/") || strings.ContainsAny(raw, "\r\n") {
+		return "", fmt.Errorf("播放服务地址需为当前页面的 HTTP/HTTPS 来源地址")
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
 
 // PlaybackURL derives the backend address without trusting browser Host headers.
 func PlaybackURL() (string, error) {
@@ -53,10 +64,13 @@ func PlaybackURL() (string, error) {
 	return "http://" + net.JoinHostPort(fallback.String(), port), nil
 }
 
-// RuntimeDefaults supplies deployment-owned STRM settings, never scraping settings.
+// RuntimeDefaults preserves the saved external address across worker runs/restarts.
+// Only installations that have not learned a browser origin use the fallback.
 func (c Config) RuntimeDefaults(kind string) Config {
 	if kind == "strm" {
-		c.BaseURL, _ = PlaybackURL()
+		if c.BaseURL == "" {
+			c.BaseURL, _ = PlaybackURL()
+		}
 		c.OutputDir = "/strm"
 		if runtime.GOOS == "windows" {
 			c.OutputDir = `D:\tmp\res\strm`

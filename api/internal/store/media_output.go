@@ -69,6 +69,20 @@ func (s *Store) SaveOutputConfig(kind string, c mediaoutput.Config) error {
 	_, err = s.db.Exec(`INSERT INTO media_output_jobs(kind,config,status) VALUES(?,?,?) ON CONFLICT(kind) DO UPDATE SET config=excluded.config`, kind, string(raw), string(state))
 	return err
 }
+
+// Remember only the browser address, preserving source, cron and running status.
+// A fresh installation may learn its address before media directories are configured.
+func (s *Store) RememberPlaybackURL(raw string) error {
+	origin, err := mediaoutput.PlaybackOrigin(raw)
+	if err != nil {
+		return err
+	}
+	config, _ := json.Marshal(map[string]string{"baseUrl": origin})
+	_, err = s.db.Exec(`INSERT INTO media_output_jobs(kind,config,status) VALUES('strm',?, '{"state":"idle","issues":[]}')
+		ON CONFLICT(kind) DO UPDATE SET config=json_set(media_output_jobs.config,'$.baseUrl',json_extract(excluded.config,'$.baseUrl'))
+		WHERE COALESCE(json_extract(media_output_jobs.config,'$.baseUrl'),'')!=json_extract(excluded.config,'$.baseUrl')`, string(config))
+	return err
+}
 func (s *Store) SaveOutputStatus(kind string, status mediaoutput.Status) error {
 	raw, err := json.Marshal(status)
 	if err != nil {

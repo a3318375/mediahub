@@ -151,6 +151,7 @@ export async function request<T>(
       signal: controller.signal,
       cache: "no-store",
       headers: {
+        ...(path === "/api/auth/login" || path === "/api/auth/setup" || path === "/api/auth/me" ? { "X-MediaHub-Origin": window.location.origin } : {}),
         ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}),
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       },

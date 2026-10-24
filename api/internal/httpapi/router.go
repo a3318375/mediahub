@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -17,6 +18,7 @@ import (
 	"mediahub/internal/animesync"
 	"mediahub/internal/discovery"
 	"mediahub/internal/download"
+	"mediahub/internal/mediaoutput"
 	"mediahub/internal/organize"
 	"mediahub/internal/pansoubridge"
 	"mediahub/internal/providers/douban"
@@ -245,6 +247,7 @@ func (a *API) issueSession(c *gin.Context, user store.User) {
 		fail(c, http.StatusInternalServerError, "创建登录会话失败")
 		return
 	}
+	a.rememberPlaybackOrigin(c)
 	c.JSON(http.StatusOK, gin.H{"accessToken": token, "user": toAuthUser(user)})
 }
 
@@ -360,7 +363,27 @@ func (a *API) apiWhoAmI(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"user": toAuthUser(user), "authenticatedBy": method})
 }
 
-func (a *API) me(c *gin.Context) { user, _ := currentUser(c); c.JSON(http.StatusOK, toAuthUser(user)) }
+func (a *API) me(c *gin.Context) {
+	user, _ := currentUser(c)
+	a.rememberPlaybackOrigin(c)
+	c.JSON(http.StatusOK, toAuthUser(user))
+}
+
+func (a *API) rememberPlaybackOrigin(c *gin.Context) {
+	raw := c.GetHeader("X-MediaHub-Origin")
+	if raw == "" {
+		raw = c.GetHeader("Origin")
+	}
+	if raw == "" {
+		return
+	}
+	if _, err := mediaoutput.PlaybackOrigin(raw); err != nil {
+		return
+	}
+	if err := a.store.RememberPlaybackURL(raw); err != nil {
+		log.Print("[STRM] 保存浏览器播放地址失败，请重新登录或手动生成时重试")
+	}
+}
 
 func (a *API) logout(c *gin.Context) {
 	hash, _ := c.Get("authTokenHash")

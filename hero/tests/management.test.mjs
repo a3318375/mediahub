@@ -35,6 +35,22 @@ const { apiKeysApi } = await load("api-keys-api");
 const { settingsApi } = await load("settings-api");
 const { getLogs } = await load("logs-api");
 const { mediaOutputApi } = await load("media-output-api");
+const { request: workspaceRequest } = await load("media-service");
+
+test("login and session restoration report the browser origin for scheduled STRM", async()=>{
+  const calls=[];
+  fixture({ok:true});
+  const fetchFixture=globalThis.fetch;
+  globalThis.fetch=async(url,init)=>{
+    calls.push([url,init.headers["X-MediaHub-Origin"]]);
+    return new Response(JSON.stringify({ok:true}),{status:200});
+  };
+  for(const path of ["/api/auth/login","/api/auth/setup","/api/auth/me"]) {
+    await workspaceRequest(path, null, path.endsWith("me")?"GET":"POST", path.endsWith("me")?undefined:{});
+  }
+  assert.deepEqual(calls.map(([,origin])=>origin),Array(3).fill("http://192.168.5.3:15173"));
+  globalThis.fetch=fetchFixture;
+});
 
 test("global media processing buttons wake shared workers without changing settings", async () => {
   const calls=fixture({message:"accepted"},202);
@@ -52,7 +68,7 @@ test("STRM and scraping use explicit configuration and manual task endpoints", a
   await mediaOutputApi.run("scraping");
   assert.deepEqual(calls.map(({url,method,body})=>[url,method,body]),[
     ["/api/v1/processing/strm/config","GET",undefined],
-    ["/api/v1/processing/strm/run","POST",undefined],
+    ["/api/v1/processing/strm/run","POST",{baseUrl:"http://192.168.5.3:15173"}],
     ["/api/v1/processing/scraping/run","POST",undefined],
   ]);
 });
@@ -60,7 +76,7 @@ const fetchOriginal = globalThis.fetch;
 const storage = new Map();
 globalThis.sessionStorage = { getItem: (k) => storage.get(k) ?? null };
 globalThis.localStorage = { getItem: () => null };
-globalThis.window = { dispatchEvent: () => true };
+globalThis.window = { dispatchEvent: () => true, location: {origin:"http://192.168.5.3:15173"} };
 afterEach(() => {
   globalThis.fetch = fetchOriginal;
   storage.clear();

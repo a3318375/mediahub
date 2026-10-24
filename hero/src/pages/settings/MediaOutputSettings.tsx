@@ -32,7 +32,7 @@ export function MediaOutputSettings({session,kind}:{session:Session;kind:OutputK
       <p className="media-note">{kind==="strm"?`默认使用已整理目录作为来源，镜像目录结构生成 .strm。输出位置：${config.outputDir || "正在读取…"}。`:"扫描本地视频或 STRM，在相邻位置补充 NFO、海报等资料。可填写 STRM 输出目录。"}</p>
       {kind==="strm"&&<>
         <Field label="定时生成 Cron" value={config.cron} onChange={(v)=>setConfig({...config,cron:v})} placeholder="留空不启用定时，例如 0 3 * * *" disabled={!loaded}/>
-        <p className="media-note">5 段 Cron，按北京时间执行。未配置不触发，Cron 留空时仅支持手动生成。播放地址自动使用后端机器的 IP 和监听端口，视频通过 MediaHub 转发。</p>
+        <p className="media-note">5 段 Cron，按北京时间执行。未配置不触发，Cron 留空时仅支持手动生成。登录和恢复会话时自动保存当前页面地址，定时生成沿用该地址，视频通过 MediaHub 转发。</p>
       </>}
       <p className="media-note">{kind==="scraping"?"优先使用文件已有的 TMDB / Bangumi 关联；未关联的文件需要在基础配置填写 TMDB Key，以便匹配作品。":"同一路径已有文件时不会覆盖；内容不同时会记录冲突。"} 保存设置不会立即执行任务。</p>
       <div className="management-actions"><Button type="submit" isDisabled={!loaded||busy}>{busy?"正在保存…":"保存设置"}</Button></div>
