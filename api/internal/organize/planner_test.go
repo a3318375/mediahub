@@ -104,6 +104,21 @@ func TestBatchArtifactDoesNotReuseOneEpisode(t *testing.T) {
 		t.Fatal("accepted unfinished")
 	}
 }
+
+func TestBracketEpisodeMappingRejectsAmbiguityAndInvalidOffset(t *testing.T) {
+	m := download.MediaContext{Type: "anime", Title: "Show", Offset: -40}
+	for _, name := range []string{"Show[41][42].mp4", "Show[41-49].mp4", "Show[41.5].mp4", "Show[x264 1080p].mp4", "Show[40].mp4"} {
+		if _, err := FileMedia(m, name); err == nil {
+			t.Fatalf("accepted invalid mapping: %s", name)
+		}
+	}
+	// Recover an organized name with original-number provenance, without reapplying offset.
+	m.OriginalEpisodes = []int{49}
+	got, err := FileMedia(m, "Show S01E09.mp4")
+	if err != nil || got.Episodes[0] != 9 || got.OriginalEpisodes[0] != 49 {
+		t.Fatal(got, err)
+	}
+}
 func TestDueBeijingAndDisabled(t *testing.T) {
 	r := Rule{Enabled: true, DailyAt: "03:00"}
 	if Due(r, time.Date(2026, 10, 14, 18, 59, 0, 0, time.UTC)) || !Due(r, time.Date(2026, 10, 14, 19, 0, 0, 0, time.UTC)) {

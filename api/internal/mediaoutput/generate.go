@@ -114,9 +114,12 @@ func (s *Service) generate(ctx context.Context, c Config, status *Status) error 
 			if m.Type == "" {
 				m.Type = "movie"
 			}
-			if parsed, e := organize.FileMedia(m, file.Name); e == nil {
-				m = parsed
+			parsed, parseErr := organize.FileMedia(m, file.Name)
+			if parseErr != nil {
+				s.progress("strm", status, file.Name, parseErr, false)
+				continue
 			}
+			m = parsed
 			o := Output{AccountID: account, File: file, Media: m, Root: filepath.Clean(c.OutputDir), Path: local, SourceID: c.SourceID, UpdatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 			if old, ok := byPath[local]; ok && old.File.ID == file.ID && old.File.Size == file.Size && old.File.SHA1 == file.SHA1 {
 				o.Scraped = old.Scraped

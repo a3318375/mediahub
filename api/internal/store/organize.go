@@ -269,6 +269,21 @@ func (s *Store) OrganizeLookup(account string) organize.Lookup {
 		if !errors.Is(e, sql.ErrNoRows) {
 			return b, e
 		}
+		// Completed actions are the per-file mapping, including batch episodes.
+		// Prefer them to the original download snapshot for STRM and scraping.
+		e = s.db.QueryRowContext(ctx, `SELECT json_extract(action.value,'$.media'), json_extract(action.value,'$.source.size'), COALESCE(json_extract(action.value,'$.source.sha1'),'')
+			FROM organize_plans p, json_each(p.data,'$.actions') action
+			WHERE json_extract(p.data,'$.rule.accountId')=? AND json_extract(action.value,'$.id')=?
+			AND json_extract(action.value,'$.state')='completed'
+			ORDER BY p.rowid DESC LIMIT 1`, account, f.ID).Scan(&raw, &b.Size, &b.SHA1)
+		if e == nil {
+			b.Ready = true
+			e = json.Unmarshal([]byte(raw), &b.Media)
+			return b, e
+		}
+		if !errors.Is(e, sql.ErrNoRows) {
+			return b, e
+		}
 		rows, e := s.db.QueryContext(ctx, `SELECT id FROM download_tasks WHERE account_id=? AND EXISTS(SELECT 1 FROM json_each(download_tasks.data,'$.artifacts') WHERE json_extract(value,'$.id')=?)`, account, f.ID)
 		if e != nil {
 			return b, e

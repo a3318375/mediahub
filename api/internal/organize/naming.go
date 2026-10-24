@@ -18,6 +18,7 @@ func IsVideo(name string) bool { return videoExtensions[strings.ToLower(path.Ext
 
 var tvNumber = regexp.MustCompile(`(?i)S([0-9]{1,3})E([0-9]{1,4})`)
 var episodeNumber = regexp.MustCompile(`(?i)(?:第\s*|\s-\s|\bEP)([0-9]{1,4})(?:[集话話]|\s|\.|$)`)
+var bracketEpisode = regexp.MustCompile(`(?i)(?:\[|【)([0-9]{1,4})(?:v[0-9]+)?(?:\]|】)`)
 var multiNumber = regexp.MustCompile(`(?i)(?:E[0-9]+[- ]?E[0-9]+|[0-9]+\.[5]|[0-9]+[-~][0-9]+)`)
 var quality = regexp.MustCompile(`(?i)(?:2160p|1080p|720p|4k|8k)`)
 var yearPattern = regexp.MustCompile(`(?:^|[ ._(])((?:19|20)[0-9]{2})(?:[ ._)]|$)`)
@@ -83,11 +84,25 @@ func mediaForFile(m download.MediaContext, name string) (download.MediaContext, 
 				m.Season = season
 			}
 			m.Episodes = []int{n + m.Offset}
+			if len(m.OriginalEpisodes) == 1 && n == m.OriginalEpisodes[0]+m.Offset {
+				// An organized SxxExx name already contains the mapped episode.
+				m.Episodes = []int{n}
+			} else {
+				m.OriginalEpisodes = []int{n}
+			}
 		} else if match := episodeNumber.FindStringSubmatch(name); len(match) > 0 {
 			n, _ := strconv.Atoi(match[1])
 			if m.Season == 0 {
 				m.Season = 1
 			}
+			m.Episodes = []int{n + m.Offset}
+			m.OriginalEpisodes = []int{n}
+		} else if matches := bracketEpisode.FindAllStringSubmatch(name, -1); len(matches) == 1 {
+			n, _ := strconv.Atoi(matches[0][1])
+			if m.Season == 0 {
+				m.Season = 1
+			}
+			m.OriginalEpisodes = []int{n}
 			m.Episodes = []int{n + m.Offset}
 		}
 	}

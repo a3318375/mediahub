@@ -271,6 +271,7 @@ func MetadataForArtifact(t download.Task, f pan115.File) (Binding, error) {
 			return Binding{}, fmt.Errorf("电影合集需要逐文件绑定作品")
 		}
 		m.Episodes = nil
+		m.OriginalEpisodes = nil
 	}
 	for _, a := range t.Artifacts {
 		if a.ID == f.ID {
