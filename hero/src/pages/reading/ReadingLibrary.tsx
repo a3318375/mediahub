@@ -16,12 +16,10 @@ const formats = { comics: ["CBZ", "CBR"], novels: ["TXT", "EPUB"] };
 function date(value: string) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未刷新"; }
 function size(bytes: number) { return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`; }
 
-export function ReadingLibrary({ session }: { session: Session }) {
-  const [kind, setKind] = useState<Kind>("comics");
+export function ReadingLibrary({ session, kind = "comics" }: { session: Session; kind?: Kind }) {
   const demo = new URLSearchParams(window.location.search).get("readingDemo") === "1" || session.mode === "demo";
-  return <section className="reading-library" aria-label="漫文书库">
+  return <section className="reading-library" aria-label={`${names[kind]}书库`}>
     {demo && <p className="reading-hint"><strong>书库示例预览</strong> · 以下为虚构作品，刷新仅演示交互，不扫描目录、不写入数据库。{!import.meta.env.STATIC_DEMO && <a href={`${import.meta.env.BASE_URL}#/reading`}>返回真实书库</a>}</p>}
-    <FilterTabs label="书库" value={kind} options={[["comics", "漫画"], ["novels", "小说"]]} onChange={(v) => setKind(v as Kind)} />
     <LibraryTab key={kind} kind={kind} session={session} demo={demo} />
   </section>;
 }
@@ -96,8 +94,8 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
     <div className="reading-summary" role="status" aria-live="polite">
       <span>{result ? `共 ${result.total} 部${names[kind]}` : "正在读取书库…"}</span>
       <span>{running ? `正在扫描${names[kind]}目录，完成后自动更新` : status?.completedAt ? `最近刷新 ${date(status.completedAt)} · 扫描到 ${status.found} 个文件` : "书库尚未刷新"}</span>
+      {status && !status.configured && <span className="reading-inline-warning">{names[kind]}目录暂不可用，请检查书库挂载后刷新。</span>}
     </div>
-    {status && !status.configured && <p className="reading-hint">{names[kind]}目录暂不可用，请检查书库挂载后刷新。</p>}
     {(statusError || status?.error) && <p className="media-error" role="alert">{statusError || status?.error}</p>}
     {error && <div className="media-error" role="alert">{error}<Button variant="ghost" onPress={() => setRevision((n) => n + 1)}>重试</Button></div>}
     <div aria-busy={busy} className="reading-results">

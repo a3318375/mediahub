@@ -1,6 +1,21 @@
 # 漫文书库
 
-「漫文书库」提供漫画和小说两个书架。点击“刷新库”扫描已有文件并入库，支持搜索、格式筛选、排序和分页；目录不存在或扫描失败时保留已有记录，不创建空目录、不修改源文件。
+「漫画」与「小说」是独立导航入口。漫画顶部提供「我的书架 / E-Hentai / ExHentai」一组胶囊 Tab，通过 Tab 直接切换来源；我的书架分为本地 / 已下载与已收藏。小说保留独立的本地书库。点击“刷新库”扫描已有文件并入库，支持搜索、格式筛选、排序和分页；目录不存在或扫描失败时保留已有记录，不创建空目录、不修改源文件。
+
+## E-Hentai 在线阅读
+
+- 漫画 → E-Hentai：搜索画廊，按分类与语言筛选，默认中文；支持站点游标分页。详情显示标题、封面、页数、语言、上传者、评分与命名空间标签。
+- 详情标签分类使用中文：作者、社团、语言、原作、角色等；常见语言值显示为中文。作者与社团保留原名。点击标签直接搜索同一来源，作者、社团等按原始标签精确匹配，保留语言筛选；点击中文 / 日文 / 英文标签会切换对应语言筛选。
+- 点击「在线阅读」按当前页获取图片，复用现有漫画阅读器，支持翻页、跳页和缩放；进度保存在当前浏览器。返回后保留当前搜索条件。
+- 「加入书架」保存 MediaHub 本地收藏，不修改站点收藏，也不下载画廊。收藏保存在现有数据库中。
+- Cookie 为可选配置；游客可尝试 E-Hentai。ExHentai 需要有效的 ipb_member_id、ipb_pass_hash、igneous 与账号权限。Cookie 设置页接收单行 Cookie，加密保存，仅返回已保存状态；保存成功不代表已验证站点登录。
+- 不提供独立代理配置，沿用服务既有网络环境。图片地址和重定向检查域名；仅官方 H@H 子域名可使用非标准端口，直连时拒绝内网地址。ExHentai 官方缩略图域名 `s.exhentai.org` 使用站点 Cookie，H@H 节点及公共 CDN 不接收 Cookie。封面解析过滤站点种子图标；图片解析失败可重试并刷新节点。
+- 当前阶段不提供下载、自动入库、漫画刮削或站点收藏同步。CBZ 仅是现有本地阅读格式，尚未确定后续下载存储格式。
+- 开发预览如需暂停已配置的后台业务任务，可仅为当前后端进程设置 `MEDIAHUB_PAUSE_AUTOMATION=true`；不修改数据库里的订阅、下载或整理配置。正常启动不设置该变量。
+
+接口均使用现有鉴权，前缀为 `/api/v1/comics/ehentai`：`GET/PUT /settings`、`GET /search`、`GET /gallery/:id/:token`、`GET /gallery/:id/:token/pages/:page`（从 0 开始）、`GET /cover`、`GET /favorites`、`POST /gallery/:id/:token/favorite`。站点参数为 `site=e-hentai.org` 或 `site=exhentai.org`。
+
+参考：E-extensions 提供数据源与图片请求，下载由宿主处理；Suwayomi 有下载功能，并支持通过 `downloadAsCbz` 选择是否将章节压缩为 CBZ。见 [E-extensions](https://github.com/HyperionHXH/E-extensions) 与 [Suwayomi 配置说明](https://github.com/Suwayomi/Suwayomi-Server/blob/master/docs/Configuring-Suwayomi%E2%80%90Server.md)。
 
 ## 固定目录
 

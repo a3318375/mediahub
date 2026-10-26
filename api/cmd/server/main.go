@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,6 +32,9 @@ func main() {
 }
 
 func run() error {
+	// Process-only pause for reviewing a feature against the existing database.
+	// Saved schedules and credentials remain unchanged.
+	automationPaused := strings.EqualFold(os.Getenv("MEDIAHUB_PAUSE_AUTOMATION"), "true")
 	dataDir := os.Getenv("MEDIAHUB_DATA_DIR")
 	if dataDir == "" {
 		dataDir = "./data"
@@ -60,12 +64,14 @@ func run() error {
 		addr = ":18080"
 	}
 	background := taskgroup.New(context.Background())
-	if err := db.SyncProcessing(); err != nil {
-		return fmt.Errorf("refresh media processing records: %w", err)
+	if !automationPaused {
+		if err := db.SyncProcessing(); err != nil {
+			return fmt.Errorf("refresh media processing records: %w", err)
+		}
+		background.Go(func(ctx context.Context) {
+			db.RunProcessing(ctx, func(err error) { log.Printf("media processing statistics: %v", err) })
+		})
 	}
-	background.Go(func(ctx context.Context) {
-		db.RunProcessing(ctx, func(err error) { log.Printf("media processing statistics: %v", err) })
-	})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -75,14 +81,18 @@ func run() error {
 	}()
 	source := anime.New()
 	updater := animesync.New(db, source)
-	background.Go(func(ctx context.Context) {
-		updater.Run(ctx, func(message string) { _ = db.RecordLog("刷新", "WARN", message) })
-	})
+	if !automationPaused {
+		background.Go(func(ctx context.Context) {
+			updater.Run(ctx, func(message string) { _ = db.RecordLog("刷新", "WARN", message) })
+		})
+	}
 	downloads := download.New(db)
 	downloads.FetchTorrent = source.Fetch
-	background.Go(func(ctx context.Context) {
-		downloads.Run(ctx, func(message string) { _ = db.RecordLog("下载", "WARN", message) })
-	})
+	if !automationPaused {
+		background.Go(func(ctx context.Context) {
+			downloads.Run(ctx, func(message string) { _ = db.RecordLog("下载", "WARN", message) })
+		})
+	}
 	organizer := &organize.Service{Store: db, Factory: downloads.Factory}
 	tvUpdater := tv.New(db)
 	tvClient := tmdb.NewClient()
@@ -95,9 +105,11 @@ func run() error {
 	}
 	tvUpdater.Search = search.SearchTV
 	tvUpdater.TGSearch = tv.NewChannelReader().Search
-	background.Go(func(ctx context.Context) {
-		tvUpdater.Run(ctx, func(message string) { _ = db.RecordLog("追剧", "WARN", message) })
-	})
+	if !automationPaused {
+		background.Go(func(ctx context.Context) {
+			tvUpdater.Run(ctx, func(message string) { _ = db.RecordLog("追剧", "WARN", message) })
+		})
+	}
 	handler := httpapi.NewRouterWithBackground(db, updater, downloads, organizer, background, search.Handler(), search.MetaHandler(), search.CheckHandler())
 	httpapi.MountTV(handler, db, tvUpdater)
 	if staticDir := os.Getenv("MEDIAHUB_WEB_DIR"); staticDir != "" {
@@ -105,9 +117,13 @@ func run() error {
 			return err
 		}
 	}
-	background.Go(func(ctx context.Context) {
-		organizer.Run(ctx, func(message string) { _ = db.RecordLog("整理", "WARN", message) })
-	})
+	if !automationPaused {
+		background.Go(func(ctx context.Context) {
+			organizer.Run(ctx, func(message string) { _ = db.RecordLog("整理", "WARN", message) })
+		})
+	} else {
+		log.Print("background automation paused for this process; saved schedules are unchanged")
+	}
 	server := &http.Server{Addr: addr, Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	serverDone := make(chan error, 1)
 	go func() { serverDone <- server.ListenAndServe() }()

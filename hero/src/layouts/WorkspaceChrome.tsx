@@ -2,6 +2,7 @@ import { Button, Chip } from "@heroui/react";
 import {
   CalendarDays,
   BookOpen,
+  BookText,
   ChevronRight,
   Clapperboard,
   Library,
@@ -26,7 +27,8 @@ const navIcons = {
   emby: Library,
   search: Search,
   discover: Telescope,
-  reading: BookOpen,
+  comics: BookOpen,
+  novels: BookText,
   music: Music,
   processing: Workflow,
   rankings: Trophy,

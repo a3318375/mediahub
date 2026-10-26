@@ -7,7 +7,8 @@ export const navigationItems = [
   ["anime", "动漫订阅", "功能模块"],
   ["calendar", "追剧日历", "功能模块"],
   ["music", "音乐中心", "功能模块"],
-  ["reading", "漫文书库", "功能模块"],
+  ["comics", "漫画", "功能模块"],
+  ["novels", "小说", "功能模块"],
   ["processing", "媒体处理", "功能模块"],
   ["logs", "日志中心", "功能模块"],
   ["settings", "全局设置", "管理"],
@@ -27,7 +28,8 @@ export function routePath(value: string) {
   return value.replace(/^#?\/*/, "").replace(/\/+$/, "");
 }
 export function resolvePage(value: string) {
-  value = routePath(value);
+  value = routePath(value).split("?")[0];
+  if (value === "reading") return "comics";
   if(value.startsWith("settings/"))return "settings";
   const originalPaths: Record<string, string> = {
     "discover/explore": "discover",

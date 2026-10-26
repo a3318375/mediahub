@@ -139,6 +139,7 @@ func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downlo
 	v1.GET("/logs", api.listLogs)
 	api.mountAnime(v1)
 	api.mountReading(v1)
+	api.mountComics(v1)
 	api.mountDownloads(v1)
 	api.mountOrganize(v1)
 	api.mountMediaOutput(router, v1)

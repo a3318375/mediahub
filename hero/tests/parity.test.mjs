@@ -50,7 +50,7 @@ test("HeroUI preserves legacy navigation and adds the local reading library", as
     (match) => match[1],
   );
   assert.deepEqual(
-    navigationItems.filter(([id]) => !["reading", "music", "processing"].includes(id)).map(([, label]) => label),
+    navigationItems.filter(([id]) => !["comics", "novels", "music", "processing"].includes(id)).map(([, label]) => label),
     labels,
   );
   assert.equal(resolvePage("downloads"), "processing");
@@ -64,10 +64,12 @@ test("HeroUI preserves legacy navigation and adds the local reading library", as
   assert.equal(resolvePage("discover/calendar"), "calendar");
   assert.equal(resolvePage("subscriptions"), "calendar");
   assert.equal(resolvePage(""), "emby");
-  assert.equal(resolvePage("reading"), "reading");
+  assert.equal(resolvePage("reading"), "comics");
+  assert.equal(resolvePage("#/comics?tab=ehentai"), "comics");
+  assert.equal(resolvePage("novels"), "novels");
   assert.equal(resolvePage("music"), "music");
-  assert.deepEqual(navigationItems.slice(-6, -1).map(([, label]) => label), ["追剧日历", "音乐中心", "漫文书库", "媒体处理", "日志中心"]);
-  assert.deepEqual(navigationItems.find(([id]) => id === "reading"), ["reading", "漫文书库", "功能模块"]);
+  assert.deepEqual(navigationItems.slice(-7, -1).map(([, label]) => label), ["追剧日历", "音乐中心", "漫画", "小说", "媒体处理", "日志中心"]);
+  assert.deepEqual(navigationItems.find(([id]) => id === "comics"), ["comics", "漫画", "功能模块"]);
 });
 
 test("settings categories and order follow the customized shadcn settings", async () => {

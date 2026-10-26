@@ -64,6 +64,7 @@ const Emby = lazy(() =>
 );
 
 const ReadingLibrary = lazy(() => import("../pages/reading/ReadingLibrary").then((m) => ({ default: m.ReadingLibrary })));
+const Comics = lazy(() => import("../pages/reading/Comics").then((m) => ({ default: m.Comics })));
 const MusicCenter = lazy(() => import("../pages/music/MusicCenter").then((m) => ({ default: m.MusicCenter })));
 
 export type Page =
@@ -217,7 +218,8 @@ export default function MediaApp() {
                       organize: "预览文件命名和目标目录，确认后整理到媒体库。",
                       logs: "查询服务运行记录，定位同步与下载问题。",
                       discover: "从不同来源出发，找到值得花时间的作品。",
-                      reading: "收藏漫画与小说，让好故事各归其位。",
+                      comics: "从书架继续阅读，或去 E-Hentai 发现漫画。",
+                      novels: "你的私人小说书库。",
                       music: "收藏旋律，听见日常里的好时光。",
                       rankings:
                         "跟随网站榜单与平台片库，发现正在被关注的故事。",
@@ -274,7 +276,8 @@ export default function MediaApp() {
             )}
             <Suspense fallback={<Empty>正在加载功能页面…</Empty>}>
               {page === "emby" && <Emby session={session} />}
-              {page === "reading" && <ReadingLibrary session={session} />}
+              {page === "comics" && <Comics session={session} />}
+              {page === "novels" && <ReadingLibrary session={session} kind="novels" />}
               {page === "music" && <MusicCenter />}
               {page === "anime" && (
                 <AnimeSubscriptions open={setDetail} session={session} />

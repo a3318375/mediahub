@@ -319,6 +319,7 @@ func (s *Store) ListLogs(level, source, query string, limit int) ([]LogEntry, er
 }
 
 var secretSettingNames = map[string]bool{
+	"ehentai.cookie":              true,
 	"tmdb.apiKey":                 true,
 	"emby.apiKey":                 true,
 	"115.cookie":                  true,
