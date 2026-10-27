@@ -1,4 +1,5 @@
-import { Button, Input } from "@heroui/react";
+import { AppSelect } from "./AppSelect";
+import { Alert, Button, Input, Switch } from "@heroui/react";
 import { ChevronLeft, Folder } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { downloadApi, type DownloadFile } from "../../lib/download-api";
@@ -54,14 +55,9 @@ export function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="management-toggle">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>{label}</span>
-    </label>
+    <Switch className="management-toggle" isSelected={checked} onChange={onChange}>
+      <Switch.Content><Switch.Control><Switch.Thumb /></Switch.Control>{label}</Switch.Content>
+    </Switch>
   );
 }
 export function SelectField({
@@ -78,17 +74,7 @@ export function SelectField({
   return (
     <label className="management-field">
       <span>{label}</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        {options.map(([id, text]) => (
-          <option key={id} value={id}>
-            {text}
-          </option>
-        ))}
-      </select>
+      <AppSelect label={label} value={value} options={options} onChange={onChange} />
     </label>
   );
 }
@@ -100,13 +86,9 @@ export function Notice({
   children?: ReactNode;
 }) {
   return error ? (
-    <p role="alert" className="media-error">
-      {error}
-    </p>
+    <Alert status="danger"><Alert.Indicator /><Alert.Content><Alert.Description>{error}</Alert.Description></Alert.Content></Alert>
   ) : children ? (
-    <p role="status" className="management-notice">
-      {children}
-    </p>
+    <Alert status="default"><Alert.Content><Alert.Description>{children}</Alert.Description></Alert.Content></Alert>
   ) : null;
 }
 export function DirectoryField({

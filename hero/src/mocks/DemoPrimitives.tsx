@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
+import { Avatar as HeroAvatar, Chip } from "@heroui/react";
 
 export function Avatar({
   name = "Kate Moore",
@@ -10,11 +11,10 @@ export function Avatar({
   className?: string;
 }) {
   return (
-    <img
-      src={`/avatars/${avatar}.jpg`}
-      alt={name}
-      className={`avatar ${className}`}
-    />
+    <HeroAvatar className={`avatar ${className}`}>
+      <HeroAvatar.Image src={`/avatars/${avatar}.jpg`} alt={name} />
+      <HeroAvatar.Fallback>{name.slice(0, 1).toUpperCase()}</HeroAvatar.Fallback>
+    </HeroAvatar>
   );
 }
 
@@ -28,10 +28,10 @@ export function Growth({
   soft?: boolean;
 }) {
   return (
-    <span
+    <Chip size="sm" color={negative ? "danger" : "success"} variant={soft ? "soft" : "primary"}
       className={`growth ${negative ? "negative" : ""} ${soft ? "soft" : ""}`}
     >
       {negative ? <ArrowDown size={11} /> : <ArrowUp size={11} />} {value}
-    </span>
+    </Chip>
   );
 }

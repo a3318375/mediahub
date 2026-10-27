@@ -1,6 +1,7 @@
+import { AppSelect } from "../../components/ui/AppSelect";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Button, Card, Input } from "@heroui/react";
-import { BookOpen, BookText, FolderSync, Search } from "lucide-react";
+import { Button, Card, Input, Link } from "@heroui/react";
+import { ArrowDownWideNarrow, BookOpen, BookText, FolderSync, Search } from "lucide-react";
 import { FilterTabs, errorText } from "../../components/media/MediaUI";
 import { Overlay } from "../../components/ui/Overlay";
 import { request, type Session } from "../../lib/media-service";
@@ -19,7 +20,7 @@ function size(bytes: number) { return bytes < 1048576 ? `${(bytes / 1024).toFixe
 export function ReadingLibrary({ session, kind = "comics" }: { session: Session; kind?: Kind }) {
   const demo = new URLSearchParams(window.location.search).get("readingDemo") === "1" || session.mode === "demo";
   return <section className="reading-library" aria-label={`${names[kind]}书库`}>
-    {demo && <p className="reading-hint"><strong>书库示例预览</strong> · 以下为虚构作品，刷新仅演示交互，不扫描目录、不写入数据库。{!import.meta.env.STATIC_DEMO && <a href={`${import.meta.env.BASE_URL}#/reading`}>返回真实书库</a>}</p>}
+    {demo && <p className="reading-hint"><strong>书库示例预览</strong> · 以下为虚构作品，刷新仅演示交互，不扫描目录、不写入数据库。{!import.meta.env.STATIC_DEMO && <Link href={`${import.meta.env.BASE_URL}#/reading`}>返回真实书库</Link>}</p>}
     <LibraryTab key={kind} kind={kind} session={session} demo={demo} />
   </section>;
 }
@@ -87,8 +88,8 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
         <Button type="button" isDisabled={!status?.configured || !!running} onPress={refresh}><FolderSync size={16} aria-hidden="true" className={running ? "reading-spinning" : undefined} />{running ? "刷新中…" : "刷新库"}</Button>
       </form>
       <div className="reading-filters">
-        <FilterTabs label="格式" value={format} options={[["", "全部"], ...formats[kind].map((f) => [f, f])]} onChange={(value) => { setFormat(value); setPage(1); }} />
-        <label className="reading-sort">排序<select value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }}><option value="title">名称 A–Z</option><option value="recent">最近入库</option><option value="modified">文件更新</option></select></label>
+        {kind !== "comics" && <FilterTabs label="格式" value={format} options={[["", "全部"], ...formats[kind].map((f) => [f, f])]} onChange={(value) => { setFormat(value); setPage(1); }} />}
+        <AppSelect label="排序方式" value={sort} onChange={(value) => { setSort(value); setPage(1); }} options={[["title", "名称 A–Z"], ["recent", "最近入库"], ["modified", "文件更新"]]} icon={<ArrowDownWideNarrow size={16} aria-hidden="true" />} variant="compact" />
       </div>
     </Card>
     <div className="reading-summary" role="status" aria-live="polite">
@@ -99,12 +100,12 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
     {(statusError || status?.error) && <p className="media-error" role="alert">{statusError || status?.error}</p>}
     {error && <div className="media-error" role="alert">{error}<Button variant="ghost" onPress={() => setRevision((n) => n + 1)}>重试</Button></div>}
     <div aria-busy={busy} className="reading-results">
-      {busy ? <div className="reading-empty" role="status">正在读取{names[kind]}书库…</div> : !error && !result?.items.length ? <div className="reading-empty"><Icon size={36} aria-hidden="true" /><h2>{query || format ? "没有找到匹配的作品" : `你的${names[kind]}书库还没有作品`}</h2><p>{query || format ? "试试其他关键词，或清除筛选条件。" : `支持 ${formats[kind].join(" / ")}。点击「刷新库」从已配置目录导入，之后随时浏览。`}</p>{(query || format) && <Button variant="secondary" onPress={() => { setInput(""); setQuery(""); setFormat(""); setPage(1); }}>清除筛选</Button>}</div> : !error && <div className="poster-grid reading-grid">{result?.items.map((item) => <button key={item.id} className="poster-card reading-card" onClick={() => setSelected(item)} aria-label={`查看《${item.title}》信息`}>
-        <div className={`poster-art reading-cover reading-cover--${kind}`}><ReadingCover item={item} kind={kind} session={session} /><span className="reading-format">{item.format}</span></div>
-        <h2 className="poster-title">{item.title}</h2><p className="poster-meta">{size(item.size)} · {item.available ? item.format : "源文件缺失"}</p>
-      </button>)}</div>}
+      {busy ? <div className="reading-empty" role="status">正在读取{names[kind]}书库…</div> : !error && !result?.items.length ? <div className="reading-empty"><Icon size={36} aria-hidden="true" /><h2>{query || format ? "没有找到匹配的作品" : `你的${names[kind]}书库还没有作品`}</h2><p>{query || format ? "试试其他关键词，或清除筛选条件。" : `点击「刷新库」从已配置目录导入${names[kind]}，之后随时浏览。`}</p>{(query || format) && <Button variant="secondary" onPress={() => { setInput(""); setQuery(""); setFormat(""); setPage(1); }}>清除筛选</Button>}</div> : !error && <div className="poster-grid reading-grid">{result?.items.map((item) => <Button variant="ghost" key={item.id} className="poster-card reading-card" onPress={() => setSelected(item)} aria-label={`查看《${item.title}》信息`}>
+        <div className={`poster-art reading-cover reading-cover--${kind}`}><ReadingCover item={item} kind={kind} session={session} />{kind !== "comics" && <span className="reading-format">{item.format}</span>}</div>
+        <h2 className="poster-title">{item.title}</h2><p className="poster-meta">{size(item.size)}{!item.available ? " · 源文件缺失" : kind !== "comics" ? ` · ${item.format}` : ""}</p>
+      </Button>)}</div>}
     </div>
     {result && pages > 1 && <nav className="reading-pagination" aria-label="书库分页"><Button variant="secondary" isDisabled={busy || page <= 1} onPress={() => setPage((n) => n - 1)}>上一页</Button><span>第 {page} / {pages} 页</span><Button variant="secondary" isDisabled={busy || page >= pages} onPress={() => setPage((n) => n + 1)}>下一页</Button></nav>}
-    {selected && <Overlay title={selected.title} onClose={() => setSelected(null)} footer={<Button isDisabled={!selected.available || selected.format === "CBR" || demo} onPress={() => { setReading(selected); setSelected(null); }}>开始 / 继续阅读</Button>}><dl className="reading-details"><dt>类型</dt><dd>{names[kind]}</dd><dt>格式</dt><dd>{selected.format}</dd><dt>文件大小</dt><dd>{size(selected.size)}</dd><dt>相对路径</dt><dd>{selected.path}</dd><dt>文件更新</dt><dd>{date(selected.modifiedAt)}</dd><dt>首次入库</dt><dd>{date(selected.importedAt)}</dd><dt>文件状态</dt><dd>{selected.available ? "最近扫描时存在" : "最近扫描时未找到，入库信息已保留"}</dd></dl>{selected.format === "CBR" && <p className="reading-hint">CBR 暂仅支持入库，请转成 CBZ 后在线阅读。</p>}</Overlay>}
+    {selected && <Overlay title={selected.title} onClose={() => setSelected(null)} footer={<Button isDisabled={!selected.available || selected.format === "CBR" || demo} onPress={() => { setReading(selected); setSelected(null); }}>开始 / 继续阅读</Button>}><dl className="reading-details"><dt>类型</dt><dd>{names[kind]}</dd>{kind !== "comics" && <><dt>格式</dt><dd>{selected.format}</dd></>}<dt>文件大小</dt><dd>{size(selected.size)}</dd><dt>相对路径</dt><dd>{selected.path}</dd><dt>文件更新</dt><dd>{date(selected.modifiedAt)}</dd><dt>首次入库</dt><dd>{date(selected.importedAt)}</dd><dt>文件状态</dt><dd>{selected.available ? "最近扫描时存在" : "最近扫描时未找到，入库信息已保留"}</dd></dl>{selected.format === "CBR" && <p className="reading-hint">这部漫画暂不支持在线阅读，请转换为支持的漫画文件后重试。</p>}</Overlay>}
   </>;
 }

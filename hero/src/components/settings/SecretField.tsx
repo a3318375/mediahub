@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Input } from "@heroui/react";
+import { Button, Input, TextArea } from "@heroui/react";
 
 import { settingsApi, type SettingsSection } from "../../lib/settings-api";
 
@@ -37,7 +37,7 @@ export function SecretField({
       <label className="management-field">
         <span>{label}</span>
         {name === "115.cookie" && visible ? (
-          <textarea
+          <TextArea
             aria-label={label}
             rows={3}
             value={displayed}

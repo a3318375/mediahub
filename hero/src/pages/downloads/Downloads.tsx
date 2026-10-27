@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AppProgress } from "../../components/ui/AppControls";
 
 import { Button, Card, Chip } from "@heroui/react";
 
@@ -170,7 +171,7 @@ export function Downloads({
                     t.resourceId ||
                     t.id}
                 </h3>
-                <progress aria-label="下载进度" max="100" value={t.progress} />
+                <AppProgress label="下载进度" value={t.progress} />
                 <p className="download-task-meta">
                   {task.kind === "share_transfer" && task.state !== "completed"
                     ? "转存确认中"

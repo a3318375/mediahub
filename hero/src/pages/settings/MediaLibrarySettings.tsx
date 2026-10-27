@@ -1,4 +1,5 @@
 import { Button, Card } from "@heroui/react";
+import { AppDisclosure } from "../../components/ui/AppControls";
 import { useEffect, useState } from "react";
 import { errorText, time } from "../../components/media/MediaUI";
 import {
@@ -250,8 +251,7 @@ export function MediaLibrarySettings({ session }: { session: Session }) {
         <p className="media-note">
           这里只归档和重命名。NFO、图片及 Emby 刮削暂不在此配置。
         </p>
-        <details onToggle={(e) => setRecords(e.currentTarget.open)}>
-          <summary>下载记录与异常处理</summary>
+        <AppDisclosure title="下载记录与异常处理" expanded={records} onExpandedChange={setRecords}>
           {records && (
             <Downloads
               session={session}
@@ -261,7 +261,7 @@ export function MediaLibrarySettings({ session }: { session: Session }) {
               recordsOnly
             />
           )}
-        </details>
+        </AppDisclosure>
       </Card>
     </div>
   );

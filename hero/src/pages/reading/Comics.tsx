@@ -1,7 +1,8 @@
+import { AppSelect } from "../../components/ui/AppSelect";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, Card, Input, Tabs } from "@heroui/react";
-import { BookOpen, Settings, Star } from "lucide-react";
-import { FilterTabs, errorText } from "../../components/media/MediaUI";
+import { BookOpen, Star } from "lucide-react";
+import { errorText } from "../../components/media/MediaUI";
 import { Overlay } from "../../components/ui/Overlay";
 import { request, type Session } from "../../lib/media-service";
 import { languageLabel, namespaceLabel, searchTag, tagLabel } from "../../lib/ehentai-tags";
@@ -36,7 +37,7 @@ export function Comics({ session }: { session: Session }) {
     setTab(value);
     window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#/comics?tab=${value}`);
   }
-  const [shelf, setShelf] = useState("local");
+
   const [favorites, setFavorites] = useState<Gallery[]>([]);
   const [favoriteError, setFavoriteError] = useState("");
   const [loadingFavorites, setLoadingFavorites] = useState(false);
@@ -53,33 +54,44 @@ export function Comics({ session }: { session: Session }) {
     window.scrollTo({ top: 0, behavior: "instant" });
   }
   const live = session.mode === "live";
+  const [cookieConfigured, setCookieConfigured] = useState(false);
+  const activeTab = tab === "exhentai" && !cookieConfigured ? "ehentai" : tab;
   useEffect(() => {
-    if (!live || tab !== "shelf" || shelf !== "favorites") return;
+    setCookieConfigured(false);
+    if (!live) return;
+    const controller = new AbortController();
+    request<{ configured: boolean }>(`${base}/settings`, session, "GET", undefined, 30000, controller.signal)
+      .then((value) => { if (!controller.signal.aborted) setCookieConfigured(value.configured); })
+      .catch(() => { if (!controller.signal.aborted) setCookieConfigured(false); });
+    return () => controller.abort();
+  }, [session, live]);
+  useEffect(() => {
+    if (!live || tab !== "shelf") return;
     const c = new AbortController(); setFavoriteError(""); setLoadingFavorites(true);
     request<{ items: Gallery[] }>(`${base}/favorites`, session, "GET", undefined, 30000, c.signal).then((r) => { if (!c.signal.aborted) setFavorites(r.items.sort((a, b) => a.title.localeCompare(b.title))); }).catch((e) => { if (!c.signal.aborted) setFavoriteError(errorText(e)); }).finally(() => { if (!c.signal.aborted) setLoadingFavorites(false); });
     return () => c.abort();
-  }, [session, live, tab, shelf, revision]);
+  }, [session, live, tab, revision]);
   return <section className="reading-library" aria-label="漫画">
     {reading && <ReadingReader key={`${reading.id}/${reading.token}`} session={session} kind="comics" item={{ id: reading.id, title: reading.title, path: "", format: "REMOTE", size: 0, modifiedAt: "", importedAt: "", available: true }} source={{ base: galleryBase(reading), site: reading.site, count: reading.pages }} positionKey={`ehentai.${reading.id}.${reading.token}`} close={() => setReading(null)} />}
     <div className="reading-library" hidden={!!reading}>
-    <header className="comics-header"><h1>漫画</h1><Tabs className="discovery-source-tabs comics-source-tabs" aria-label="漫画来源" selectedKey={tab} onSelectionChange={(key) => chooseTab(String(key))}>
+    <header className="comics-header"><h1>漫画</h1><Tabs className="discovery-source-tabs comics-source-tabs" aria-label="漫画来源" selectedKey={activeTab} onSelectionChange={(key) => chooseTab(String(key))}>
       <Tabs.ListContainer><Tabs.List aria-label="漫画来源">
-        {[["shelf", "我的书架"], ["ehentai", "E-Hentai"], ["exhentai", "ExHentai"]].map(([id, label]) => <Tabs.Tab key={id} id={id}>{label}<Tabs.Indicator /></Tabs.Tab>)}
+        {[["shelf", "我的书架"], ["ehentai", "E-Hentai"], ...(cookieConfigured ? [["exhentai", "ExHentai"]] : [])].map(([id, label]) => <Tabs.Tab key={id} id={id}>{label}<Tabs.Indicator /></Tabs.Tab>)}
       </Tabs.List></Tabs.ListContainer>
     </Tabs></header>
-    <div className="comics-shelf" hidden={tab !== "shelf"}>
-      <FilterTabs label="书架" value={shelf} options={[["local", "本地 / 已下载"], ["favorites", "已收藏"]]} onChange={setShelf} />
-      {tab === "shelf" && shelf === "local" && <ReadingLibrary session={session} />}
-      {shelf === "favorites" && <div className="eh-favorites">{favoriteError && <p role="alert" className="media-error">{favoriteError}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button></p>}{loadingFavorites ? <p role="status">正在读取收藏…</p> : !favoriteError && (favorites.length ? <GalleryGrid items={favorites} session={session} select={setSelected} /> : <div className="reading-empty"><Star size={32} /><h2>还没有收藏漫画</h2><p>在 E-Hentai 的画廊详情中加入书架，无需下载也能继续在线阅读。</p><Button onPress={() => chooseTab("ehentai")}>前往 E-Hentai</Button></div>)}</div>}
+    <div className="comics-shelf" hidden={activeTab !== "shelf"}>
+
+      {activeTab === "shelf" && <ReadingLibrary session={session} />}
+      {(favorites.length > 0 || !!favoriteError) && <div className="eh-favorites">{favoriteError && <p role="alert" className="media-error">{favoriteError}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button></p>}{loadingFavorites ? <p role="status">正在读取收藏…</p> : !favoriteError && (favorites.length ? <GalleryGrid items={favorites} session={session} select={setSelected} /> : <div className="reading-empty"><Star size={32} /><h2>还没有收藏漫画</h2><p>在 E-Hentai 的画廊详情中加入书架，无需下载也能继续在线阅读。</p><Button onPress={() => chooseTab("ehentai")}>前往 E-Hentai</Button></div>)}</div>}
     </div>
-    {tab !== "shelf" && (live ? <Browse key={`${tab}-${tagSearch?.revision || 0}`} session={session} select={setSelected} site={tab === "exhentai" ? "exhentai.org" : "e-hentai.org"} initialSearch={tagSearch?.site === (tab === "exhentai" ? "exhentai.org" : "e-hentai.org") ? tagSearch : null} language={browseLanguage} setLanguage={setBrowseLanguage} /> : <p className="reading-hint">请连接真实服务后浏览漫画来源。</p>)}
+    {activeTab !== "shelf" && (live ? <Browse key={`${activeTab}-${tagSearch?.revision || 0}`} session={session} select={setSelected} site={activeTab === "exhentai" ? "exhentai.org" : "e-hentai.org"} initialSearch={tagSearch?.site === (activeTab === "exhentai" ? "exhentai.org" : "e-hentai.org") ? tagSearch : null} language={browseLanguage} setLanguage={setBrowseLanguage} /> : <p className="reading-hint">请连接真实服务后浏览漫画来源。</p>)}
     {selected && <GalleryDetail key={`${selected.site}/${selected.id}/${selected.token}`} gallery={selected} session={session} close={() => setSelected(null)} read={(g) => { setSelected(null); setReading(g); }} saved={() => setRevision((v) => v + 1)} findTag={(namespace, tag) => findTag(selected, namespace, tag)} />}
     </div>
   </section>;
 }
 
 function GalleryGrid({ items, session, select }: { items: Gallery[]; session: Session; select: (g: Gallery) => void }) {
-  return <div className="poster-grid reading-grid">{items.map((g) => <button key={`${g.id}/${g.token}`} className="poster-card reading-card" onClick={() => select(g)} aria-label={`查看《${g.title}》详情`}><Cover gallery={g} session={session} /><h2 className="poster-title">{g.title}</h2><p className="poster-meta">{g.category || "画廊"}{g.posted && ` · ${g.posted}`}</p></button>)}</div>;
+  return <div className="poster-grid reading-grid">{items.map((g) => <Button variant="ghost" key={`${g.id}/${g.token}`} className="poster-card reading-card" onPress={() => select(g)} aria-label={`查看《${g.title}》详情`}><Cover gallery={g} session={session} /><h2 className="poster-title">{g.title}</h2><p className="poster-meta">{g.category || "画廊"}{g.posted && ` · ${g.posted}`}</p></Button>)}</div>;
 }
 
 function Browse({ session, select, site, initialSearch, language, setLanguage }: { session: Session; select: (g: Gallery) => void; site: string; initialSearch: TagSearch | null; language: string; setLanguage: (value: string) => void }) {
@@ -91,7 +103,7 @@ function Browse({ session, select, site, initialSearch, language, setLanguage }:
   const [result, setResult] = useState<Results | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [settings, setSettings] = useState(false);
+
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     const c = new AbortController(); setBusy(true); setError(""); setResult(null);
@@ -104,22 +116,15 @@ function Browse({ session, select, site, initialSearch, language, setLanguage }:
     <Card className="reading-controls">
       <form className="eh-search-form" role="search" aria-label={`搜索 ${sourceName}`} onSubmit={submit}>
         <div className="reading-search"><Input aria-label="画廊搜索词" placeholder='搜索标题、作者或标签，例如 artist:…' value={input} onChange={(e) => setInput(e.target.value)} /><Button type="submit" isDisabled={busy}>{busy ? "搜索中…" : "搜索"}</Button></div>
-        <div className="eh-filters"><label>分类<select value={category} onChange={(e) => setCategory(e.target.value)}>{categories.map(([v, n]) => <option key={v} value={v}>{n}</option>)}</select></label><label>语言<select value={language} onChange={(e) => setLanguage(e.target.value)}><option value="">全部语言</option><option value="chinese">中文</option><option value="japanese">日文</option><option value="english">英文</option></select></label></div>
-        <Button type="button" variant="secondary" onPress={() => setSettings(true)}><Settings size={16} />Cookie 设置</Button>
+        <div className="eh-filters"><label>分类<AppSelect label="漫画分类" value={category} onChange={setCategory} options={categories} /></label><label>语言<AppSelect label="漫画语言" value={language} onChange={setLanguage} options={[["", "全部语言"], ["chinese", "中文"], ["japanese", "日文"], ["english", "英文"]]} /></label></div>
+
       </form>
     </Card>
-    {error && <div className="media-error" role="alert">{error}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button><Button variant="ghost" onPress={() => setSettings(true)}>检查 Cookie</Button></div>}
+    {error && <div className="media-error" role="alert">{error}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button><Button variant="ghost" onPress={() => { window.location.hash = "/settings/basic"; }}>前往全局设置</Button></div>}
     <div aria-busy={busy}>{busy ? <div className="reading-empty" role="status">正在读取站点画廊…</div> : result && (result.items.length ? <GalleryGrid items={result.items} session={session} select={select} /> : <div className="reading-empty"><BookOpen size={32} /><h2>没有找到匹配的画廊</h2><p>试试其他关键词或筛选条件。</p></div>)}</div>
     {result && <nav className="reading-pagination" aria-label="画廊分页"><Button variant="secondary" isDisabled={busy || cursors.length <= 1} onPress={() => setCursors((v) => v.slice(0, -1))}>上一页</Button><span>第 {cursors.length} 页 · 本页 {result.items.length} 部</span><Button variant="secondary" isDisabled={busy || !result.next} onPress={() => setCursors((v) => [...v, result.next])}>下一页</Button></nav>}
-    {settings && <CookieSettings session={session} close={() => setSettings(false)} saved={() => { setSettings(false); setCursors([""]); setRevision((v) => v + 1); }} />}
-  </>;
-}
 
-function CookieSettings({ session, close, saved }: { session: Session; close: () => void; saved: () => void }) {
-  const [cookie, setCookie] = useState(""); const [configured, setConfigured] = useState<boolean | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  useEffect(() => { const c = new AbortController(); request<{ configured: boolean }>(`${base}/settings`, session, "GET", undefined, 30000, c.signal).then((r) => setConfigured(r.configured)).catch((e) => { if (!c.signal.aborted) setError(errorText(e)); }); return () => c.abort(); }, [session]);
-  async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); setError(""); try { await request(`${base}/settings`, session, "PUT", { cookie }); setCookie(""); saved(); } catch (e) { setError(errorText(e)); } finally { setBusy(false); } }
-  return <Overlay title="E-Hentai Cookie" onClose={close}><form className="eh-settings" onSubmit={submit}><p>{configured === null ? "正在读取保存状态…" : configured ? "已保存 Cookie。留空不会修改现有凭据。" : "尚未保存 Cookie，可先尝试 E-Hentai 游客浏览。"}</p><label>Cookie<Input aria-label="E-Hentai Cookie" type="password" autoComplete="off" value={cookie} onChange={(e) => setCookie(e.target.value)} placeholder="ipb_member_id=…; ipb_pass_hash=…; igneous=…" /></label><p className="reading-hint">从已登录的浏览器复制 Cookie 中的 ipb_member_id、ipb_pass_hash 和 igneous。ExHentai 需要有效 Cookie 和账号访问权限。凭据加密保存在服务端，保存状态不代表站点已验证登录。</p>{error && <p role="alert" className="media-error">{error}</p>}<Button type="submit" isDisabled={busy || !cookie.trim()}>{busy ? "保存中…" : "保存 Cookie"}</Button></form></Overlay>;
+  </>;
 }
 
 function GalleryDetail({ gallery, session, close, read, saved, findTag }: { gallery: Gallery; session: Session; close: () => void; read: (g: Gallery) => void; saved: () => void; findTag: (namespace: string, tag: string) => void }) {
@@ -129,6 +134,6 @@ function GalleryDetail({ gallery, session, close, read, saved, findTag }: { gall
   return <Overlay title={detail?.title || gallery.title} onClose={close} wide footer={<><Button variant="secondary" isDisabled={!detail || saving || favorite} onPress={collect}><Star size={16} />{favorite ? "已加入书架" : saving ? "收藏中…" : "加入书架"}</Button><Button isDisabled={!detail?.pages} onPress={() => detail && read(detail)}><BookOpen size={16} />在线阅读</Button></>}>
     {error && <div role="alert" className="media-error">{error}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button></div>}
     {!detail && !error && <p role="status">正在读取画廊详情…</p>}
-    {detail && <><div className="eh-detail"><Cover gallery={detail} session={session} /><dl className="reading-details"><dt>日文标题</dt><dd>{detail.japaneseTitle || "—"}</dd><dt>分类</dt><dd>{detail.category || "—"}</dd><dt>页数</dt><dd>{detail.pages || "未知"}</dd><dt>语言</dt><dd>{languageLabel(detail.language) || "—"}</dd><dt>上传者</dt><dd>{detail.uploader || "—"}</dd><dt>发布</dt><dd>{detail.posted || "—"}</dd><dt>评分</dt><dd>{detail.rating || "—"}</dd></dl></div><div className="eh-tags">{Object.entries(detail.tags).map(([namespace, tags]) => <div key={namespace}><strong>{namespaceLabel(namespace)}</strong><p>{tags.map((tag) => <button type="button" key={tag} className="eh-tag" title={`搜索${namespaceLabel(namespace)}：${tag}`} aria-label={`搜索${namespaceLabel(namespace)}：${tagLabel(namespace, tag)}`} onClick={() => findTag(namespace, tag)}>{tagLabel(namespace, tag)}</button>)}</p></div>)}</div></>}
+    {detail && <><div className="eh-detail"><Cover gallery={detail} session={session} /><dl className="reading-details"><dt>日文标题</dt><dd>{detail.japaneseTitle || "—"}</dd><dt>分类</dt><dd>{detail.category || "—"}</dd><dt>页数</dt><dd>{detail.pages || "未知"}</dd><dt>语言</dt><dd>{languageLabel(detail.language) || "—"}</dd><dt>上传者</dt><dd>{detail.uploader || "—"}</dd><dt>发布</dt><dd>{detail.posted || "—"}</dd><dt>评分</dt><dd>{detail.rating || "—"}</dd></dl></div><div className="eh-tags">{Object.entries(detail.tags).map(([namespace, tags]) => <div key={namespace}><strong>{namespaceLabel(namespace)}</strong><p>{tags.map((tag) => <Button variant="ghost" type="button" key={tag} className="eh-tag" aria-label={`搜索${namespaceLabel(namespace)}：${tagLabel(namespace, tag)}`} onPress={() => findTag(namespace, tag)}>{tagLabel(namespace, tag)}</Button>)}</p></div>)}</div></>}
   </Overlay>;
 }

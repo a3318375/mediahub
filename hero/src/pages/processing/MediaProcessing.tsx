@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Tabs } from "@heroui/react";
+import { AppDisclosure } from "../../components/ui/AppControls";
 import type { Download, Session } from "../../lib/media-service";
 import { Downloads } from "../downloads/Downloads";
 import { ProcessingOverview } from "./ProcessingOverview";
@@ -50,7 +51,7 @@ export function MediaProcessing(props: {
         </Tabs.ListContainer>
         <Tabs.Panel id="downloads">
           <ProcessingOverview session={props.session} mode="downloads" />
-          <details className="processing-download-tasks" open={tasksOpen} onToggle={(event) => setTasksOpen(event.currentTarget.open)}><summary>下载任务与异常处理</summary>{tasksOpen && <Downloads {...props} />}</details>
+          <AppDisclosure className="processing-download-tasks" title="下载任务与异常处理" expanded={tasksOpen} onExpandedChange={setTasksOpen}>{tasksOpen && <Downloads {...props} />}</AppDisclosure>
         </Tabs.Panel>
         <Tabs.Panel id="organize"><ProcessingOverview session={props.session} mode="organize" /></Tabs.Panel>
         <Tabs.Panel id="strm"><ProcessingOverview session={props.session} mode="strm" /></Tabs.Panel>

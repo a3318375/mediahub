@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-import { Button, Card, Input } from "@heroui/react";
+import { Button, Card, Checkbox, Input } from "@heroui/react";
 
 import { request, type Session } from "../../lib/media-service";
 
@@ -118,14 +118,9 @@ export function LiveLogin({
               />
             </label>
           )}
-          <label className="management-toggle">
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-            />
-            记住登录状态
-          </label>
+          <Checkbox isSelected={remember} onChange={setRemember}>
+            <Checkbox.Content><Checkbox.Control><Checkbox.Indicator /></Checkbox.Control>记住登录状态</Checkbox.Content>
+          </Checkbox>
           {setup === null && !error && (
             <p role="status">正在检查服务初始化状态…</p>
           )}

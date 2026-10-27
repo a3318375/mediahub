@@ -34,7 +34,6 @@
  .media-main[data-page="comics"] .reading-filters { width: 100%; gap: 8px; }
  .media-main[data-page="comics"] .eh-filters { flex: 1; }
  .media-main[data-page="comics"] .eh-filters label { min-width: 0; flex: 1; }
- .media-main[data-page="comics"] .eh-filters select { min-width: 0; width: 100%; }
 }
 @media (pointer: coarse) {
  .comics-source-tabs .tabs__tab, .media-main[data-page="comics"] .media-filter .tabs__tab { min-height: 44px; }
@@ -46,8 +45,7 @@
 .reading-search > .button { flex-shrink: 0; min-height: 44px; }
 .reading-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .reading-filters .media-filter { padding: 0; }
-.reading-sort { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
-.reading-sort select { padding: 8px 12px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--surface); color: var(--foreground); min-height: 44px; }
+.media-main[data-page="comics"] .reading-filters { margin-left: auto; width: auto; }
 .reading-summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
 .reading-summary > span:first-child { color: var(--foreground); font-size: 14px; font-weight: 500; }
 .reading-hint { padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
@@ -98,7 +96,6 @@
 .reading-reader-toolbar h2 { font-size: 15px; font-weight: 600; line-height: 1.7; }
 .reading-reader-toolbar small { font-size: 11px; color: var(--muted); }
 .reading-reader-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; }
-.reading-reader select { padding: 8px 12px; background: var(--surface); color: var(--foreground); border: 1px solid var(--border); border-radius: 8px; max-width: 100%; }
 .reading-comic-canvas { display: flex; align-items: start; justify-content: center; background: #202329; min-height: 260px; border-radius: 10px; overflow: hidden; }
 .reading-comic-canvas > img { display: block; max-width: 100%; height: auto; }
 .reading-fit-width > img { width: 100%; }
@@ -112,7 +109,7 @@
 .reading-turner { display: flex; justify-content: center; align-items: center; gap: 20px; position: sticky; bottom: 10px; padding: 10px; align-self: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 18px #00000010; z-index: 2; }
 .reading-chapters { padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
 .reading-chapters label { display: flex; align-items: center; gap: 12px; font-size: 13px; }
-.reading-chapters select { flex: 1; min-width: 0; }
+.reading-chapters .app-select { flex: 1; min-width: 0; }
 @media(max-width:650px) { .reading-reader-toolbar { gap: 10px; } .reading-reader-tools { width: 100%; } .reading-novel-page { padding: 24px 20px; } .reading-turner { gap: 8px; width: 100%; } }
 .reading-comic-sheet { position: relative; max-width: 100%; }
 .reading-comic-sheet > img { display: block; max-width: 100%; height: auto; }
@@ -185,7 +182,6 @@
 .eh-search-form, .eh-settings { display: flex; flex-direction: column; gap: 18px; }
 .eh-filters { display: flex; flex-wrap: wrap; gap: 16px; }
 .eh-filters label, .eh-settings label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
-.eh-filters select { min-height: 44px; border: 1px solid var(--control-border); background: var(--surface); color: var(--foreground); border-radius: 8px; padding: 8px 12px; }
 .eh-cover { display: flex !important; align-items: center; justify-content: center; aspect-ratio: 2 / 3; }
 .eh-cover img { object-position: center; }
 .eh-detail { display: grid; grid-template-columns: minmax(100px, 180px) minmax(0, 1fr); gap: 24px; align-items: start; }

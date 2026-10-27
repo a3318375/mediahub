@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useMediaWorkspace } from "../hooks/useMediaWorkspace";
 import {
   navigation,
@@ -6,16 +6,14 @@ import {
   WorkspaceSidebar,
 } from "./WorkspaceChrome";
 
-import { Button, Card, Chip } from "@heroui/react";
+import { Button, Card, Chip, Link, toast as heroToast } from "@heroui/react";
 
 import {
-  Check,
   ChevronRight,
   Film,
   Plus,
   RefreshCw,
   Tv,
-  X,
 } from "lucide-react";
 
 import { navigationItems } from "../lib/parity";
@@ -115,6 +113,9 @@ export default function MediaApp() {
     saveTV,
     tvAction,
   } = useMediaWorkspace();
+  useEffect(() => {
+    if (toast) { heroToast(toast); setToast(""); }
+  }, [toast, setToast]);
   if (!session && import.meta.env.STATIC_DEMO)
     return (
       <main className="media-main">
@@ -156,10 +157,10 @@ export default function MediaApp() {
   return (
     <div className={`app-shell media-shell ${mobile ? "mobile-open" : ""}`}>
       {mobile && (
-        <button
+        <Button variant="ghost"
           className="sidebar-backdrop"
           aria-label="关闭导航"
-          onClick={() => setMobile(false)}
+          onPress={() => setMobile(false)}
         />
       )}
       <WorkspaceSidebar session={session} page={page} go={go} logout={logout} />
@@ -178,9 +179,9 @@ export default function MediaApp() {
           {import.meta.env.STATIC_DEMO && (
             <p className="management-notice" role="note">
               在线演示 · 使用示例数据，修改仅保存在当前浏览器。下载、转存和服务连接请自行部署。{" "}
-              <a href="https://github.com/a3318375/MediaHub" target="_blank" rel="noreferrer">
+              <Link href="https://github.com/a3318375/MediaHub" target="_blank" rel="noreferrer">
                 查看项目与部署说明
-              </a>
+              </Link>
             </p>
           )}
           {detail && (
@@ -345,10 +346,10 @@ export default function MediaApp() {
                     </div>
                     {subscriptions.length ? (
                       subscriptions.slice(0, 3).map((s, i) => (
-                        <button
+                        <Button variant="ghost"
                           className="update-row"
                           key={s.id}
-                          onClick={() => setEdit(s)}
+                          onPress={() => setEdit(s)}
                         >
                           <span className={`update-icon palette-${i}`}>
                             <Tv size={21} />
@@ -367,7 +368,7 @@ export default function MediaApp() {
                           >
                             {s.enabled ? "追踪中" : "已暂停"}
                           </Chip>
-                        </button>
+                        </Button>
                       ))
                     ) : (
                       <Empty>还没有订阅，从影视探索选一部剧吧。</Empty>
@@ -524,15 +525,6 @@ export default function MediaApp() {
       )}
       {edit && (
         <TVEditor value={edit} close={() => setEdit(null)} submit={saveTV} />
-      )}
-      {toast && (
-        <div role="status" className="media-toast">
-          <Check size={17} />
-          {toast}
-          <button aria-label="关闭提示" onClick={() => setToast("")}>
-            <X size={14} />
-          </button>
-        </div>
       )}
     </div>
   );

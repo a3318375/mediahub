@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { Button, Checkbox, Input } from "@heroui/react";
+import { Button, Checkbox, Input, Link } from "@heroui/react";
 
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
 
@@ -47,12 +47,12 @@ export function Login({
   return (
     <div className="login-layout">
       <section className="login-main">
-        <a className="login-brand" href="#/login">
+        <Link className="login-brand" href="#/login">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           <span>
             hero<span className="brand-dot">.</span>
           </span>
-        </a>
+        </Link>
         <div className="login-form-wrap">
           <div className="login-heading">
             <h1>Welcome back</h1>
@@ -105,9 +105,9 @@ export function Login({
                   Remember me
                 </Checkbox.Content>
               </Checkbox>
-              <button className="text-link" type="button" onClick={onForgot}>
+              <Button variant="ghost" className="text-link" type="button" onPress={onForgot}>
                 Forgot password?
-              </button>
+              </Button>
             </div>
             {error && (
               <p role="alert" className="form-error">

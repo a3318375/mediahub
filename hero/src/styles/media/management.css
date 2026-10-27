@@ -48,13 +48,7 @@
   min-width: 0;
   font-size: 13px;
 }
-.management-field select,
 .management-field textarea {
-  background: var(--surface);
-  color: var(--foreground);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 11px 12px;
   width: 100%;
   min-height: 44px;
 }
@@ -68,12 +62,6 @@
   min-height: 44px;
   font-size: 13px;
   cursor: pointer;
-}
-.management-toggle input {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  accent-color: var(--accent);
 }
 .management-actions,
 .management-checks {

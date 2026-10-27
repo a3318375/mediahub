@@ -3,6 +3,7 @@ import { Button, Card, Chip } from "@heroui/react";
 import { Clapperboard, RefreshCw } from "lucide-react";
 import { Empty, FilterTabs, errorText, time } from "../../components/media/MediaUI";
 import { Notice } from "../../components/ui/ManagementUI";
+import { AppDisclosure } from "../../components/ui/AppControls";
 import { image, type Session } from "../../lib/media-service";
 import { organizeApi, type OrganizeMediaItem } from "../../lib/organize-api";
 import { downloadApi } from "../../lib/download-api";
@@ -85,7 +86,7 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
       {outputMode&&job&&job.status.state!=="idle"&&<div className="management-notice" role="status">
         {({queued:"排队中",running:"执行中",completed:"已完成",completed_with_issues:"完成，有待处理文件",failed:"执行失败",interrupted:"执行已中断"} as Record<string,string>)[job.status.state]||job.status.state} · 扫描 {job.status.scanned}，完成 {job.status.completed}，跳过 {job.status.skipped}，失败 {job.status.failed}
         <Notice error={job.status.error}/>
-        {!!job.status.issues?.length&&<details><summary>查看未完成原因</summary>{job.status.issues.map((issue,index)=><p key={index}>{issue}</p>)}</details>}
+        {!!job.status.issues?.length&&<AppDisclosure title="查看未完成原因">{job.status.issues.map((issue,index)=><p key={index}>{issue}</p>)}</AppDisclosure>}
       </div>}
       {!visible.length ? <Empty>{loading ? "正在读取最近记录…" : error ? "暂时无法读取统计，请重试。" : "暂无相关作品，订阅或下载后会显示在这里。"}</Empty> : (
         <div className="organize-work-list">

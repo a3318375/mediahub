@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { MediaSummary } from "../../lib/media-contract";
 
 import { errorText, PosterGrid, type API } from "./MediaUI";
+import { Notice } from "../ui/ManagementUI";
 
 export function HomeRecommendations({
   api,
@@ -28,9 +29,7 @@ export function HomeRecommendations({
     };
   }, [api]);
   return error ? (
-    <p role="alert" className="media-error">
-      {error}
-    </p>
+    <Notice error={error} />
   ) : (
     <PosterGrid items={items} open={open} />
   );

@@ -250,11 +250,11 @@ export function ResourceSettings({ session }: { session: Session }) {
                     name.toLowerCase().includes(filter.toLowerCase()),
                 )
                 .map((name) => (
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     key={name}
                     aria-pressed={list(tab).includes(name)}
-                    onClick={() =>
+                    onPress={() =>
                       update(
                         tab,
                         list(tab).includes(name)
@@ -264,7 +264,7 @@ export function ResourceSettings({ session }: { session: Session }) {
                     }
                   >
                     {tab === "cloudTypes" ? cloudLabels[name] || name : name}
-                  </button>
+                  </Button>
                 ))}
             </div>
           </>

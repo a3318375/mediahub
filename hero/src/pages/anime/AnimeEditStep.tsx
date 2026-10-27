@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button, TextArea } from "@heroui/react";
 import {
   Field,
   Notice,
@@ -160,7 +160,7 @@ export function AnimeEditStep({
         />
         <label className="management-field">
           匹配正则（每行一个）
-          <textarea
+          <TextArea aria-label="匹配正则（每行一个）"
             rows={3}
             value={matchText}
             onChange={(e) => {
@@ -177,7 +177,7 @@ export function AnimeEditStep({
         </label>
         <label className="management-field">
           排除正则（每行一个）
-          <textarea
+          <TextArea aria-label="排除正则（每行一个）"
             rows={3}
             value={excludeText}
             onChange={(e) => {

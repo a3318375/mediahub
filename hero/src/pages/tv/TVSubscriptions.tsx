@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-import { Button, Card, Chip } from "@heroui/react";
+import { Button, Card, Chip, Link } from "@heroui/react";
 
 import { Plus, RefreshCw, Trash2, Tv } from "lucide-react";
 
@@ -79,13 +79,13 @@ export function TVList({
         <div className="anime-subscription-grid">
           {selected.map((s) => (
             <Card className="anime-subscription-card tv-subscription-card" key={s.id}>
-              <button className="anime-card-cover" aria-label={`编辑《${s.title}》订阅`} onClick={() => edit(s)}>
+              <Button variant="ghost" className="anime-card-cover" aria-label={`编辑《${s.title}》订阅`} onPress={() => edit(s)}>
                 {s.poster ? <img src={image(s.poster)} alt={s.title} loading="lazy" /> : <span className="tv-card-placeholder"><Tv size={36} /></span>}
                 <div className="anime-card-badges"><Chip size="sm" variant="soft" color={s.enabled ? "success" : "default"}>{s.enabled ? "追踪中" : "已暂停"}</Chip></div>
                 <span className="anime-card-rss">{s.source === "tg" ? "TG 频道" : "PanSou"}</span>
-              </button>
+              </Button>
               <div className="anime-card-body">
-                <button className="anime-card-title" aria-label={`查看《${s.title}》订阅详情`} onClick={() => setDetails(s)}>{s.title}</button>
+                <Button variant="ghost" className="anime-card-title" aria-label={`查看《${s.title}》订阅详情`} onPress={() => setDetails(s)}>{s.title}</Button>
                 <p className="tv-card-meta">{s.season === 0 ? "全部季度" : `第 ${s.season} 季`} · {s.episodes.length ? `${s.episodes.length} 集` : "集数待同步"}{(s.lastError || s.metadataError) && <span className="tv-card-warning"> · 异常</span>}</p>
               <div className="anime-card-actions tv-card-actions">
                 <Button size="sm" variant="secondary" onPress={() => edit(s)}>
@@ -155,7 +155,7 @@ export function TVList({
                 <div className="management-stack">
                   {details.resources.map((r, j) => (
                     <div className="management-row" key={j}>
-                      <a
+                      <Link
                         className="subscription-resource"
                         href={safeURL(r.url)}
                         target="_blank"
@@ -167,7 +167,7 @@ export function TVList({
                         {(r.size || 0) > 0
                           ? `${(r.size! / 1024 ** 3).toFixed(2)} GB`
                           : "体积未知"}
-                      </a>
+                      </Link>
                       {r.password && <small>提取码：{r.password}</small>}
                       {(r.url.startsWith("magnet:") ||
                         is115ShareURL(r.url)) && (

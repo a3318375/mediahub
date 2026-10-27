@@ -1,5 +1,6 @@
 import { useId, useState, type FormEvent } from "react";
-import { Button, Chip } from "@heroui/react";
+import { Button, Chip, Input } from "@heroui/react";
+import { AppDisclosure } from "../../components/ui/AppControls";
 import { Overlay } from "../../components/ui/Overlay";
 import { type TV, type TVDraft } from "../../lib/media-service";
 import { errorText, FilterTabs } from "../../components/media/MediaUI";
@@ -48,11 +49,11 @@ function SourceTags({label, values, onChange, source = false}: {
     <div className="tv-source-tags">
       {values.map((value,index) => <Chip key={value} variant="soft" className="tv-source-tag">
         <span className="tv-source-order">{index + 1}</span><span>{value}</span>
-        {index > 0 && <button type="button" aria-label={`提高 ${value} 优先级`} onClick={() => move(index,-1)}>↑</button>}
-        {index < values.length - 1 && <button type="button" aria-label={`降低 ${value} 优先级`} onClick={() => move(index,1)}>↓</button>}
-        <button type="button" aria-label={`移除 ${value}`} onClick={() => onChange(values.filter(v=>v!==value))}>×</button>
+        {index > 0 && <Button variant="ghost" size="sm" isIconOnly type="button" aria-label={`提高 ${value} 优先级`} onPress={() => move(index,-1)}>↑</Button>}
+        {index < values.length - 1 && <Button variant="ghost" size="sm" isIconOnly type="button" aria-label={`降低 ${value} 优先级`} onPress={() => move(index,1)}>↓</Button>}
+        <Button variant="ghost" size="sm" isIconOnly type="button" aria-label={`移除 ${value}`} onPress={() => onChange(values.filter(v=>v!==value))}>×</Button>
       </Chip>)}
-      <input ref={element => { if (element) element.setCustomValidity(error); }} id={listId} aria-label={label} value={input}
+      <Input ref={element => { if (element) element.setCustomValidity(error); }} id={listId} aria-label={label} value={input}
         placeholder={source ? "输入插件名或频道链接，回车添加" : "粘贴 https://t.me/频道，回车添加"}
         onChange={e => setInput(e.target.value)} onBlur={() => commit()}
         onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) { e.preventDefault(); commit(); } }}
@@ -82,11 +83,11 @@ export function TVEditor({value,close,submit}: {value: TV | TVDraft;close:()=>vo
       : <SourceTags label="优先来源（可选）" source values={draft.sources || []} onChange={sources=>setDraft({...draft,sources})}/>}
       {draft.source==="pansou" && !draft.sources?.length && <p className="media-note">未指定时使用全局搜索来源；例如输入 xiaokupan，或粘贴公开频道链接。</p>}
       <SelectField label="清晰度" value={quality} options={[["any","不限"],["4k","4K / 2160P / UHD"],["1080","1080P"]]} onChange={quality=>{setQuality(quality);setDraft({...draft,match:generatedRule(draft.title,quality)});}}/>
-      <details className="tv-advanced"><summary>高级规则</summary><div className="management-stack">
+      <AppDisclosure className="tv-advanced" title="高级规则"><div className="management-stack">
         <Field label="资源匹配正则" value={draft.match} onChange={match=>setDraft({...draft,match})}/>
         <Field label="排除正则" value={draft.exclude} onChange={exclude=>setDraft({...draft,exclude})}/>
         <FilterTabs label="订阅状态" value={draft.enabled?"on":"off"} options={[["on","启用"],["off","暂停"]]} onChange={v=>setDraft({...draft,enabled:v==="on"})}/>
-      </div></details>
+      </div></AppDisclosure>
       <p className="media-note">自动匹配作品名称与清晰度，并识别季集及更新进度。默认不限定年份，避免漏掉后续季度。</p>
       {error && <p role="alert" className="media-error">{error}</p>}
       <div className="anime-step-actions"><Button variant="secondary" onPress={close} isDisabled={busy}>取消</Button><Button type="submit" isDisabled={busy || !draft.tmdbId}>{busy?"正在保存…":"保存订阅"}</Button></div>

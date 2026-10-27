@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Button, Card, Chip } from "@heroui/react";
+import { Button, Card, Chip, Table } from "@heroui/react";
 
 import {
   Field,
@@ -142,20 +142,18 @@ export function Logs({ session }: { session: Session }) {
         </Empty>
       ) : (
         <Card className="management-card management-table-wrap">
-          <table className="management-table">
-            <thead>
-              <tr>
-                <th>时间</th>
-                <th>级别</th>
-                <th>来源</th>
-                <th>消息</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table><Table.ScrollContainer><Table.Content aria-label="业务日志" className="management-table">
+            <Table.Header>
+                <Table.Column isRowHeader>时间</Table.Column>
+                <Table.Column>级别</Table.Column>
+                <Table.Column>来源</Table.Column>
+                <Table.Column>消息</Table.Column>
+            </Table.Header>
+            <Table.Body>
               {items.map((i) => (
-                <tr key={i.id}>
-                  <td>{time(i.time)}</td>
-                  <td>
+                <Table.Row id={String(i.id)} key={i.id}>
+                  <Table.Cell>{time(i.time)}</Table.Cell>
+                  <Table.Cell>
                     <Chip
                       size="sm"
                       variant="soft"
@@ -169,13 +167,13 @@ export function Logs({ session }: { session: Session }) {
                     >
                       {i.level}
                     </Chip>
-                  </td>
-                  <td>{i.source}</td>
-                  <td className="log-message">{i.message}</td>
-                </tr>
+                  </Table.Cell>
+                  <Table.Cell>{i.source}</Table.Cell>
+                  <Table.Cell className="log-message">{i.message}</Table.Cell>
+                </Table.Row>
               ))}
-            </tbody>
-          </table>
+            </Table.Body>
+          </Table.Content></Table.ScrollContainer></Table>
         </Card>
       )}
     </section>

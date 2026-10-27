@@ -21,7 +21,6 @@
 .anime-rule-card { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: border-color .15s, background .15s; }
 .anime-rule-card:hover { background: var(--surface-secondary); }
 .anime-rule-card.is-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.anime-editor .anime-rule-card input[type=radio] { width: 17px; height: 17px; min-height: 0; margin: 0; flex: 0 0 17px; accent-color: var(--accent); }
 .anime-rule-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
 .anime-rule-tag { padding: 4px 9px; border-radius: 6px; background: var(--surface-secondary); font-size: 12px; }
 @media (max-width: 600px) {

@@ -21,10 +21,10 @@ export function AnimeCard({
   const view = presentAnime(anime);
   return (
     <Card className="anime-subscription-card">
-      <button
+      <Button variant="ghost"
         className="anime-card-cover"
         aria-label={`查看 ${anime.title}`}
-        onClick={open}
+        onPress={open}
       >
         {anime.poster && (
           <MediaImage src={image(anime.poster)!} alt={anime.title} />
@@ -33,11 +33,11 @@ export function AnimeCard({
           <Chip size="sm">{view.status}</Chip>
           <Chip size="sm">{view.rating}</Chip>
         </div>
-      </button>
+      </Button>
       <div className="anime-card-body">
-        <button className="anime-card-title" onClick={open}>
+        <Button variant="ghost" className="anime-card-title" onPress={open}>
           {anime.title}
-        </button>
+        </Button>
         <p>
           {anime.totalEpisodes
             ? anime.lastCheckedAt

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { formatRegion, presentTitle } from "../../lib/media-presentation";
 
-import { Button, Card, Chip } from "@heroui/react";
+import { Button, Card, Chip, Link } from "@heroui/react";
 
 import { ChevronLeft, Film, Plus, Search } from "lucide-react";
 
@@ -102,13 +102,13 @@ export function Detail({
             )}
             {data.externalIds?.imdb &&
               /^tt\d+$/.test(data.externalIds.imdb) && (
-                <a
+                <Link
                   href={`https://www.imdb.com/title/${data.externalIds.imdb}/`}
                   target="_blank"
                   rel="noreferrer"
                 >
                   查看 IMDb 条目
-                </a>
+                </Link>
               )}
             <div className="media-ratings">
               {data.ratings.map((r) => (
@@ -173,13 +173,13 @@ export function Detail({
           </dl>
           {!!data.seasons?.length && <div className="detail-season-summary"><h3>季与集</h3><dl>{data.seasons.map((season) => <div key={season.seasonNumber}><dt>{season.name || `第 ${season.seasonNumber} 季`}</dt><dd>{season.episodeCount ? `${season.episodeCount} 集` : "待公布"}</dd></div>)}</dl></div>}
           {data.externalIds?.imdb && (
-            <a
+            <Link
               href={`https://www.imdb.com/title/${encodeURIComponent(data.externalIds.imdb)}/`}
               target="_blank"
               rel="noreferrer"
             >
               IMDb · {data.externalIds.imdb}
-            </a>
+            </Link>
           )}
           <div className="management-actions">
             {(data.genres.length ? data.genres : ["暂无标签"]).map((g) => (

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react";
 import { ChevronDown, ChevronRight, Plus, RefreshCw, Search } from "lucide-react";
-import { Empty } from "../../components/media/MediaUI";
+import { Empty, FilterTabs } from "../../components/media/MediaUI";
+import { AppDisclosure } from "../../components/ui/AppControls";
 import { Field, SelectField } from "../../components/ui/ManagementUI";
 import { useAnimeEditor } from "../../hooks/useAnimeEditor";
 import { animeResourceSize, type SavedAnimeSubscription } from "../../lib/anime-api";
@@ -29,18 +30,16 @@ export function AnimeBrowseStep({ selectAnime, setStep, setSelectedGroup, setSel
       <Button type="submit" variant="secondary" isDisabled={busy}><Search size={16} />搜索</Button>
       <Button type="button" variant="secondary" isDisabled={busy} onPress={() => void browse(true)}><RefreshCw size={16} />刷新来源</Button>
     </form>
-    {!!labels.length && <div className="anime-week-tabs" role="tablist" aria-label="播出分类">
-      {labels.map((label) => <button type="button" role="tab" aria-selected={weekday === label} key={label} onClick={() => { setWeekday(label); setSelected(null); setGroups([]); }}>{label}</button>)}
-    </div>}
+    {!!labels.length && <FilterTabs label="播出分类" value={weekday} options={labels.map((label) => [label, label])} onChange={(value) => { setWeekday(value); setSelected(null); setGroups([]); }} />}
     <div className="anime-mikan-list">
       {!busy && !visible.length && <Empty>没有找到番剧，请更换季度或搜索标题。</Empty>}
       {visible.map((item) => <div className="anime-mikan-entry" key={item.id}>
-        <button type="button" className="anime-mikan-title" aria-expanded={selected?.id === item.id} onClick={() => {
+        <Button variant="ghost" type="button" className="anime-mikan-title" aria-expanded={selected?.id === item.id} onPress={() => {
           if (selected?.id === item.id) { setSelected(null); setGroups([]); } else void selectAnime(item);
         }}>
           {item.poster && <img src={item.poster} alt="" loading="lazy" />}
           <span>{item.title}</span>{selected?.id === item.id ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
+        </Button>
         {selected?.id === item.id && <div className="anime-mikan-groups">
           {busy && <p role="status">正在读取字幕组…</p>}
           {!busy && !groups.length && <p>暂无字幕组，请刷新来源或选择其他番剧。</p>}
@@ -49,7 +48,7 @@ export function AnimeBrowseStep({ selectAnime, setStep, setSelectedGroup, setSel
               <div className="anime-mikan-tags">{group.groupRegex?.tags?.map((tag) => <span key={tag}>{tag}</span>)}</div>
               <Button size="sm" variant="secondary" aria-label={`添加 ${group.label}`} onPress={() => { setSelectedGroup(group); setSelectedRule(-1); setStep("match"); }}><Plus size={14} />添加</Button>
             </div>
-            <details><summary>发布记录（{group.items.length}）</summary>{group.items.map((entry, n) => <p key={n}>{entry.title}<span className="anime-release-meta">{animeResourceSize(entry.contentLength)}{entry.publishedAt && ` · ${new Date(entry.publishedAt).toLocaleString("zh-CN")}`}</span></p>)}</details>
+            <AppDisclosure title={`发布记录（${group.items.length}）`}>{group.items.map((entry, n) => <p key={n}>{entry.title}<span className="anime-release-meta">{animeResourceSize(entry.contentLength)}{entry.publishedAt && ` · ${new Date(entry.publishedAt).toLocaleString("zh-CN")}`}</span></p>)}</AppDisclosure>
           </div>)}
         </div>}
       </div>)}

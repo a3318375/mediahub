@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDiscovery } from "../../hooks/useDiscovery";
 
-import { Button, Card, Input, Tabs } from "@heroui/react";
+import { Button, Card, Input, Link, Skeleton, Tabs } from "@heroui/react";
 
 import {
   Check,
@@ -152,9 +152,9 @@ export function Discovery({
       ) : (
         <div className="media-source-grid">
           {sources.map(([id, label]) => (
-            <button
+            <Button variant="ghost"
               key={id}
-              onClick={() => chooseSource(id)}
+              onPress={() => chooseSource(id)}
               className={`media-source ${source === id ? "selected" : ""}`}
             >
               <img src={`/icons/${id}.svg`} alt="" />
@@ -169,7 +169,7 @@ export function Discovery({
                 </small>
               </span>
               {source === id && <Check size={16} />}
-            </button>
+            </Button>
           ))}
           {ranking &&
             platforms
@@ -180,10 +180,10 @@ export function Discovery({
               )
               .slice(0, 10)
               .map((p) => (
-                <button
+                <Button variant="ghost"
                   key={p.id}
                   className={`media-source ${source === "streaming" && platform === String(p.id) ? "selected" : ""}`}
-                  onClick={() => {
+                  onPress={() => {
                     setSource("streaming");
                     setPlatform(String(p.id));
                     setType("tv");
@@ -200,12 +200,12 @@ export function Discovery({
                     {p.name}
                     <small>平台片库</small>
                   </span>
-                </button>
+                </Button>
               ))}
           {ranking && (
-            <button
+            <Button variant="ghost"
               className={`media-source ${source === "streaming" ? "selected" : ""}`}
-              onClick={() => {
+              onPress={() => {
                 setSource("streaming");
                 setType("tv");
               }}
@@ -216,7 +216,7 @@ export function Discovery({
               <span>
                 更多平台<small>按地区查看</small>
               </span>
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -518,11 +518,11 @@ export function Discovery({
           {rankingFetchedAt &&
             `· 更新于 ${new Date(rankingFetchedAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })} · 北京时间`}{" "}
           ·{" "}
-          <a href={sourceLinks[source]} target="_blank" rel="noreferrer">
+          <Link href={sourceLinks[source]} target="_blank" rel="noreferrer">
             {source === "streaming"
               ? "JustWatch"
               : sources.find(([id]) => id === source)?.[1]}
-          </a>
+          </Link>
         </p>
       )}
       {demo && (
@@ -540,7 +540,7 @@ export function Discovery({
       ) : busy && !items.length ? (
         <div className="poster-grid" aria-label="正在加载作品">
           {Array.from({ length: 6 }, (_, i) => (
-            <div className="poster-skeleton" key={i} />
+            <Skeleton className="poster-skeleton" key={i} />
           ))}
         </div>
       ) : (
@@ -560,13 +560,13 @@ export function Discovery({
             <>
               {" "}
               可观看性数据由{" "}
-              <a
+              <Link
                 href="https://www.justwatch.com/"
                 target="_blank"
                 rel="noreferrer"
               >
                 JustWatch
-              </a>{" "}
+              </Link>{" "}
               提供，片单按 TMDB 热度排序。
             </>
           )}
@@ -579,9 +579,9 @@ export function Discovery({
         <div className="search-history">
           <span>最近搜索</span>
           {history.slice(0, 8).map((h) => (
-            <button
+            <Button variant="ghost"
               key={`${h.keyword}-${h.source}`}
-              onClick={() => {
+              onPress={() => {
                 chooseSource(h.source);
                 setQuery(h.keyword);
                 setSearch(h.keyword);
@@ -590,7 +590,7 @@ export function Discovery({
               }}
             >
               {h.keyword}
-            </button>
+            </Button>
           ))}
         </div>
       )}

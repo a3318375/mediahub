@@ -1,4 +1,4 @@
-import { Button, Card, Chip, Input } from "@heroui/react";
+import { Button, Card, Chip, Input, Link } from "@heroui/react";
 import {
   Copy,
   Download as DownloadIcon,
@@ -96,18 +96,18 @@ export function ResourceSearch({
           <div className="search-history">
             <span>最近搜索</span>
             {history.map((q) => (
-              <button
+              <Button variant="ghost" size="sm"
                 key={q}
-                onClick={() => {
+                onPress={() => {
                   setQuery(q);
                   void search(q);
                 }}
               >
                 {q}
-              </button>
+              </Button>
             ))}
-            <button
-              onClick={() => {
+            <Button variant="ghost" size="sm"
+              onPress={() => {
                 setHistory([]);
                 setMediaHistory([]);
                 try {
@@ -118,7 +118,7 @@ export function ResourceSearch({
               }}
             >
               清空
-            </button>
+            </Button>
           </div>
         )}
       </Card>
@@ -191,9 +191,9 @@ export function ResourceSearch({
                     )?.title ||
                     submitted}
                 </h3>
-                <a href={safeURL(r.url)} target="_blank" rel="noreferrer">
+                <Link href={safeURL(r.url)} target="_blank" rel="noreferrer">
                   {r.url}
-                </a>
+                </Link>
                 {r.password && (
                   <p>
                     提取码：{r.password}{" "}

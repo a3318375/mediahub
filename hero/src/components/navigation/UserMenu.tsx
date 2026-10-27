@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Avatar, Button, Popover } from "@heroui/react";
 import { Bell, LogOut, Settings, UserRound } from "lucide-react";
 import { useState } from "react";
 import { request, type Session } from "../../lib/media-service";
@@ -23,19 +23,14 @@ export function MediaUserMenu({
   const [error, setError] = useState("");
   return (
     <>
-      <details className="header-notifications">
-        <summary aria-label="打开通知" title="通知">
-          <Bell size={18} />
-        </summary>
-        <div>
-          <strong>通知</strong>
-          <p>暂无新通知</p>
-        </div>
-      </details>
-      <button
+      <Popover>
+        <Button variant="ghost" isIconOnly aria-label="打开通知"><Bell size={18} /></Button>
+        <Popover.Content placement="bottom end"><Popover.Dialog><Popover.Heading>通知</Popover.Heading><p>暂无新通知</p></Popover.Dialog></Popover.Content>
+      </Popover>
+      <Button variant="ghost" isIconOnly
         className="media-user"
         aria-label={`打开${session.name}的用户菜单`}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
           setError("");
           if (session.mode === "live")
@@ -47,8 +42,8 @@ export function MediaUserMenu({
               .catch((e) => setError(errorText(e)));
         }}
       >
-        {session.name.slice(0, 1).toUpperCase()}
-      </button>
+        <Avatar size="sm"><Avatar.Fallback>{session.name.slice(0, 1).toUpperCase()}</Avatar.Fallback></Avatar>
+      </Button>
       {open && (
         <Overlay
           title={user.name}

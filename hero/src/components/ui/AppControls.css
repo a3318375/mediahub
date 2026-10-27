@@ -1,0 +1,25 @@
+.app-progress { width: 100%; margin-block: 4px; }
+.app-slider { min-width: 0; width: 100%; }
+.app-disclosure-trigger { justify-content: space-between; width: 100%; white-space: normal; text-align: left; }
+.music-player-seek .app-slider { flex: 1; }
+.music-player-options .app-slider { width: 65px; }
+.poster-card.button, .music-artist-card.button, .music-playlist-card.button { display: block; height: auto; padding: 0; white-space: normal; text-align: left; }
+.poster-card.button, .music-artist-card.button, .music-playlist-card.button { width: 100%; max-width: 100%; }
+.anime-card-cover.button { height: auto; min-height: 0; padding: 0; border-radius: 0; }
+.anime-card-title.button { justify-content: flex-start; height: auto; min-height: 0; padding: 0; white-space: normal; }
+.music-track-cover.button, .music-player-track > .button:first-child { min-width: 0; padding: 0; }
+.media-source.button { height: auto; white-space: normal; justify-content: flex-start; }
+.calendar-day > .button { height: auto; white-space: normal; display: block; }
+.reading-image-turn.button, .reading-image-menu.button { height: auto; min-height: 0; min-width: 0; padding: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.reading-image-turn.button[data-hovered], .reading-image-menu.button[data-hovered] { background: transparent; }
+.reading-image-turn.button[data-disabled] { opacity: 1; cursor: default; }
+.sidebar-backdrop.button { width: 100%; height: 100%; border-radius: 0; padding: 0; }
+.update-row.button { height: auto; white-space: normal; justify-content: flex-start; }
+.anime-mikan-title.button { height: auto; white-space: normal; justify-content: flex-start; }
+.music-text-link.button, .music-artist-link.button, .music-detail-artist.button { min-height: 0; height: auto; padding: 0; justify-content: flex-start; }
+.emby-library-card.link, .poster-card.link { display: block; white-space: normal; width: 100%; max-width: 100%; min-width: 0; }
+.header-menu-search input { border: 0; outline: none; box-shadow: none; background: transparent; }
+.header-menu-search .combo-box__input-group { border: 1px solid var(--control-border); border-radius: 12px; background: var(--surface); }
+.service-login .checkbox__content { flex-direction: row; align-items: center; }
+.management-toggle.switch { align-items: flex-start; }
+.media-filter > span { width: auto; min-width: 56px; white-space: nowrap; }

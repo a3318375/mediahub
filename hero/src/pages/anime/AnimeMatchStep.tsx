@@ -1,4 +1,4 @@
-import { Button } from "@heroui/react";
+import { Button, Radio, RadioGroup } from "@heroui/react";
 import { useAnimeEditor } from "../../hooks/useAnimeEditor";
 import { type SavedAnimeSubscription } from "../../lib/anime-api";
 import { type Session } from "../../lib/media-service";
@@ -24,15 +24,10 @@ export function AnimeMatchStep({
         <p className="anime-step-hint">
           所选组合的全部条件都需要命中；全部表示不增加匹配条件，排除规则仍然生效。
         </p>
-        <div className="anime-match-grid">{[[], ...(selectedGroup.groupRegex?.regexList || [])].map(
+        <RadioGroup aria-label="匹配版本" value={String(selectedRule)} onChange={(value) => setSelectedRule(Number(value))} className="anime-match-grid">{[[], ...(selectedGroup.groupRegex?.regexList || [])].map(
           (rules, i) => (
-            <label className={`anime-rule-card ${selectedRule === i - 1 ? "is-selected" : ""}`} key={i}>
-              <input
-                type="radio"
-                name="anime-rule"
-                checked={selectedRule === i - 1}
-                onChange={() => setSelectedRule(i - 1)}
-              />
+            <Radio value={String(i - 1)} className={`anime-rule-card ${selectedRule === i - 1 ? "is-selected" : ""}`} key={i}>
+              <Radio.Content><Radio.Control><Radio.Indicator /></Radio.Control>
               <span className="anime-rule-tags">{rules.length
                 ? rules.map((r) => (
                     <span className="anime-rule-tag" key={r.regex} title={r.regex}>
@@ -40,9 +35,10 @@ export function AnimeMatchStep({
                     </span>
                   ))
                 : "全部版本"}</span>
-            </label>
+              </Radio.Content>
+            </Radio>
           ),
-        )}</div>
+        )}</RadioGroup>
         <div className="anime-step-actions">
           <Button variant="secondary" onPress={() => setStep("browse")}>
             返回字幕组

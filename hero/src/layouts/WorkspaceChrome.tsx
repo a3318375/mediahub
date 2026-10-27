@@ -67,15 +67,15 @@ export function WorkspaceSidebar({
             {(index === 0 || navigation[index - 1][3] !== section) && (
               <div className="media-nav-label">{section}</div>
             )}
-            <button
+            <Button variant="ghost"
               key={id}
               aria-current={page === id ? "page" : undefined}
               className={page === id ? "active" : ""}
-              onClick={() => go(id)}
+              onPress={() => go(id)}
             >
               <Icon size={18} />
               {label}
-            </button>
+            </Button>
           </div>
         ))}
       </nav>
@@ -89,10 +89,10 @@ export function WorkspaceSidebar({
               : "已连接 MediaHub 服务"}
           </small>
         </div>
-        <button onClick={logout}>
+        <Button variant="ghost" onPress={logout}>
           <LogOut size={17} />
           退出登录
-        </button>
+        </Button>
       </div>
     </aside>
   );

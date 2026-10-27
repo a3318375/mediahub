@@ -1,4 +1,4 @@
-import { Button, Tabs } from "@heroui/react";
+import { Button, Card, Tabs } from "@heroui/react";
 
 import { Clapperboard, Film, Heart, Plus, Search, Star } from "lucide-react";
 
@@ -91,7 +91,7 @@ export function Poster({
   const src = image(media.posterPath);
   const { title } = presentTitle(media);
   return (
-    <article className="poster-card">
+    <Card className="poster-card">
       <div className={`poster-art palette-${index % 6}`}>
         {src ? (
           <MediaImage src={src} alt={title} />
@@ -110,11 +110,11 @@ export function Poster({
             {media.ratings[0].value.toFixed(1)}
           </span>
         )}
-        <button
+        <Button variant="ghost"
           type="button"
           className="poster-open"
           aria-label={`查看 ${media.title}`}
-          onClick={onOpen}
+          onPress={onOpen}
         />
         <div className="poster-overlay">
           <small>
@@ -180,7 +180,7 @@ export function Poster({
           {subscribed ? "已订阅" : "订阅此剧"}
         </Button>
       )}
-    </article>
+    </Card>
   );
 }
 

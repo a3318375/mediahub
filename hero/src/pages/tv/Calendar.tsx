@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Link } from "@heroui/react";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -98,7 +98,7 @@ export function Calendar({
                 {events
                   .filter((e) => e.airDate === date)
                   .map((e) => (
-                    <button
+                    <Button variant="ghost"
                       key={`${e.subscription.id}-${e.season}-${e.number}`}
                       className={
                         e.subscription.resources.some(
@@ -112,7 +112,7 @@ export function Calendar({
                           ? "found"
                           : ""
                       }
-                      onClick={() => setSelectedEvent(e)}
+                      onPress={() => setSelectedEvent(e)}
                     >
                       <strong>{e.subscription.title}</strong>
                       <small>
@@ -128,7 +128,7 @@ export function Calendar({
                               : "待搜资源"
                             : "订阅暂停"}
                       </small>
-                    </button>
+                    </Button>
                   ))}
               </div>
             );
@@ -162,9 +162,9 @@ export function Calendar({
               )
               .map((r, i) => (
                 <div className="management-stack" key={i}>
-                  <a href={safeURL(r.url)} target="_blank" rel="noreferrer">
+                  <Link href={safeURL(r.url)} target="_blank" rel="noreferrer">
                     {r.title}
-                  </a>
+                  </Link>
                   {(r.url.startsWith("magnet:") || is115ShareURL(r.url)) && (
                     <Button
                       onPress={() => {

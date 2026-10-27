@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Button, Card } from "@heroui/react";
+import { Button, Card, TextArea } from "@heroui/react";
 
 import { clearCache, read, save, type Session } from "../../lib/media-service";
 
@@ -194,7 +194,7 @@ export function SettingsForm({
                   ) : name === "search.excludeKeywords" ? (
                     <label key={name} className="management-field">
                       <span>{label}</span>
-                      <textarea
+                      <TextArea
                         rows={3}
                         value={String(values[name] ?? fallback)}
                         onChange={(e) => update(name, e.target.value)}

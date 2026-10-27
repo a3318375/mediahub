@@ -1,4 +1,5 @@
-import { Button, Card } from "@heroui/react";
+import { Button, Card, Link } from "@heroui/react";
+import { AppProgress } from "../../components/ui/AppControls";
 import { Film, Tv, Clapperboard, Play, Users, Clock, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
@@ -173,7 +174,7 @@ export function Emby({
             {data.libraries
               .filter((l) => site === "all" || l.siteId === site)
               .map((l) => (
-                <a
+                <Link
                   href={demo ? undefined : l.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -183,7 +184,7 @@ export function Emby({
                 >
                   <div className="emby-library-cover"><EmbyArtwork id={l.id} title={l.title} session={session} /></div>
                   <div className="emby-library-caption"><strong>{l.title}</strong><span>{l.count.toLocaleString()} 部作品</span></div>
-                </a>
+                </Link>
               ))}
           </div>
           <div className="emby-activity-grid">
@@ -196,7 +197,7 @@ export function Emby({
               {(items as Item[]).length ? (
                 <div className="poster-grid">
                   {(items as Item[]).slice(0, 10).map((i) => (
-                    <a
+                    <Link
                       href={demo ? undefined : i.url}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -217,17 +218,13 @@ export function Emby({
                       </span>
                       {i.progress !== undefined && (
                         <>
-                          <progress
-                            aria-label={`${i.title}观看进度`}
-                            value={i.progress}
-                            max={100}
-                          />
+                          <AppProgress label={`${i.title}观看进度`} value={i.progress} />
                           <small>
                             {i.resumeLabel} · {i.remaining}
                           </small>
                         </>
                       )}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               ) : (

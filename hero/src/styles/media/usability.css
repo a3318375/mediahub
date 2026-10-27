@@ -64,7 +64,6 @@
   outline-offset: 3px;
 }
 .header-menu-search input,
-.management-field select,
 .management-field textarea { border-color: var(--control-border); }
 .media-error,
 .service-login-card .media-error { color: var(--workspace-danger); font-size: 13px; }

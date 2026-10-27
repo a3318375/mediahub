@@ -9,6 +9,7 @@ import { FilterTabs } from "../../components/media/MediaUI";
 import { routePath, settingsTabs } from "../../lib/parity";
 
 import { SettingsForm } from "../../components/settings/SettingsForm";
+import { ComicsSettings } from "./ComicsSettings";
 import { AccountSettings } from "./AccountSettings";
 import { APIKeys } from "./APIKeys";
 import { MediaLibrarySettings } from "./MediaLibrarySettings";
@@ -46,6 +47,7 @@ export function ServerSettings({
           session={session}
           basic
         />
+        {tab === "basic" && <ComicsSettings session={session} />}
       </div>
       <div hidden={tab !== "search"}>
         <SettingsForm sections={["search"]} session={session} />

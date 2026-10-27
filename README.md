@@ -138,7 +138,7 @@ cd mediahub
 ```text
 mediahub/
 ├── hero/                   # React + HeroUI 前端，当前默认界面
-├── web/                    # React + shadcn/ui 前端
+├── web/                    # 已放弃维护的旧 shadcn/ui 前端，仅供历史参考
 ├── api/
 │   ├── cmd/server/          # Go 服务入口
 │   ├── internal/            # API、业务逻辑与 SQLite 存储

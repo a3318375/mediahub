@@ -132,46 +132,6 @@
   position: relative;
   width: 210px;
 }
-.header-menu-search input {
-  border: 1px solid var(--border);
-  background: var(--surface-secondary);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 12px;
-  width: 100%;
-  font-size: 13px;
-}
-.header-menu-search ul {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 6px;
-  list-style: none;
-  min-width: 260px;
-  z-index: 30;
-  box-shadow: 0 12px 30px #0002;
-}
-.header-menu-search li > button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px;
-  border: 0;
-  background: transparent;
-  border-radius: 6px;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-}
-.header-menu-search li > button[aria-selected="true"] {
-  background: var(--surface-secondary);
-}
 .header-menu-search small {
   color: var(--muted);
 }

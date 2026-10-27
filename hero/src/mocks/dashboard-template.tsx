@@ -15,6 +15,8 @@ import {
   Dropdown,
   Input,
   Tabs,
+  Table,
+  toast as heroToast,
 } from "@heroui/react";
 
 import {
@@ -159,6 +161,7 @@ export default function App() {
   );
   const [formError, setFormError] = useState("");
   const [toast, setToast] = useState("");
+  useEffect(() => { if (toast) { heroToast(toast); setToast(""); } }, [toast]);
   const [refreshing, setRefreshing] = useState(false);
   const [dark, setDark] = useState(() => {
     try {
@@ -394,23 +397,23 @@ export default function App() {
           className={`app-shell ${sidebarCollapsed ? "is-collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}
         >
           {mobileOpen && (
-            <button
+            <Button variant="ghost"
               className="sidebar-backdrop"
               aria-label="Close navigation"
-              onClick={() => setMobileOpen(false)}
+              onPress={() => setMobileOpen(false)}
             />
           )}
           <aside className="sidebar">
-            <button
+            <Button variant="ghost"
               className="profile"
-              onClick={() => setDialog({ kind: "settings" })}
+              onPress={() => setDialog({ kind: "settings" })}
             >
               <Avatar />
               <span>
                 <strong>Kate Moore</strong>
                 <small>Admin</small>
               </span>
-            </button>
+            </Button>
             <nav className="primary-nav" aria-label="Dashboard navigation">
               {navItems.map(({ id, label, icon: Icon }) => (
                 <Button
@@ -768,16 +771,15 @@ export default function App() {
                     </div>
                   </div>
                   <div className="employee-table-wrap">
-                    <table
+                    <Table><Table.ScrollContainer><Table.Content
                       className="employee-table"
                       aria-label="All employees"
                     >
-                      <thead>
-                        <tr>
-                          <th>Worker ID</th>
-                          <th>
-                            <button
-                              onClick={() => {
+                      <Table.Header>
+                          <Table.Column isRowHeader>Worker ID</Table.Column>
+                          <Table.Column>
+                            <Button variant="ghost"
+                              onPress={() => {
                                 setSort(
                                   sort === "name-asc"
                                     ? "name-desc"
@@ -788,17 +790,16 @@ export default function App() {
                             >
                               Member
                               <ArrowUpDown size={13} />
-                            </button>
-                          </th>
-                          {columns.role && <th>Role</th>}
-                          {columns.type && <th>Worker Type</th>}
-                          <th className="actions-heading">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                            </Button>
+                          </Table.Column>
+                          {columns.role && <Table.Column>Role</Table.Column>}
+                          {columns.type && <Table.Column>Worker Type</Table.Column>}
+                          <Table.Column className="actions-heading">Actions</Table.Column>
+                      </Table.Header>
+                      <Table.Body>
                         {visible.map((employee) => (
-                          <tr key={employee.id}>
-                            <td>
+                          <Table.Row id={employee.id} key={employee.id}>
+                            <Table.Cell>
                               <div className="worker-id">
                                 #{employee.id}
                                 <Button
@@ -821,8 +822,8 @@ export default function App() {
                                   <Copy size={13} />
                                 </Button>
                               </div>
-                            </td>
-                            <td>
+                            </Table.Cell>
+                            <Table.Cell>
                               <div className="member">
                                 <Avatar
                                   avatar={employee.avatar}
@@ -833,18 +834,18 @@ export default function App() {
                                   <small>{employee.email}</small>
                                 </span>
                               </div>
-                            </td>
-                            {columns.role && <td>{employee.role}</td>}
+                            </Table.Cell>
+                            {columns.role && <Table.Cell>{employee.role}</Table.Cell>}
                             {columns.type && (
-                              <td>
+                              <Table.Cell>
                                 <span
                                   className={`worker-type ${employee.type === "Contractor" ? "contractor" : ""}`}
                                 >
                                   {employee.type}
                                 </span>
-                              </td>
+                              </Table.Cell>
                             )}
-                            <td>
+                            <Table.Cell>
                               <div className="row-actions">
                                 <Button
                                   variant="ghost"
@@ -876,11 +877,11 @@ export default function App() {
                                   <Trash2 size={15} />
                                 </Button>
                               </div>
-                            </td>
-                          </tr>
+                            </Table.Cell>
+                          </Table.Row>
                         ))}
-                      </tbody>
-                    </table>
+                      </Table.Body>
+                    </Table.Content></Table.ScrollContainer></Table>
                     {!visible.length && (
                       <div className="empty-state">
                         <Search size={24} />
@@ -1157,9 +1158,9 @@ export default function App() {
               </div>
               <div className="search-results">
                 {filtered.slice(0, 6).map((employee) => (
-                  <button
+                  <Button variant="ghost"
                     key={employee.id}
-                    onClick={() => openEmployee("view", employee)}
+                    onPress={() => openEmployee("view", employee)}
                   >
                     <Avatar name={employee.name} avatar={employee.avatar} />
                     <span>
@@ -1167,7 +1168,7 @@ export default function App() {
                       <small>{employee.role}</small>
                     </span>
                     <ArrowRight size={15} />
-                  </button>
+                  </Button>
                 ))}
                 {!filtered.length && (
                   <p className="muted">No matching team members.</p>
@@ -1290,20 +1291,6 @@ export default function App() {
             </div>
           )}
         </Overlay>
-      )}
-      {toast && (
-        <div role="status" className="toast">
-          <span>
-            <Check size={16} />
-          </span>
-          {toast}
-          <button
-            onClick={() => setToast("")}
-            aria-label="Dismiss notification"
-          >
-            <X size={15} />
-          </button>
-        </div>
       )}
     </>
   );

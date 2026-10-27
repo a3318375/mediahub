@@ -1,0 +1,13 @@
+.app-select { min-width: 0; }
+.app-select .select__trigger { min-height: 44px; gap: 8px; font-size: 13px; }
+.app-select .select__trigger > svg { flex-shrink: 0; }
+.app-select .select__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-select--compact .select__trigger { border-radius: 999px; }
+.app-select-popover { max-width: min(90vw, 480px); }
+.app-select-popover .list-box { max-height: min(360px, 60vh); overflow-y: auto; }
+.app-select-popover .list-box-item { min-height: 40px; font-size: 13px; }
+.management-field > .app-select { width: 100%; }
+.eh-filters .app-select { min-width: 120px; }
+.reading-chapters .app-select { width: 100%; }
+.reading-turner .app-select { min-width: 100px; }
+@media (pointer: coarse) { .app-select-popover .list-box-item { min-height: 44px; } }
