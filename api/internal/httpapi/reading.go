@@ -19,15 +19,16 @@ type readingJob struct {
 	Error   string `json:"error"`
 }
 type readingLibrary struct {
-	mu    sync.Mutex
-	jobs  map[string]readingJob
-	roots map[string]string
-	db    *store.Store
+	mu       sync.Mutex
+	jobs     map[string]readingJob
+	roots    map[string]string
+	db       *store.Store
+	metadata comicMetadataJob
 }
 
 func (a *API) mountReading(v1 *gin.RouterGroup) {
 	library := &readingLibrary{db: a.store, jobs: map[string]readingJob{}, roots: reading.Roots()}
-	log.Printf("reading libraries: comics=%s novels=%s", library.roots["comics"], library.roots["novels"])
+	log.Printf("reading libraries: comics=%s novels=%s download=%s", library.roots["comics"], library.roots["novels"], reading.DownloadRoot())
 	group := v1.Group("/reading/:kind")
 	group.Use(func(c *gin.Context) {
 		if !reading.ValidKind(c.Param("kind")) {
@@ -36,6 +37,8 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 		}
 	})
 	library.mountReader(group)
+	library.mountMetadata(a, group)
+	library.mountDelete(group)
 	group.GET("", func(c *gin.Context) {
 		page := 1
 		if raw := c.Query("page"); raw != "" {
@@ -90,7 +93,7 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			return
 		}
 		library.mu.Lock()
-		if library.jobs[kind].Running {
+		if library.jobs[kind].Running || (kind == "comics" && library.metadata.Running) {
 			library.mu.Unlock()
 			fail(c, 409, "该书库正在刷新")
 			return
@@ -100,7 +103,22 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 		if !a.background.Go(func(parent context.Context) {
 			ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
 			defer cancel()
-			items, err := reading.Scan(ctx, kind, root)
+			var importProblems []string
+			var err error
+			if kind == "comics" {
+				var existing []store.ReadingItem
+				existing, err = reading.Scan(ctx, kind, root)
+				if err == nil {
+					err = library.db.PruneMissingComics(ctx, root, existing)
+				}
+				if err == nil {
+					importProblems = reading.ImportCBZ(ctx, reading.DownloadRoot(), root)
+				}
+			}
+			var items []store.ReadingItem
+			if err == nil {
+				items, err = reading.Scan(ctx, kind, root)
+			}
 			if err == nil {
 				err = library.db.SaveReadingScan(ctx, kind, root, items)
 			}
@@ -111,7 +129,7 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 						err = ctx.Err()
 						break
 					}
-					if item.Format != "CBZ" {
+					if item.Format != "CBZ" && item.Format != "DIRECTORY" {
 						continue
 					}
 					if _, _, cached := library.db.ReadingCover(ctx, item); cached == nil {
@@ -132,9 +150,13 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 				}
 			}
 			job := readingJob{}
+			if len(importProblems) > 0 {
+				job.Error = "书库已刷新，部分 CBZ 未完成导入或源文件删除：" + strings.Join(importProblems, "；")
+				log.Printf("comics import: %s", job.Error)
+			}
 			if err != nil {
 				log.Printf("reading library %s scan failed: %v", kind, err)
-				job.Error = "刷新失败，已有书库记录已保留。请检查目录权限、挂载及服务日志。"
+				job.Error = "刷新未完成，请检查目录权限、挂载及服务日志。已完成的目录同步结果保留。"
 			}
 			library.mu.Lock()
 			library.jobs[kind] = job

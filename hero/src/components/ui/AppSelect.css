@@ -1,7 +1,7 @@
 .app-select { min-width: 0; }
-.app-select .select__trigger { min-height: 44px; gap: 8px; font-size: 13px; }
+.app-select .select__trigger { min-height: 44px; align-items: center; gap: 8px; font-size: 13px; }
 .app-select .select__trigger > svg { flex-shrink: 0; }
-.app-select .select__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-select .select__value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: inherit; line-height: 20px; }
 .app-select--compact .select__trigger { border-radius: 999px; }
 .app-select-popover { max-width: min(90vw, 480px); }
 .app-select-popover .list-box { max-height: min(360px, 60vh); overflow-y: auto; }

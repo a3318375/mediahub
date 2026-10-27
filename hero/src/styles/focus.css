@@ -1,0 +1,20 @@
+/* One global focus policy: no blue outline or outer focus ring on controls. */
+:root {
+  --focus: transparent !important;
+  --field-border-focus: var(--field-border) !important;
+}
+
+*:is(:focus, :focus-visible, :focus-within, [data-focused="true"], [data-focus-visible="true"], [data-focus-within="true"]) {
+  outline: none !important;
+  --tw-ring-color: transparent !important;
+  --tw-ring-offset-width: 0px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+}
+
+.input:focus,
+.select__trigger:is(:focus, :focus-visible, [data-focus-visible="true"]),
+.combo-box__input-group:focus-within,
+.tv-source-tags:focus-within {
+  border-color: var(--field-border, var(--border)) !important;
+}

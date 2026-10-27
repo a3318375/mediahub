@@ -52,6 +52,7 @@ services:
       - ./data:/data
       - ./strm:/strm
       - ./comics:/comics
+      - ./download:/download
       - ./book:/book
     restart: unless-stopped
     logging:
@@ -68,6 +69,7 @@ services:
 | `./data` | `/data` | 数据库、密钥和配置，需持久化 |
 | `./strm` | `/strm` | STRM 输出目录，可读写 |
 | `./comics` | `/comics` | 漫画书库 |
+| `./download` | `/download` | CBZ 导入目录；解压校验成功后删除源 CBZ，需可读写 |
 | `./book` | `/book` | 小说书库 |
 
 漫画和小说的容器目录固定为 `/comics` 和 `/book`，无需配置目录环境变量。启动后进入「漫文书库」，点击“刷新库”扫描文件。支持格式和阅读限制见[漫文书库说明](docs/reading-library.md)。

@@ -76,7 +76,7 @@ func (library *readingLibrary) mountReader(group *gin.RouterGroup) {
 		if !cover {
 			var err error
 			index, err = strconv.Atoi(c.Param("page"))
-			if err != nil || index < 0 || index >= book.Count || book.Format != "CBZ" {
+			if err != nil || index < 0 || index >= book.Count || (book.Format != "CBZ" && book.Format != "DIRECTORY") {
 				fail(c, 404, "漫画页码无效")
 				return
 			}

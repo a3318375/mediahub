@@ -23,7 +23,7 @@ export function useReadingImage(url: string | null, session: Session) {
   return { src, error };
 }
 export function ReadingCover({ item, kind, session }: { item: ReadingItem; kind: ReadingKind; session: Session }) {
-  const { src } = useReadingImage(item.available && ["CBZ", "EPUB"].includes(item.format) && session.mode === "live" ? `/api/v1/reading/${kind}/${item.id}/cover` : null, session);
+  const { src } = useReadingImage(item.available && ["CBZ", "DIRECTORY", "EPUB"].includes(item.format) && session.mode === "live" ? `/api/v1/reading/${kind}/${item.id}/cover` : null, session);
   return src ? <img className="reading-real-cover" src={src} alt={`${item.title}封面`} loading="lazy" onLoad={(e) => { if(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight * 1.6) e.currentTarget.style.objectPosition = "27% center"; }} /> : <div className={`reading-book-art reading-book-art-${kind}`} aria-hidden="true"><span>{kind === "comics" ? "COMIC" : "NOVEL"}</span><strong>{item.title}</strong><small>{kind === "comics" ? "漫画藏书" : "私人书架"}</small></div>;
 }
 export function ReadingReader({ item, kind, session, close, source, positionKey }: { item: ReadingItem; kind: ReadingKind; session: Session; close: () => void; source?: { base: string; site: string; count: number }; positionKey?: string }) {
@@ -45,12 +45,12 @@ export function ReadingReader({ item, kind, session, close, source, positionKey 
     try { localStorage.setItem(`mediahub.reading.position.${positionKey || item.id}`,String(index)); } catch { /* Reading works without browser storage. */ }
   },[book,index,item.id,positionKey]);
   useEffect(() => {
-    if (!book || book.format === "CBZ") return;
+    if (!book || book.format === "CBZ" || book.format === "DIRECTORY") return;
     const c = new AbortController();setBusy(true);setError("");setChapter(null);
     request<Chapter>(`${base}/chapters/${index}`,session,"GET",undefined,30000,c.signal).then((r) => { if(!c.signal.aborted) setChapter(r); }).catch((e) => {if(!c.signal.aborted) setError(errorText(e));}).finally(() => {if(!c.signal.aborted) setBusy(false);});
     return () => c.abort();
   },[book,base,index,session,retry]);
-  const image = useReadingImage(book?.format === "CBZ" ? `${base}/pages/${index}?retry=${retry}${source ? `&site=${encodeURIComponent(source.site)}` : ""}` : null,session);
+  const image = useReadingImage(book && ["CBZ", "DIRECTORY"].includes(book.format) ? `${base}/pages/${index}?retry=${retry}${source ? `&site=${encodeURIComponent(source.site)}` : ""}` : null,session);
   useEffect(() => { if(error || image.error) setControls(true); }, [error,image.error]);
   function turn(next: number) { if(!book) return;setIndex(Math.max(0,Math.min(next,book.count-1)));setContents(false);if(novelPage.current) novelPage.current.scrollTop=0;window.scrollTo({top:0,behavior:"instant"}); }
   useEffect(() => {

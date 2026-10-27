@@ -6,6 +6,7 @@ import App from "./layouts/MediaApp";
 import "./styles/base.css";
 import "./styles/media.css";
 import "./components/ui/AppControls.css";
+import "./styles/focus.css";
 const Template = lazy(() => import("./mocks/dashboard-template"));
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

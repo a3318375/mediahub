@@ -19,15 +19,17 @@ export function FilterTabs({
   options,
   onChange,
   disabled = false,
+  variant = "filter",
 }: {
   label: string;
   value: string;
   options: string[][];
   onChange: (v: string) => void;
   disabled?: boolean;
+  variant?: "filter" | "segmented";
 }) {
   return (
-    <div className="media-filter">
+    <div className={variant === "segmented" ? "media-segmented-filter" : "media-filter"}>
       <span>{label}</span>
       <Tabs
         aria-label={label}

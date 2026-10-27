@@ -5,6 +5,10 @@
 .music-player-options .app-slider { width: 65px; }
 .poster-card.button, .music-artist-card.button, .music-playlist-card.button { display: block; height: auto; padding: 0; white-space: normal; text-align: left; }
 .poster-card.button, .music-artist-card.button, .music-playlist-card.button { width: 100%; max-width: 100%; }
+/* Cover cards use the cover's shape, not the pill styling of ordinary buttons. */
+.poster-card.button { border-radius: 10px; background: transparent; box-shadow: none; outline: none; --button-bg-hover: transparent; --button-bg-pressed: transparent; }
+.poster-card.button:hover, .poster-card.button[data-hovered="true"], .poster-card.button[data-pressed="true"], .poster-card.button:focus-visible { background: transparent; box-shadow: none; outline: none; }
+.poster-card.button:hover .poster-art { box-shadow: none; }
 .anime-card-cover.button { height: auto; min-height: 0; padding: 0; border-radius: 0; }
 .anime-card-title.button { justify-content: flex-start; height: auto; min-height: 0; padding: 0; white-space: normal; }
 .music-track-cover.button, .music-player-track > .button:first-child { min-width: 0; padding: 0; }

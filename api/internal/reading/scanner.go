@@ -16,7 +16,7 @@ import (
 
 func ValidKind(kind string) bool { return kind == "comics" || kind == "novels" }
 func Allowed(kind, format string) bool {
-	return kind == "comics" && (format == "CBZ" || format == "CBR") || kind == "novels" && (format == "TXT" || format == "EPUB")
+	return kind == "comics" && (format == "CBZ" || format == "CBR" || format == folderFormat) || kind == "novels" && (format == "TXT" || format == "EPUB")
 }
 
 func Scan(ctx context.Context, kind, root string) ([]store.ReadingItem, error) {
@@ -44,6 +44,44 @@ func scanFS(ctx context.Context, kind, root string, source fs.FS) ([]store.Readi
 			return nil
 		}
 		if d.IsDir() {
+			if strings.HasPrefix(d.Name(), ".mediahub-import-") {
+				return fs.SkipDir
+			}
+			if kind == "comics" && name != "." {
+				_, manifestErr := fs.Stat(source, path.Join(name, comicManifest))
+				hasImages := false
+				if os.IsNotExist(manifestErr) {
+					entries, err := fs.ReadDir(source, name)
+					if err != nil {
+						return err
+					}
+					for _, entry := range entries {
+						if !entry.IsDir() && entry.Type()&fs.ModeSymlink == 0 && imageType(entry.Name()) != "" {
+							hasImages = true
+							break
+						}
+					}
+				}
+				if manifestErr == nil || hasImages {
+					manifest, err := comicDirectoryIndex(root, name)
+					if err != nil {
+						return fmt.Errorf("漫画目录索引不可读：%s：%w", name, err)
+					}
+					info, err := d.Info()
+					if err != nil {
+						return err
+					}
+					var size int64
+					for _, file := range manifest.Files {
+						size += file.Size
+					}
+					id := fmt.Sprintf("%x", sha256.Sum256([]byte(kind+"\x00"+root+"\x00"+name)))
+					items = append(items, store.ReadingItem{ID: id, Kind: kind, Path: filepath.ToSlash(name), Title: path.Base(name), Format: folderFormat, Size: size, ModifiedAt: info.ModTime().UTC().Format(time.RFC3339Nano), Available: true})
+					return fs.SkipDir
+				} else if !os.IsNotExist(manifestErr) {
+					return manifestErr
+				}
+			}
 			return nil
 		}
 		format := strings.ToUpper(strings.TrimPrefix(path.Ext(name), "."))

@@ -77,6 +77,24 @@ func openSource(root, name string) (*os.File, error) {
 	return file, nil
 }
 func (r *Reader) Book(root, name, format string) (*Book, error) {
+	if format == folderFormat {
+		manifest, err := comicDirectoryIndex(root, name)
+		if err != nil {
+			return nil, err
+		}
+		book := &Book{Format: folderFormat, Chapters: []Chapter{}}
+		for _, entry := range manifest.Files {
+			if imageType(entry.Name) != "" && !strings.HasPrefix(entry.Name, "__MACOSX/") {
+				book.images = append(book.images, entry.Name)
+			}
+		}
+		if len(book.images) == 0 || len(book.images) > 10000 {
+			return nil, fmt.Errorf("漫画目录没有可读图片或页数超过限制")
+		}
+		sort.SliceStable(book.images, func(i, j int) bool { return naturalLess(book.images[i], book.images[j]) })
+		book.Count = len(book.images)
+		return book, nil
+	}
 	file, err := openSource(root, name)
 	if err != nil {
 		return nil, err
@@ -297,6 +315,18 @@ func (r *Reader) Image(ctx context.Context, root, name string, book *Book, index
 	}
 	if entry == "" {
 		return nil, "", fmt.Errorf("图片不存在")
+	}
+	if book.Format == folderFormat {
+		file, err := openSource(root, filepath.Join(name, filepath.FromSlash(entry)))
+		if err != nil {
+			return nil, "", err
+		}
+		defer file.Close()
+		data, err := io.ReadAll(io.LimitReader(&contextReader{ctx, file}, 40<<20+1))
+		if len(data) > 40<<20 {
+			return nil, "", fmt.Errorf("漫画图片超过 40 MB")
+		}
+		return data, imageType(entry), err
 	}
 	file, err := openSource(root, name)
 	if err != nil {

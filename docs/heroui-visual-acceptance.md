@@ -35,6 +35,38 @@
 
 ## 证据和边界
 
+### 全局去除焦点蓝框（用户最终要求，2026-10-27）
+
+新增全局 focus.css，在入口最后加载，统一去除原生 outline、HeroUI/Tailwind 外圈及输入框的聚焦蓝色边框，包括鼠标和键盘焦点状态；取代此前“键盘保留蓝色封面矩形框”的规则，原有选中底色和普通控件阴影保留。实际搜索输入框点击后 outline none、无蓝色 ring；Tab 到搜索按钮仍为 outline none、ring shadow 透明；排序下拉打开/关闭正常。截图 `tmp/ui-fixes-20261027/global-no-focus-ring.png`，本轮未刷新或修改业务数据。
+
+### 封面焦点样式（2026-10-27）
+
+封面 Button 不再继承普通按钮的胶囊圆角、灰色 hover 底和悬浮阴影。鼠标点击并关闭详情后，实际计算样式为透明背景、outline none、box-shadow none；封面不出现椭圆蓝圈。通过 Shift+Tab / Tab 实测键盘仍获得沿封面 10px 圆角的矩形焦点提示。修复仅作用于 `.poster-card.button`，未全局移除按钮焦点。截图：`tmp/ui-fixes-20261027/comic-card-no-ring.png`；本轮未刷新书库、消费下载文件或改变业务数据。
+
+### 按目录同步与删除（当前流程，2026-10-27）
+
+按用户新指令取代之前的去重/历史关联流程：刷新先完整扫描 comics，删除源已不存在的 SQLite 漫画及其封面、元数据、标签和旧关联，再直接解包 download，最后扫描补充入库；不做内容去重，同名目录另加编号。新增详情「删除漫画」与 HeroUI 确认弹窗，同时删除指定本地源和 SQLite 数据，路径验证拒绝根目录、外部路径和符号链接。
+
+当前真实 5174/18080 页面已执行刷新，SQLite 从旧 CBZ 缺失记录加图片目录共 2 条变为仅 1 条 DIRECTORY，旧别名行已清理。验收删除入口、确认文案和取消后保留作品；没有为了验收删除用户现有漫画。实际删除文件/关联数据的行为、路径边界及不去重导入由测试夹具覆盖。Go reading/store/httpapi、前端 TypeScript 与 34 项测试通过。数据备份 `tmp/backups/comics-schema-20261027-164423/`，弹窗截图 `tmp/ui-fixes-20261027/comic-delete-confirm.png`。当前后端日志继续确认项目原 data 路径，PostgreSQL 仍未切换。
+
+### 漫画导入与元数据（2026-10-27）
+
+后续使用用户放入真实 download 的 CBZ 完成了文件消费验收：解压至原 comics 下的同名目录，96 个文件、95 张可读漫画页，逐文件校验完成后源 CBZ 删除，download 已空。实际发现并修复旧 CBZ 缺失记录与新目录重复展示的问题：关联旧记录到新目录、保留旧记录与已有元数据，反复刷新仍只显示 1 本。真实页面打开目录漫画并验证第 1 / 2 页图片及翻页成功，返回书库；浏览器无 error/warn。截图 `tmp/ui-fixes-20261027/comics-real-import.png`。reading/store/httpapi 测试通过，当前后端为修复后的原 18080 服务，原 SQLite 和 master.key 路径不变。下列“download 为空未实测”描述为此前阶段的记录，由本段补充为已完成实际导入验证。
+
+- 实际服务仍为前端 5174 / 后端 18080，后端日志确认 `D:\tmp\mediahub\data`；增加表前已通过 SQLite backup API 保存包含 WAL 内容的一致性副本和密钥，位于 `tmp/backups/comics-schema-20261027-155326/`。
+- 实际页面执行刷新库：当前 comics 内的 1 本 CBZ 正常同步，原文件保留；download 为空，没有创建测试业务记录、移动现有漫画或触发源文件删除。
+- 实际打开「刷新元数据」弹窗并运行「仅补缺失」：最终 1/1，更新 0、未匹配 1、失败 0；没有把无关结果写入 SQLite。当前环境没有配置 Cookie，ExHentai 优先分支由单元测试覆盖，未实测站点权限；本地完整元数据详情尚无真实匹配样本供页面验收。
+- 弹窗、按钮相邻位置及任务结果已截图：`tmp/ui-fixes-20261027/comics-metadata-dialog.png`、`comics-refresh-result.png`。浏览器本轮无 error/warn，视口已恢复。
+- Go reading/store/httpapi 测试通过；前端 TypeScript 和 34 项测试通过。解包成功删除、ZIP 校验失败保留、重试、冲突、重复归档与图片目录读取用单元测试验证，未用临时库替代实际联调；当前真实 download 为空，因此未实测真实文件消费。未执行前端生产 build。
+
+### 用户反馈复验（2026-10-27）
+
+- 修复侧栏 HeroUI Button 默认居中造成的左侧留白，导航图标和文字统一左对齐。
+- 修复海报透明 Button 默认高度限制，点击区域覆盖整张海报；在实际 `/discover` 点击海报中央进入蜘蛛侠作品详情，真实详情加载成功，未捕获控制台错误。用户提及的报错本轮未复现。
+- AppSelect 统一垂直居中和文字行高；实测 44px 触发器中的 20px 文字框上下各留 12px，选择“最近入库”后正常关闭并更新文案。
+- 共享 FilterTabs 的标签和指示背景统一为紧凑胶囊形；实际设置页确认外观，保留探索页既有紧凑尺寸。
+- 桌面 1440×900 验收后恢复视口；截图保存于 `tmp/ui-fixes-20261027/`。本轮仅修改样式，未运行 build。
+
 截图位于 `tmp/visual-acceptance-20261027/`：`comics-desktop.png`、`comics-mobile.png`、`comics-dark.png`、`login-toast.png`。目录是开发验收产物，不属于业务数据。
 
 临时视口已恢复，主题已恢复浅色；未修改服务端业务配置、订阅或密钥，未执行删除/初始化。未覆盖全部页面的每个数据状态、上游异常和所有写入操作，也未用新的 Cookie 验证 ExHentai 权限。官方 Figma 画布仍受访问限制，本轮验收依据实际页面及 HeroUI MCP 文档。

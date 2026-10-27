@@ -31,7 +31,7 @@
 
 已清理会覆盖新控件的旧搜索弹层、单选和开关样式，并补充封面、透明翻页区、音乐滑块的业务布局适配。普通段落、图片、网格、图表和内容容器保留语义 HTML，不能仅因为它们是 HTML 就强行替换成不匹配的控件。
 
-## 保留的自定义展示与交互：20 个命名组件
+## 保留的自定义展示与交互：21 个命名组件
 
 统计口径：具有产品专用展示、布局或交互的命名组件；不把每个页面、每个内部函数或 HeroUI 公共包装都算成重新设计的基础控件。以下组件的按钮、表单、弹层等仍组合 HeroUI。
 
@@ -58,7 +58,9 @@
 | 19 | SalesChart | mocks/charts.tsx | 示例销售柱状图；MCP 列表没有 Chart，保留 SVG 图表。 |
 | 20 | TrafficChart | mocks/charts.tsx | 示例流量折线图；MCP 列表没有 Chart，保留 SVG 图表。 |
 
-## HeroUI 组合包装，不计入上述 20 个
+新增 `ComicMetadataDetails`（`components/media/ComicMetadata.tsx`）：本地漫画与在线画廊共用的标题资料和命名空间标签布局；标签用 HeroUI Button / Chip，弹窗仍由 Overlay 负责。依据现有 E-Hentai 详情字段，未声称已读取 Figma 画布。
+
+## HeroUI 组合包装，不计入上述 21 个
 
 `AppSelect`、`AppDisclosure`、`AppProgress`、`AppSlider`、`Overlay`、`FilterTabs`、`Field`、`Toggle`、`SelectField`、`Notice`、`HeaderSearch`、`MediaUserMenu`、示例 `Avatar`、`Growth`、`SecretField`、`DirectoryField` 共 16 项。它们统一参数、认证或业务数据，交互基础由 HeroUI 负责。
 

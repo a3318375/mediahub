@@ -5,9 +5,10 @@ import { BookOpen, Star } from "lucide-react";
 import { errorText } from "../../components/media/MediaUI";
 import { Overlay } from "../../components/ui/Overlay";
 import { request, type Session } from "../../lib/media-service";
-import { languageLabel, namespaceLabel, searchTag, tagLabel } from "../../lib/ehentai-tags";
+import { searchTag } from "../../lib/ehentai-tags";
 import { ReadingLibrary } from "./ReadingLibrary";
 import { ReadingReader, useReadingImage } from "./ReadingReader";
+import { ComicMetadataDetails } from "../../components/media/ComicMetadata";
 
 type Gallery = { id: string; token: string; site: string; title: string; japaneseTitle: string; cover: string; category: string; uploader: string; posted: string; language: string; rating: string; pages: number; tags: Record<string, string[]> };
 type Results = { items: Gallery[]; next: string };
@@ -134,6 +135,6 @@ function GalleryDetail({ gallery, session, close, read, saved, findTag }: { gall
   return <Overlay title={detail?.title || gallery.title} onClose={close} wide footer={<><Button variant="secondary" isDisabled={!detail || saving || favorite} onPress={collect}><Star size={16} />{favorite ? "已加入书架" : saving ? "收藏中…" : "加入书架"}</Button><Button isDisabled={!detail?.pages} onPress={() => detail && read(detail)}><BookOpen size={16} />在线阅读</Button></>}>
     {error && <div role="alert" className="media-error">{error}<Button variant="ghost" onPress={() => setRevision((v) => v + 1)}>重试</Button></div>}
     {!detail && !error && <p role="status">正在读取画廊详情…</p>}
-    {detail && <><div className="eh-detail"><Cover gallery={detail} session={session} /><dl className="reading-details"><dt>日文标题</dt><dd>{detail.japaneseTitle || "—"}</dd><dt>分类</dt><dd>{detail.category || "—"}</dd><dt>页数</dt><dd>{detail.pages || "未知"}</dd><dt>语言</dt><dd>{languageLabel(detail.language) || "—"}</dd><dt>上传者</dt><dd>{detail.uploader || "—"}</dd><dt>发布</dt><dd>{detail.posted || "—"}</dd><dt>评分</dt><dd>{detail.rating || "—"}</dd></dl></div><div className="eh-tags">{Object.entries(detail.tags).map(([namespace, tags]) => <div key={namespace}><strong>{namespaceLabel(namespace)}</strong><p>{tags.map((tag) => <Button variant="ghost" type="button" key={tag} className="eh-tag" aria-label={`搜索${namespaceLabel(namespace)}：${tagLabel(namespace, tag)}`} onPress={() => findTag(namespace, tag)}>{tagLabel(namespace, tag)}</Button>)}</p></div>)}</div></>}
+    {detail && <ComicMetadataDetails metadata={detail} cover={<Cover gallery={detail} session={session} />} onTag={findTag} />}
   </Overlay>;
 }

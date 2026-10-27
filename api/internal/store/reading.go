@@ -7,16 +7,17 @@ import (
 )
 
 type ReadingItem struct {
-	Root       string `json:"-"`
-	ID         string `json:"id"`
-	Kind       string `json:"kind"`
-	Path       string `json:"path"`
-	Title      string `json:"title"`
-	Format     string `json:"format"`
-	Size       int64  `json:"size"`
-	ModifiedAt string `json:"modifiedAt"`
-	ImportedAt string `json:"importedAt"`
-	Available  bool   `json:"available"`
+	Root       string         `json:"-"`
+	ID         string         `json:"id"`
+	Kind       string         `json:"kind"`
+	Path       string         `json:"path"`
+	Title      string         `json:"title"`
+	Format     string         `json:"format"`
+	Size       int64          `json:"size"`
+	ModifiedAt string         `json:"modifiedAt"`
+	ImportedAt string         `json:"importedAt"`
+	Available  bool           `json:"available"`
+	Metadata   *ComicMetadata `json:"metadata,omitempty"`
 }
 
 func (s *Store) GetReading(ctx context.Context, kind, id string) (ReadingItem, error) {
@@ -24,6 +25,9 @@ func (s *Store) GetReading(ctx context.Context, kind, id string) (ReadingItem, e
 	err := s.db.QueryRowContext(ctx, `SELECT id,kind,root,path,title,format,size,modified_at,imported_at,available FROM reading_items WHERE id=? AND kind=?`, id, kind).Scan(&item.ID, &item.Kind, &item.Root, &item.Path, &item.Title, &item.Format, &item.Size, &item.ModifiedAt, &item.ImportedAt, &item.Available)
 	if err == sql.ErrNoRows {
 		err = ErrNotFound
+	}
+	if err == nil && kind == "comics" {
+		item.Metadata, err = s.ComicMetadata(ctx, id)
 	}
 	return item, err
 }
@@ -70,7 +74,20 @@ func (s *Store) ListReading(ctx context.Context, q ReadingQuery) (ReadingPage, e
 		}
 		result.Items = append(result.Items, item)
 	}
-	return result, rows.Err()
+	err = rows.Err()
+	rows.Close()
+	if err != nil {
+		return result, err
+	}
+	if q.Kind == "comics" {
+		for i := range result.Items {
+			result.Items[i].Metadata, err = s.ComicMetadata(ctx, result.Items[i].ID)
+			if err != nil {
+				return result, err
+			}
+		}
+	}
+	return result, nil
 }
 
 func (s *Store) ReadingScan(ctx context.Context, kind string) (ReadingScan, error) {
@@ -82,7 +99,7 @@ func (s *Store) ReadingScan(ctx context.Context, kind string) (ReadingScan, erro
 	return scan, err
 }
 
-// Commit only complete scans. Missing files retain their catalog records.
+// Commit complete scans. Missing comics are deleted; novel records remain compatible.
 func (s *Store) SaveReadingScan(ctx context.Context, kind, root string, items []ReadingItem) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -100,6 +117,11 @@ func (s *Store) SaveReadingScan(ctx context.Context, kind, root string, items []
 	defer stmt.Close()
 	for _, item := range items {
 		if _, err = stmt.ExecContext(ctx, item.ID, kind, root, item.Path, item.Title, item.Format, item.Size, item.ModifiedAt, now); err != nil {
+			return err
+		}
+	}
+	if kind == "comics" {
+		if err := pruneComicsTx(ctx, tx, root, items); err != nil {
 			return err
 		}
 	}

@@ -7,6 +7,7 @@ services:
       - ./data:/data
       - ./strm:/strm
       - ./comics:/comics
+      - ./download:/download
       - ./book:/book
     restart: unless-stopped
     logging:

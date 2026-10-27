@@ -168,6 +168,10 @@ CREATE TABLE IF NOT EXISTS reading_items (
  UNIQUE(kind, root, path)
 );
 CREATE INDEX IF NOT EXISTS idx_reading_kind ON reading_items(kind, title);
+CREATE TABLE IF NOT EXISTS reading_comic_duplicates (
+ alias_id TEXT PRIMARY KEY,
+ canonical_id TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS reading_covers (
  item_id TEXT PRIMARY KEY REFERENCES reading_items(id),
  size INTEGER NOT NULL,
@@ -179,4 +183,20 @@ CREATE TABLE IF NOT EXISTS reading_scans (
  kind TEXT PRIMARY KEY,
  completed_at TEXT NOT NULL,
  found INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS comic_metadata (
+ item_id TEXT PRIMARY KEY REFERENCES reading_items(id),
+ gallery_id TEXT NOT NULL, token TEXT NOT NULL, site TEXT NOT NULL,
+ title TEXT NOT NULL, japanese_title TEXT NOT NULL, cover TEXT NOT NULL,
+ category TEXT NOT NULL, uploader TEXT NOT NULL, posted TEXT NOT NULL,
+ language TEXT NOT NULL, rating TEXT NOT NULL, pages INTEGER NOT NULL,
+ fetched_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comic_gallery ON comic_metadata(site,gallery_id,token);
+CREATE TABLE IF NOT EXISTS comic_metadata_tags (
+ item_id TEXT NOT NULL REFERENCES comic_metadata(item_id),
+ revision TEXT NOT NULL,
+ namespace TEXT NOT NULL, tag TEXT NOT NULL,
+ PRIMARY KEY(item_id,revision,namespace,tag)
 );

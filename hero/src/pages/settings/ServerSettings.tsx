@@ -36,6 +36,7 @@ export function ServerSettings({
           : "设置保存在服务端。API Key、115 Cookie 和机器人令牌加密存储；默认显示头尾部分，点击“显示全文”查看。"}
       </p>
       <FilterTabs
+        variant="segmented"
         label="全局设置分类"
         value={tab}
         options={settingsTabs}
