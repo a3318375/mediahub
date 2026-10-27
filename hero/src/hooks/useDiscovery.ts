@@ -54,7 +54,7 @@ export function useDiscovery({
     if (demo) return;
     let active = true;
     api
-      .providers(revision > 0)
+      .providers(revision > 0 || retry > 0)
       .then((r) => {
         if (!active) return;
         setCapabilities(r.providers);
@@ -86,7 +86,7 @@ export function useDiscovery({
     return () => {
       active = false;
     };
-  }, [api, demo, ranking, revision]);
+  }, [api, demo, ranking, revision, retry]);
   useEffect(() => {
     if (!ranking) return;
     let active = true;
@@ -115,7 +115,6 @@ export function useDiscovery({
     };
   }, [api, type, region, ranking, revision]);
   useEffect(() => {
-    if (!ranking && !demo && !capability?.available) return;
     let active = true;
     setBusy(true);
     setError("");
@@ -147,7 +146,7 @@ export function useDiscovery({
       ? api.ranking(
           source === "streaming" ? "tmdb" : source,
           name,
-          revision > 0,
+          revision > 0 || retry > 0,
           (page) => {
             if (active) setRankingFetchedAt(page?.fetchedAt || "");
           },
@@ -162,7 +161,7 @@ export function useDiscovery({
               pageSize: String(Math.min(20, capability?.pageSizeMax || 20)),
               ...filters,
             },
-            revision > 0,
+            revision > 0 || retry > 0,
           )
           .then((r) => {
             if (active) {

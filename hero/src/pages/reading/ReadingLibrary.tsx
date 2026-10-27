@@ -13,7 +13,7 @@ type Kind = "comics" | "novels";
 type Item = { id: string; title: string; path: string; format: string; size: number; modifiedAt: string; importedAt: string; available: boolean; metadata?: GalleryMetadata };
 type MetadataStatus = { running: boolean; total: number; done: number; updated: number; skipped: number; failed: number; error: string; completedAt: string };
 type Page = { items: Item[]; total: number; page: number; pageSize: number };
-type Status = { configured: boolean; running: boolean; error: string; completedAt: string; found: number };
+type Status = { configured: boolean; running: boolean; error: string; completedAt: string; found: number; root?: string; directoryError?: string };
 const names = { comics: "漫画", novels: "小说" };
 const formats = { comics: ["CBZ", "CBR"], novels: ["TXT", "EPUB"] };
 function date(value: string) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未刷新"; }
@@ -79,6 +79,7 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
     return () => { controller.abort(); clearTimeout(timer); };
   }, [base, session, demo]);
   async function refresh() {
+    if (starting || status?.running || metadataStarting || metadataStatus?.running) return;
     setStarting(true); setStatusError("");
     try {
       await load(`${base}/refresh`, "POST");
@@ -130,7 +131,7 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
       <form className="reading-search" onSubmit={search} role="search" aria-label={`搜索${names[kind]}书库`}>
         <Input aria-label={`搜索${names[kind]}`} placeholder={`搜索${names[kind]}名称或路径…`} value={input} onChange={(e) => setInput(e.target.value)} />
         <Button type="submit" variant="secondary"><Search size={16} aria-hidden="true" />搜索</Button>
-        <Button type="button" isDisabled={!status?.configured || !!running || !!metadataRunning} onPress={refresh}><FolderSync size={16} aria-hidden="true" className={running ? "reading-spinning" : undefined} />{running ? "刷新中…" : "刷新库"}</Button>
+        <Button type="button" isDisabled={!!running || !!metadataRunning} onPress={refresh}><FolderSync size={16} aria-hidden="true" className={running ? "reading-spinning" : undefined} />{running ? "刷新中…" : "刷新库"}</Button>
         {kind === "comics" && <Button type="button" variant="secondary" isDisabled={demo || !!running || !!metadataRunning} onPress={() => setMetadataDialog(true)}>{metadataRunning ? "元数据刷新中…" : "刷新元数据"}</Button>}
       </form>
       <div className="reading-filters">
@@ -142,7 +143,7 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
     <div className="reading-summary" role="status" aria-live="polite">
       <span>{result ? `共 ${result.total} 部${names[kind]}` : "正在读取书库…"}</span>
       <span>{running ? `正在扫描${names[kind]}目录，完成后自动更新` : status?.completedAt ? `最近刷新 ${date(status.completedAt)} · 扫描到 ${status.found} 个文件` : "书库尚未刷新"}</span>
-      {status && !status.configured && <span className="reading-inline-warning">{names[kind]}目录暂不可用，请检查书库挂载后刷新。</span>}
+      {status && !status.configured && <span className="reading-inline-warning">{status.directoryError || `${names[kind]}目录暂不可用${status.root ? `（${status.root}）` : ""}`}。修复挂载或权限后可再次点击“刷新库”。</span>}
     </div>
     {(statusError || status?.error) && <p className="media-error" role="alert">{statusError || status?.error}</p>}
     {kind === "comics" && <>
@@ -154,11 +155,11 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
     <div aria-busy={busy} className="reading-results">
       {busy ? <div className="reading-empty" role="status">正在读取{names[kind]}书库…</div> : !error && !result?.items.length ? <div className="reading-empty"><Icon size={36} aria-hidden="true" /><h2>{query || format ? "没有找到匹配的作品" : `你的${names[kind]}书库还没有作品`}</h2><p>{query || format ? "试试其他关键词，或清除筛选条件。" : `点击「刷新库」从已配置目录导入${names[kind]}，之后随时浏览。`}</p>{(query || format) && <Button variant="secondary" onPress={() => { setInput(""); setQuery(""); setFormat(""); setPage(1); }}>清除筛选</Button>}</div> : !error && <div className="poster-grid reading-grid">{result?.items.map((item) => <Button variant="ghost" key={item.id} className="poster-card reading-card" onPress={() => setSelected(item)} aria-label={`查看《${item.title}》信息`}>
         <div className={`poster-art reading-cover reading-cover--${kind}`}><ReadingCover item={item} kind={kind} session={session} />{kind !== "comics" && <span className="reading-format">{item.format}</span>}</div>
-        <h2 className="poster-title">{item.metadata?.title || item.title}</h2><p className="poster-meta">{size(item.size)}{!item.available ? " · 源文件缺失" : kind !== "comics" ? ` · ${item.format}` : ""}</p>
+        <h2 className="poster-title">{item.metadata?.title || item.title}</h2><p className="poster-meta">{size(item.size)}{!item.available ? " · 最近扫描未找到文件" : kind !== "comics" ? ` · ${item.format}` : ""}</p>
       </Button>)}</div>}
     </div>
     {result && pages > 1 && <nav className="reading-pagination" aria-label="书库分页"><Button variant="secondary" isDisabled={busy || page <= 1} onPress={() => setPage((n) => n - 1)}>上一页</Button><span>第 {page} / {pages} 页</span><Button variant="secondary" isDisabled={busy || page >= pages} onPress={() => setPage((n) => n + 1)}>下一页</Button></nav>}
-    {selected && !deleteItem && <Overlay title={selected.metadata?.title || selected.title} onClose={() => setSelected(null)} footer={<>{kind === "comics" && <Button variant="danger-soft" isDisabled={demo || !!running || !!metadataRunning} onPress={() => {setDeleteError(""); setDeleteItem(selected);}}>删除漫画</Button>}<Button isDisabled={!selected.available || selected.format === "CBR" || demo} onPress={() => { setReading(selected); setSelected(null); }}>开始 / 继续阅读</Button></>}>
+    {selected && !deleteItem && <Overlay title={selected.metadata?.title || selected.title} onClose={() => setSelected(null)} footer={<>{kind === "comics" && <Button variant="danger-soft" isDisabled={demo || !!running || !!metadataRunning} onPress={() => {setDeleteError(""); setDeleteItem(selected);}}>删除漫画</Button>}<Button isDisabled={selected.format === "CBR" || demo} onPress={() => { setReading(selected); setSelected(null); }}>开始 / 继续阅读</Button></>}>
       {kind === "comics" && selected.metadata && <ComicMetadataDetails metadata={selected.metadata} cover={<div className="poster-art reading-cover eh-cover"><ReadingCover item={selected} kind={kind} session={session} /></div>} />}
       {kind === "comics" && !selected.metadata && <p className="media-note">尚未获取作品元数据，可使用「刷新元数据」补充详情。</p>}
       <dl className="reading-details"><dt>类型</dt><dd>{names[kind]}</dd>{kind !== "comics" && <><dt>格式</dt><dd>{selected.format}</dd></>}<dt>文件大小</dt><dd>{size(selected.size)}</dd><dt>相对路径</dt><dd>{selected.path}</dd><dt>文件更新</dt><dd>{date(selected.modifiedAt)}</dd><dt>首次入库</dt><dd>{date(selected.importedAt)}</dd><dt>文件状态</dt><dd>{selected.available ? "最近扫描时存在" : "最近扫描时未找到，入库信息已保留"}</dd></dl>{selected.format === "CBR" && <p className="reading-hint">这部漫画暂不支持在线阅读，请转换为支持的漫画文件后重试。</p>}</Overlay>}

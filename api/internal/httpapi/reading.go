@@ -2,8 +2,9 @@ package httpapi
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"log"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -81,15 +82,28 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 			fail(c, 500, "读取刷新状态失败")
 			return
 		}
-		info, pathErr := os.Stat(library.roots[kind])
-		available := pathErr == nil && info.IsDir()
-		c.JSON(200, gin.H{"configured": available, "running": job.Running, "error": job.Error, "completedAt": scan.CompletedAt, "found": scan.Found})
+		pathErr := reading.CheckReadableDirectory(library.roots[kind])
+		directoryError := ""
+		if pathErr != nil {
+			directoryError = pathErr.Error()
+		}
+		c.JSON(200, gin.H{"configured": pathErr == nil, "root": library.roots[kind], "directoryError": directoryError, "running": job.Running, "error": job.Error, "completedAt": scan.CompletedAt, "found": scan.Found})
 	})
 	group.POST("/refresh", func(c *gin.Context) {
 		kind := c.Param("kind")
 		root := library.roots[kind]
 		if root == "" {
 			fail(c, 400, "书库目录不可用，请检查目录挂载")
+			return
+		}
+		// Reject unreadable roots before reserving a job or touching library data.
+		// The frontend may retry this probe after NAS permissions are repaired.
+		if err := reading.CheckReadableDirectory(root); err != nil {
+			status := 400
+			if errors.Is(err, fs.ErrPermission) {
+				status = 403
+			}
+			fail(c, status, err.Error()+"；请检查容器挂载及服务运行用户权限，修复后可再次点击刷新库")
 			return
 		}
 		library.mu.Lock()
@@ -101,6 +115,8 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 		library.jobs[kind] = readingJob{Running: true}
 		library.mu.Unlock()
 		if !a.background.Go(func(parent context.Context) {
+			job := readingJob{}
+			defer func() { library.mu.Lock(); library.jobs[kind] = job; library.mu.Unlock() }()
 			ctx, cancel := context.WithTimeout(parent, 30*time.Minute)
 			defer cancel()
 			var importProblems []string
@@ -149,7 +165,6 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 					}
 				}
 			}
-			job := readingJob{}
 			if len(importProblems) > 0 {
 				job.Error = "书库已刷新，部分 CBZ 未完成导入或源文件删除：" + strings.Join(importProblems, "；")
 				log.Printf("comics import: %s", job.Error)
@@ -158,9 +173,6 @@ func (a *API) mountReading(v1 *gin.RouterGroup) {
 				log.Printf("reading library %s scan failed: %v", kind, err)
 				job.Error = "刷新未完成，请检查目录权限、挂载及服务日志。已完成的目录同步结果保留。"
 			}
-			library.mu.Lock()
-			library.jobs[kind] = job
-			library.mu.Unlock()
 		}) {
 			library.mu.Lock()
 			library.jobs[kind] = readingJob{}

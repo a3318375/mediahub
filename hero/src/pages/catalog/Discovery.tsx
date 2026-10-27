@@ -95,7 +95,6 @@ export function Discovery({
     error,
     setRevision,
     capability,
-    capabilities,
     chooseSource,
     mediaTypes,
   } = useDiscovery({
@@ -137,10 +136,6 @@ export function Discovery({
                 <Tabs.Tab
                   key={id}
                   id={id}
-                  isDisabled={
-                    !demo &&
-                    !capabilities.find((c) => c.source === id)?.available
-                  }
                 >
                   {label}
                   <Tabs.Indicator />

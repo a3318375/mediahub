@@ -12,15 +12,17 @@ export function MediaOutputSettings({session,kind}:{session:Session;kind:OutputK
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
+  const [revision,setRevision]=useState(0);
   useEffect(()=>{
     const controller=new AbortController();setLoaded(false);setError("");setNotice("");setConfig(empty);
     if(session.mode!=="live")return ()=>controller.abort();
     mediaOutputApi.config(kind,controller.signal).then((job)=>{if(!controller.signal.aborted){setConfig(job.config);setLoaded(true);}}).catch((e)=>{if(!controller.signal.aborted)setError(errorText(e));});
     return ()=>controller.abort();
-  },[kind,session]);
+  },[kind,session,revision]);
   return <Card className="management-card">
     <h2>{kind==="strm"?"STRM 生成设置":"手动刮削设置"}</h2>
     <Notice error={error}>{notice}</Notice>
+    {!loaded&&error&&session.mode==="live"&&<Button variant="secondary" onPress={()=>setRevision(n=>n+1)}>重新读取配置</Button>}
     {session.mode!=="live"&&<p>连接真实服务后配置此功能。</p>}
     <form className="management-stack" onSubmit={async(event)=>{
       event.preventDefault();if(busy||!loaded)return;setBusy(true);setError("");setNotice("");

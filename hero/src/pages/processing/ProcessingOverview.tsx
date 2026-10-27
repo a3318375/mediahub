@@ -23,7 +23,6 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
   const [busy, setBusy] = useState(false);
   const [job,setJob]=useState<OutputJob|null>(null);
   const outputMode=mode==="strm"||mode==="scraping";
-  const available=!outputMode||job?.configured;
   const running=job?.status.state==="running"||job?.status.state==="queued";
 
   useEffect(() => {
@@ -48,7 +47,7 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
   }, [session, revision, mode]);
 
   async function run() {
-    if (busy || !available) return;
+    if (busy || running) return;
     setBusy(true); setError(""); setNotice("");
     try {
       const result = mode === "strm" || mode === "scraping" ? await mediaOutputApi.run(mode) : mode === "organize" ? await organizeApi.run() : await downloadApi.run();
@@ -74,7 +73,7 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
             <RefreshCw size={16} />刷新状态
           </Button>
           {outputMode&&<Button variant="ghost" onPress={()=>{window.location.hash=`/settings/${mode}`;}}>配置</Button>}
-          <Button isDisabled={busy || running || !available || session.mode !== "live"} onPress={() => void run()}>
+          <Button isDisabled={busy || running || session.mode !== "live"} onPress={() => void run()}>
             {busy ? "正在触发…" : running ? "执行中…" : actions[mode]}
           </Button>
         </div>

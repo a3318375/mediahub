@@ -144,6 +144,7 @@ function DirectoryPicker({
   const [items, setItems] = useState<DownloadFile[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
+  const [revision, setRevision] = useState(0);
   const current = path.at(-1)!;
   useEffect(() => {
     const controller = new AbortController();
@@ -163,13 +164,14 @@ function DirectoryPicker({
         if (!controller.signal.aborted) setBusy(false);
       });
     return () => controller.abort();
-  }, [current.id]);
+  }, [current.id, revision]);
   return (
     <Overlay title="选择 115 文件夹" onClose={onClose}>
       <div className="management-stack">
         <p>{path.map((p) => p.name).join(" / ")}</p>
         <Notice error={error} />
         <div className="management-actions">
+          <Button variant="secondary" isDisabled={busy} onPress={() => setRevision((n) => n + 1)}>重新读取目录</Button>
           <Button
             variant="secondary"
             isDisabled={path.length === 1 || busy}
@@ -179,7 +181,7 @@ function DirectoryPicker({
             上一级
           </Button>
           <Button
-            isDisabled={current.id === "0" || busy || !!error}
+            isDisabled={current.id === "0" || busy}
             onPress={() => onSelect(current.id)}
           >
             选择当前目录

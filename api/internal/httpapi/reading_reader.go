@@ -22,7 +22,7 @@ func (library *readingLibrary) mountReader(group *gin.RouterGroup) {
 			}
 			return item, nil, false
 		}
-		if !item.Available || item.Root != library.roots[item.Kind] {
+		if item.Root != library.roots[item.Kind] {
 			fail(c, 404, "源文件当前不可用，请刷新书库")
 			return item, nil, false
 		}

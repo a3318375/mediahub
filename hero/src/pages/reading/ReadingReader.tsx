@@ -23,7 +23,7 @@ export function useReadingImage(url: string | null, session: Session) {
   return { src, error };
 }
 export function ReadingCover({ item, kind, session }: { item: ReadingItem; kind: ReadingKind; session: Session }) {
-  const { src } = useReadingImage(item.available && ["CBZ", "DIRECTORY", "EPUB"].includes(item.format) && session.mode === "live" ? `/api/v1/reading/${kind}/${item.id}/cover` : null, session);
+  const { src } = useReadingImage(["CBZ", "DIRECTORY", "EPUB"].includes(item.format) && session.mode === "live" ? `/api/v1/reading/${kind}/${item.id}/cover` : null, session);
   return src ? <img className="reading-real-cover" src={src} alt={`${item.title}封面`} loading="lazy" onLoad={(e) => { if(e.currentTarget.naturalWidth > e.currentTarget.naturalHeight * 1.6) e.currentTarget.style.objectPosition = "27% center"; }} /> : <div className={`reading-book-art reading-book-art-${kind}`} aria-hidden="true"><span>{kind === "comics" ? "COMIC" : "NOVEL"}</span><strong>{item.title}</strong><small>{kind === "comics" ? "漫画藏书" : "私人书架"}</small></div>;
 }
 export function ReadingReader({ item, kind, session, close, source, positionKey }: { item: ReadingItem; kind: ReadingKind; session: Session; close: () => void; source?: { base: string; site: string; count: number }; positionKey?: string }) {

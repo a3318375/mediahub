@@ -104,7 +104,7 @@ export function MusicLibrary({ session, showSongs = true }: { session: Session; 
     }
   }
   const busy = refreshing || Boolean(status?.scanning);
-  const refreshButton = <Button size="sm" variant="secondary" isDisabled={session.mode !== "live" || !status || Boolean(statusError) || busy} isPending={busy} onPress={refresh}><RefreshCw size={15} aria-hidden="true" className={busy ? "motion-safe:animate-spin" : ""} />{busy ? "刷新中…" : "刷新库"}</Button>;
+  const refreshButton = <Button size="sm" variant="secondary" isDisabled={session.mode !== "live" || busy} isPending={busy} onPress={refresh}><RefreshCw size={15} aria-hidden="true" className={busy ? "motion-safe:animate-spin" : ""} />{busy ? "刷新中…" : "刷新库"}</Button>;
   const feedback = <Notice error={refreshError || statusError || status?.error || listError}>{notice}</Notice>;
   if (!showSongs) return <Card className="management-card management-stack" aria-label="本地音乐库"><div className="music-page-heading"><h2>本地音乐库</h2>{refreshButton}</div><p className="media-note break-all">音乐目录：<code>{status?.root || "读取中…"}</code></p><p role="status">{status ? `${status.count} 首歌曲${busy ? " · 刷新中…" : ""}` : "正在读取曲库状态…"}{status?.completedAt && <> · 上次刷新：{new Date(status.completedAt).toLocaleString("zh-CN", { hour12: false })}</>}</p>{feedback}</Card>;
 
