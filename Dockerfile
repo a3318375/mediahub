@@ -15,7 +15,7 @@ RUN if ! grep -q 'func WaitForAsyncTasks' third_party/pansou/plugin/plugin.go; t
 RUN CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /out/mediahub ./cmd/server
 
 FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata curl \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata curl ffmpeg \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=backend /out/mediahub /app/mediahub

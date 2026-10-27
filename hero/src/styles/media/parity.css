@@ -1,12 +1,13 @@
-/* Text-only source switcher, matching the rounded segmented control reference. */
+/* Source switcher shares the global compact segmented-control theme. */
 .discovery-source-tabs {
   width: min(100%, 520px);
   margin-bottom: 20px;
 }
 .discovery-source-tabs .tabs__list-container {
-  border-radius: 999px;
+  border-radius: var(--segment-container-radius);
   background: var(--surface-secondary);
-  padding: 5px;
+  border: 1px solid var(--border);
+  padding: 3px;
 }
 .discovery-source-tabs .tabs__list {
   display: flex;
@@ -18,8 +19,8 @@
 .discovery-source-tabs .tabs__tab {
   flex: 1;
   min-width: 0;
-  min-height: 44px;
-  border-radius: 999px;
+  min-height: 34px;
+  border-radius: var(--segment-radius);
   isolation: isolate;
   color: var(--muted);
   font-size: 14px;
@@ -29,10 +30,13 @@
   color: var(--foreground);
 }
 .discovery-source-tabs .tabs__indicator {
-  border-radius: 999px;
+  border-radius: var(--segment-radius);
   background: var(--surface);
-  box-shadow: 0 2px 5px #00000012;
+  box-shadow: 0 1px 3px #0000000c;
   z-index: -1;
+}
+@media (pointer: coarse) {
+  .discovery-source-tabs .tabs__tab { min-height: 44px; }
 }
 .discovery-source-tabs .tabs__tab:focus-visible {
   outline: 3px solid var(--accent);

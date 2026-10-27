@@ -47,7 +47,7 @@ export function SecretField({
         ) : (
           <Input
             aria-label={label}
-            autoComplete="off"
+            autoComplete={name === "subsonic.password" ? "new-password" : "off"}
             type={edit && !visible ? "password" : "text"}
             value={displayed}
             readOnly={!edit}

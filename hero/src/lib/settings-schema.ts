@@ -3,6 +3,11 @@ import { type SettingsSection, type SettingValue } from "./settings-api";
 type Schema = [string, string, SettingValue, "secret"?];
 
 export const schemas: Record<SettingsSection, Schema[]> = {
+  subsonic: [
+    ["subsonic.enabled", "允许 Subsonic 客户端连接", false],
+    ["subsonic.username", "客户端用户名（现有 MediaHub 账号）", ""],
+    ["subsonic.password", "Subsonic 专用密码", "", "secret"],
+  ],
   tmdb: [["tmdb.apiKey", "TMDB API Key", "", "secret"]],
   emby: [
     ["emby.url", "Emby 地址", ""],
@@ -57,6 +62,7 @@ export const schemas: Record<SettingsSection, Schema[]> = {
 };
 
 export const sectionNames: Record<string, string> = {
+  subsonic: "Subsonic 音乐服务",
   tmdb: "TMDB",
   emby: "Emby",
   "115": "115 网盘",

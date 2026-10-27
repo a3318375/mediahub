@@ -85,7 +85,7 @@
 .service-login label { font-size: 14px; color: var(--foreground); font-weight: 500; }
 .service-login label.management-toggle { flex-direction: row; align-items: center; font-weight: 400; }
 .service-login .input { min-height: 46px; border: 1px solid var(--control-border); }
-.service-login form > .button { min-height: 46px; border-radius: 12px; }
+.service-login form > .button { min-height: 46px; border-radius: var(--button-radius); }
 @media (max-width: 767px) {
   .media-main .media-heading h1 { font-size: 23px; }
   .media-topbar > div { min-width: 0; }

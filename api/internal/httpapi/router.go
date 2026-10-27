@@ -82,7 +82,7 @@ func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downlo
 	organizer.Resolve = api.resolveOrganizeMedia
 	router := gin.New()
 	router.Use(gin.LoggerWithConfig(gin.LoggerConfig{Skip: func(c *gin.Context) bool {
-		if strings.HasPrefix(c.Request.URL.Path, "/api/stream/") {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/stream/") || strings.HasPrefix(c.Request.URL.Path, "/rest/") {
 			return true
 		}
 		if c.Request.Method != http.MethodGet || c.Writer.Status() >= 400 {
@@ -140,6 +140,7 @@ func NewRouterWithBackground(db *store.Store, updater *animesync.Updater, downlo
 	api.mountAnime(v1)
 	api.mountReading(v1)
 	api.mountComics(v1)
+	api.mountSubsonic(router, v1)
 	api.mountDownloads(v1)
 	api.mountOrganize(v1)
 	api.mountMediaOutput(router, v1)
@@ -484,7 +485,7 @@ func fail(c *gin.Context, status int, message string) {
 
 func validSection(section string) bool {
 	switch section {
-	case "tmdb", "emby", "115", "organize", "search", "pansou", "notifications":
+	case "tmdb", "emby", "115", "organize", "search", "pansou", "notifications", "subsonic":
 		return true
 	default:
 		return false
@@ -521,6 +522,12 @@ func (a *API) putSettings(c *gin.Context) {
 	}
 	if body.Values == nil {
 		body.Values = map[string]json.RawMessage{}
+	}
+	if section == "subsonic" {
+		if err := a.validateSubsonicSettings(body.Values); err != nil {
+			fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 	if section == "pansou" {
 		if err := pansoubridge.ValidateSettings(body.Values); err != nil {

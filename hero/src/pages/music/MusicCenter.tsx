@@ -4,12 +4,17 @@ import { ArrowLeft, ArrowUpRight, Heart, Headphones, ListMusic, Music2, Pause, P
 import { AppSlider } from "../../components/ui/AppControls";
 import { FilterTabs } from "../../components/media/MediaUI";
 import { artists, playlists, songs, musicTime, type Song } from "./music-demo";
+import { MusicLibrary } from "./MusicLibrary";
+import type { Session } from "../../lib/media-service";
 
 type View = { kind: "song"; id: number } | { kind: "artist"; name: string } | { kind: "playlist"; id: string } | null;
 function Artwork({ art, title, className = "" }: { art: string; title?: string; className?: string }) {
   return <div aria-hidden="true" className={`music-art music-art-${art} ${className}`}><span className="music-art-orbit" /><span className="music-art-horizon" /><span className="music-art-type">{title || "SIDE A"}</span><span className="music-art-label">MEDIAHUB / ORIGINAL DEMO</span></div>;
 }
-export function MusicCenter() {
+export function MusicCenter({ session }: { session: Session }) {
+  return session.mode === "live" ? <section className="music-center" aria-label="音乐中心"><MusicLibrary session={session} /></section> : <DemoMusicCenter />;
+}
+function DemoMusicCenter() {
   const [tab, setTab] = useState("songs");
   const [query, setQuery] = useState("");
   const [view, setView] = useState<View>(null);

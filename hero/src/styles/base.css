@@ -35,8 +35,6 @@
   --field-foreground: #202023;
   --muted: #838387;
   --border: #e6e6e7;
-  --radius: 1rem;
-  --field-radius: 0.8rem;
   --chart-blue: #0091ff;
   --sidebar-width: 240px;
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
@@ -92,8 +90,7 @@ button svg {
 .button {
   font-weight: 500;
   font-size: 14px;
-  --button-radius: 999px;
-  border-radius: 999px;
+  border-radius: var(--button-radius);
   gap: 6px;
   transition:
     background 0.15s,
@@ -137,7 +134,7 @@ button svg {
 .input {
   height: 38px;
   min-height: 38px;
-  border-radius: 12px;
+  border-radius: var(--field-radius);
   font-size: 14px;
   padding: 0 12px;
   background: var(--field-background);

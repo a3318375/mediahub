@@ -279,7 +279,7 @@ export default function MediaApp() {
               {page === "emby" && <Emby session={session} />}
               {page === "comics" && <Comics session={session} />}
               {page === "novels" && <ReadingLibrary session={session} kind="novels" />}
-              {page === "music" && <MusicCenter />}
+              {page === "music" && <MusicCenter session={session} />}
               {page === "anime" && (
                 <AnimeSubscriptions open={setDetail} session={session} />
               )}

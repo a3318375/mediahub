@@ -1,0 +1,20 @@
+/* Global HeroUI theme knobs. Keep component overrides connected to these tokens.
+ * Change --app-radius here to adjust ordinary controls across the application.
+ * HeroUI uses a radius scale: buttons are 3x the base (2px -> 6px).
+ * Field radius is independent, matching the official theme builder's controls.
+ */
+:root {
+  --app-radius: 0.125rem;
+  --app-field-radius: 0.8rem;
+
+  --radius: var(--app-radius);
+  --field-radius: var(--app-field-radius);
+  --button-radius: calc(var(--app-radius) * 3);
+  --segment-radius: var(--button-radius);
+  --segment-container-radius: calc(var(--segment-radius) + 2px);
+}
+
+.tabs__tab,
+.tabs__indicator {
+  border-radius: var(--button-radius);
+}

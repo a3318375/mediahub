@@ -66,8 +66,9 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
   }
   return (
     <section className="management-stack organize-overview">
-      <div className="media-section-heading">
+      <div className="processing-toolbar">
         <h2>最近记录 <small>{items.length} 部作品</small></h2>
+        <FilterTabs label="作品类型" value={filter} onChange={setFilter} options={[["", "全部"], ["anime", "番剧"], ["tv", "电视剧"], ["movie", "电影"]]} />
         <div className="management-actions">
           <Button variant="secondary" isDisabled={loading || busy} onPress={() => setRevision((n) => n + 1)}>
             <RefreshCw size={16} />刷新状态
@@ -78,7 +79,6 @@ export function ProcessingOverview({ session, mode }: { session: Session; mode: 
           </Button>
         </div>
       </div>
-      <FilterTabs label="作品类型" value={filter} onChange={setFilter} options={[["", "全部"], ["anime", "番剧"], ["tv", "电视剧"], ["movie", "电影"]]} />
       <Notice error={error}>{notice}</Notice>
       <p className="media-note">
         {outputMode?(!job?.configured?"请先在全局设置中配置此功能；未配置不触发任务。":mode==="strm"?(job.config.cron?`定时生成已启用：${job.config.cron}（北京时间），也可手动生成。`:"未启用定时生成，可手动生成；已有文件不会覆盖。"):"刮削仅手动执行，补充 NFO 与图片；未完成的文件可再次触发重试。"):mode === "organize" ? "立即整理使用全局设置中的目录与规则，统一处理未整理文件。" : "立即下载唤醒现有下载调度，处理订阅候选与下载队列。"}

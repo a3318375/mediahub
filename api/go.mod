@@ -13,6 +13,7 @@ require (
 	github.com/aead/ecdh v0.2.0 // indirect
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible // indirect
 	github.com/andreburgaud/crypt2go v1.1.0 // indirect
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 // indirect
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/pkg/errors v0.9.1 // indirect

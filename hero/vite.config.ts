@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
+      "/rest": {
+        target: process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:18080",
+        changeOrigin: true,
+      },
       "/api": {
         target: process.env.VITE_API_PROXY_TARGET || "http://127.0.0.1:18080",
         changeOrigin: true,

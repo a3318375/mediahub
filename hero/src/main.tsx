@@ -4,6 +4,7 @@ import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./layouts/MediaApp";
 import "./styles/base.css";
+import "./styles/theme.css";
 import "./styles/media.css";
 import "./components/ui/AppControls.css";
 import "./styles/focus.css";

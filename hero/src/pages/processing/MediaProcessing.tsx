@@ -35,7 +35,7 @@ export function MediaProcessing(props: {
   }, []);
 
   return (
-    <section className="management-stack">
+    <section className="management-stack processing-page">
       <Tabs selectedKey={tab} onSelectionChange={(key) => {
         setTab(String(key));
         window.location.hash = `/processing/${key}`;

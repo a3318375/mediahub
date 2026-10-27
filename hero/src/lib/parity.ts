@@ -15,6 +15,7 @@ export const navigationItems = [
 ] as const;
 export const settingsTabs = [
   ["basic", "基础配置"],
+  ["subsonic", "音乐服务"],
   ["organize", "媒体整理"],
   ["strm", "STRM 生成"],
   ["scraping", "元数据刮削"],

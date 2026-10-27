@@ -1,5 +1,19 @@
 # HeroUI 组件审查与自定义组件清单
 
+探索来源分段标签：移除 TMDB/豆瓣/AniList/Bangumi 选择器残留的 999px 胶囊圆角，接入统一 segment 令牌；外框 8px、选中块 6px，收紧内边距与阴影，粗指针仍保留 44px 高度。共享分段筛选外框使用同一令牌，没有改变来源切换与禁用逻辑。
+
+日志与媒体处理密度调整：仅增加两页专用布局类与 dense-pages.css，复用既有 Field/SelectField/Toggle/Button/FilterTabs。日志筛选改为宽屏单行、中屏两行的紧凑工具栏；媒体处理将记录标题、类型筛选和操作按钮合为一行，减少页标题、Tabs 面板与说明的叠加留白。窄屏自动换行，粗指针保留 44px 操作高度。没有改变下载/整理/生成/刮削触发逻辑，真实页面验证不点击这些业务执行按钮。
+
+统一圆角：`hero/src/styles/theme.css` 集中定义 HeroUI 基准圆角与独立表单圆角；当前基准 2px，普通按钮按 HeroUI 的 3 倍比例为 6px。移除 base.css 普通按钮写死的 999px，并将分类 Tabs、登录按钮与紧凑下拉的业务覆盖连接到统一令牌。头像、滑块圆形手柄和封面专用形状仍由其语义样式控制；未重排页面。依据官方 Theme Builder、已安装 3.2.6 样式源及 MCP Styling 文档。
+
+音乐设计恢复：正式模式恢复原音乐页的封面主视觉、分类切换、封面歌曲行、歌手/专辑卡片、详情与底部播放器，真实接口驱动内容；管理目录信息保留在设置页。封面使用会话鉴权接口获取本地内嵌图片，缺失时沿用原创封面占位。歌曲收藏仅在本机浏览器保存，歌单入口显示真实空状态。Button/Card/Input/Chip/Slider/Tabs 已重新通过官方 MCP 核对；AppSlider 只增加禁用状态参数。未读取 Figma 设计稿。
+
+网页音乐播放增量：曲库行播放按钮和播放器按钮沿用已核对的 HeroUI Button，进度和音量复用 AppSlider。HTML audio 仅作为真实媒体引擎，不显示原生交互控件；状态由原生播放事件驱动，组件卸载停止音频，错误按真实加载/解码结果提示。未读取 Figma 设计稿。
+
+音乐库刷新增量：音乐中心与音乐服务设置共用 MusicLibrary 业务组件，使用官方 Button/Card/Table 及现有 Notice，未新增自定义基础控件。本轮已通过官方 `@heroui/react-mcp` 的 `list_components`、`get_component_docs` 核对 Button/Card/Table，并读取 Styling 指南。刷新按钮提供 pending、禁用和结果反馈，歌曲列表使用 HeroUI Table 的滚动容器；未读取 Figma 设计稿。
+
+Subsonic 设置增量：复用 SettingsForm、SecretField、Notice 与现有 Button/Card 组合，增加曲库状态和扫描反馈，无新增自定义基础控件。本轮未提供 HeroUI MCP 工具，因此没有声称重新完成官方 MCP 或 Figma 核对；以现有组件用法、安装类型、构建及真实页面验证为依据。
+
 审查日期：2026-10-27。维护范围为 `hero/`（React 19、Vite、TypeScript、Tailwind v4、HeroUI v3）。`web/` 已按用户指令标记为放弃维护，不迁移、不再更新。
 
 ## 官方依据与限制

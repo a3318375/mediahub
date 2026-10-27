@@ -14,6 +14,6 @@ export function AppProgress({ label, value, max = 100 }: { label: string; value:
   return <ProgressBar aria-label={label} value={value} maxValue={max} size="sm" className="app-progress"><ProgressBar.Track><ProgressBar.Fill /></ProgressBar.Track></ProgressBar>;
 }
 
-export function AppSlider({ label, value, max = 100, onChange }: { label: string; value: number; max?: number; onChange: (value: number) => void }) {
-  return <Slider aria-label={label} value={value} minValue={0} maxValue={max} onChange={(next) => onChange(Array.isArray(next) ? next[0] : next)} className="app-slider"><Slider.Track><Slider.Fill /><Slider.Thumb /></Slider.Track></Slider>;
+export function AppSlider({ label, value, max = 100, onChange, disabled = false }: { label: string; value: number; max?: number; onChange: (value: number) => void; disabled?: boolean }) {
+  return <Slider aria-label={label} value={value} minValue={0} maxValue={max} isDisabled={disabled} onChange={(next) => onChange(Array.isArray(next) ? next[0] : next)} className="app-slider"><Slider.Track><Slider.Fill /><Slider.Thumb /></Slider.Track></Slider>;
 }

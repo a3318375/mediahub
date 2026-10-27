@@ -1,5 +1,19 @@
 .media-main[data-page="music"] > div > .media-heading { display: none; }
 .music-center { display: flex; flex-direction: column; gap: 22px; --music-blue: #27647a; }
+.music-real-cover { width: 100%; height: 100%; object-fit: cover; display: block; }
+.music-library-caption { font-size: 12px; color: var(--muted); }
+.music-center .music-player-track .music-art { width: 44px; height: 44px; }
+.music-center .music-player-seek > .app-slider { flex: 1; min-width: 0; }
+.music-center .music-player-options > .app-slider { width: 70px; flex: 0 1 70px; }
+.music-player .music-text-link { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; justify-content: start; }
+.music-track-main .music-text-link { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-track .music-track-album { justify-content: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; max-width: 100%; }
+.music-center .music-artists-grid > .music-artist-card, .music-center .music-playlists-grid > .music-playlist-card { display: block; height: auto; white-space: normal; }
+.music-live-playback { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+.music-live-seek { display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+.music-live-seek > .app-slider { flex: 1; min-width: 0; }
+.music-live-volume { display: flex; align-items: center; gap: 12px; max-width: 260px; }
+.music-live-volume > .app-slider { flex: 1; min-width: 0; }
 .music-page-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .music-page-title { display: flex; align-items: center; gap: 12px; }
 .music-page-title h1 { font-size: 24px; font-weight: 650; }

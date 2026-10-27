@@ -25,7 +25,7 @@
 .music-text-link.button, .music-artist-link.button, .music-detail-artist.button { min-height: 0; height: auto; padding: 0; justify-content: flex-start; }
 .emby-library-card.link, .poster-card.link { display: block; white-space: normal; width: 100%; max-width: 100%; min-width: 0; }
 .header-menu-search input { border: 0; outline: none; box-shadow: none; background: transparent; }
-.header-menu-search .combo-box__input-group { border: 1px solid var(--control-border); border-radius: 12px; background: var(--surface); }
+.header-menu-search .combo-box__input-group { border: 1px solid var(--control-border); border-radius: var(--field-radius); background: var(--surface); }
 .service-login .checkbox__content { flex-direction: row; align-items: center; }
 .management-toggle.switch { align-items: flex-start; }
 .media-filter > span { width: auto; min-width: 56px; white-space: nowrap; }

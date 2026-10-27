@@ -10,6 +10,7 @@ import { routePath, settingsTabs } from "../../lib/parity";
 
 import { SettingsForm } from "../../components/settings/SettingsForm";
 import { ComicsSettings } from "./ComicsSettings";
+import { SubsonicSettings } from "./SubsonicSettings";
 import { AccountSettings } from "./AccountSettings";
 import { APIKeys } from "./APIKeys";
 import { MediaLibrarySettings } from "./MediaLibrarySettings";
@@ -53,6 +54,7 @@ export function ServerSettings({
       <div hidden={tab !== "search"}>
         <SettingsForm sections={["search"]} session={session} />
       </div>
+      {tab === "subsonic" && <SubsonicSettings session={session} />}
       {tab === "organize" && <MediaLibrarySettings session={session} />}
       {(tab==="strm"||tab==="scraping")&&<MediaOutputSettings session={session} kind={tab}/>}
       <div hidden={tab !== "pansou"}>

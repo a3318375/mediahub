@@ -72,10 +72,10 @@ export function Logs({ session }: { session: Session }) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   return (
-    <section className="management-stack">
-      <Card className="management-card">
+    <section className="management-stack logs-page">
+      <Card className="management-card logs-filter-card">
         <form
-          className="management-grid"
+          className="logs-toolbar"
           onSubmit={(e) => {
             e.preventDefault();
             setRevision((n) => n + 1);
@@ -116,7 +116,7 @@ export function Logs({ session }: { session: Session }) {
             ]}
             onChange={setLimit}
           />
-          <div className="management-actions">
+          <div className="management-actions logs-actions">
             <Button type="submit" isDisabled={busy}>
               {busy ? "读取中…" : "查询日志"}
             </Button>
@@ -127,8 +127,8 @@ export function Logs({ session }: { session: Session }) {
             >
               导出日志
             </Button>
+            <Toggle label="每 5 秒刷新" checked={auto} onChange={setAuto} />
           </div>
-          <Toggle label="每 5 秒刷新" checked={auto} onChange={setAuto} />
         </form>
       </Card>
       <Notice error={error} />

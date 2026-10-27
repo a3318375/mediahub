@@ -84,7 +84,8 @@ test("settings categories and order follow the customized shadcn settings", asyn
   const categories = [
     ...tabs.matchAll(/\{ value: "([^"]+)", label: "([^"]+)" \}/g),
   ].map((match) => [match[1], match[2]]);
-  assert.deepEqual(settingsTabs.filter(([id])=>id!=="strm"&&id!=="scraping"), categories);
+  // The maintained frontend adds processing and Subsonic settings beyond the legacy UI.
+  assert.deepEqual(settingsTabs.filter(([id])=>!["strm", "scraping", "subsonic"].includes(id)), categories);
 });
 
 test("resource history stays compatible with original media searches and preserves both kinds", async () => {

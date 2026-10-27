@@ -9,6 +9,7 @@ services:
       - ./comics:/comics
       - ./download:/download
       - ./book:/book
+      - ./music:/music:ro
     restart: unless-stopped
     logging:
       driver: json-file
