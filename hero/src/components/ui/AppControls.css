@@ -9,6 +9,8 @@
 .poster-card.button { border-radius: 10px; background: transparent; box-shadow: none; outline: none; --button-bg-hover: transparent; --button-bg-pressed: transparent; }
 .poster-card.button:hover, .poster-card.button[data-hovered="true"], .poster-card.button[data-pressed="true"], .poster-card.button:focus-visible { background: transparent; box-shadow: none; outline: none; }
 .poster-card.button:hover .poster-art { box-shadow: none; }
+.poster-open.button { --button-bg-hover: transparent; --button-bg-pressed: transparent; }
+.poster-open.button:is(:hover, :active, [data-hovered="true"], [data-pressed="true"]) { background: transparent; box-shadow: none; transform: none; }
 .anime-card-cover.button { height: auto; min-height: 0; padding: 0; border-radius: 0; }
 .anime-card-title.button { justify-content: flex-start; height: auto; min-height: 0; padding: 0; white-space: normal; }
 .music-track-cover.button, .music-player-track > .button:first-child { min-width: 0; padding: 0; }
