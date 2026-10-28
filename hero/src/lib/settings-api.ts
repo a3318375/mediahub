@@ -3,7 +3,7 @@ import { RESOURCE_SEARCH_CONFIG_CHANGED } from "./resource-search";
 
 export type SettingValue = string | boolean | number | string[];
 export type SettingsSection =
-  "tmdb" | "emby" | "115" | "organize" | "search" | "pansou" | "notifications" | "subsonic";
+  "tmdb" | "emby" | "115" | "organize" | "search" | "pansou" | "notifications" | "subsonic" | "menus";
 
 export type SettingsResponse = {
   values: Record<string, SettingValue>;

@@ -34,7 +34,7 @@ export function Field({
       <Input
         aria-label={label}
         type={type}
-        value={String(value)}
+        value={String(value ?? "")}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}

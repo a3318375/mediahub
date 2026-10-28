@@ -2,6 +2,8 @@ import { Button, Card, Link } from "@heroui/react";
 import { AppProgress } from "../../components/ui/AppControls";
 import { Film, Tv, Clapperboard, Play, Users, Clock, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { settingsApi } from "../../lib/settings-api";
+import { ProcessingOverview } from "../processing/ProcessingOverview";
 import {
   Empty,
   FilterTabs,
@@ -85,7 +87,7 @@ function EmbyArtwork({
     </div>
   );
 }
-export function Emby({
+function EmbyDashboard({
   session,
 }: {
   session: Session;
@@ -241,4 +243,24 @@ export function Emby({
       ) : null}
     </section>
   );
+}
+
+export function Emby({ session }: { session: Session }) {
+  const [local, setLocal] = useState<boolean | null>(null);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState("downloads");
+  useEffect(() => {
+    let active = true;
+    settingsApi.get("emby").then(result => { if (active) setLocal(result.values["emby.localOverview"] === true); })
+      .catch(e => { if (active) setError(errorText(e)); });
+    return () => { active = false; };
+  }, [session]);
+  if (error) return <Notice error={error} />;
+  if (local === null) return <Empty>正在读取概览设置…</Empty>;
+  if (!local) return <EmbyDashboard session={session} />;
+  return <section className="management-stack">
+    <h2>系统本地概览</h2>
+    <FilterTabs label="本地记录" value={tab} onChange={setTab} options={[["downloads", "最近下载"], ["organize", "最近整理"]]} />
+    <ProcessingOverview session={session} mode={tab === "organize" ? "organize" : "downloads"} />
+  </section>;
 }

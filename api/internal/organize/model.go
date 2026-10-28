@@ -14,7 +14,7 @@ var ErrNotFound = errors.New("organize record not found")
 var ErrConflict = errors.New("organize plan changed")
 
 type Rule struct {
-	Cron            string                 `json:"cron,omitempty"`
+	Cron            string                 `json:"cron"`
 	ScheduleError   string                 `json:"scheduleError,omitempty"`
 	Simple          bool                   `json:"simple,omitempty"`
 	TargetID        string                 `json:"targetId,omitempty"`

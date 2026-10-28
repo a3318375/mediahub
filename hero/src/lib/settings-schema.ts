@@ -1,15 +1,14 @@
 import { type SettingsSection, type SettingValue } from "./settings-api";
+import { navigationItems } from "./parity";
 
 type Schema = [string, string, SettingValue, "secret"?];
 
 export const schemas: Record<SettingsSection, Schema[]> = {
-  subsonic: [
-    ["subsonic.enabled", "允许 Subsonic 客户端连接", false],
-    ["subsonic.username", "客户端用户名（现有 MediaHub 账号）", ""],
-    ["subsonic.password", "Subsonic 专用密码", "", "secret"],
-  ],
+  menus: navigationItems.filter((item) => item[2] === "功能模块").map(([id, label]) => [`menus.${id}`, label, true] as Schema),
+  subsonic: [],
   tmdb: [["tmdb.apiKey", "TMDB API Key", "", "secret"]],
   emby: [
+    ["emby.localOverview", "使用系统本地概览（关闭时显示 Emby）", false],
     ["emby.url", "Emby 地址", ""],
     ["emby.apiKey", "Emby API Key", "", "secret"],
     ["emby.cacheExpirationHours", "缓存时长（小时）", 12],
@@ -62,6 +61,7 @@ export const schemas: Record<SettingsSection, Schema[]> = {
 };
 
 export const sectionNames: Record<string, string> = {
+  menus: "菜单管理（保存后刷新页面生效）",
   subsonic: "Subsonic 音乐服务",
   tmdb: "TMDB",
   emby: "Emby",

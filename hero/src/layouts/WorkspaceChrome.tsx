@@ -22,6 +22,9 @@ import { HeaderSearch } from "../components/navigation/HeaderSearch";
 import { MediaUserMenu } from "../components/navigation/UserMenu";
 import type { Session } from "../lib/media-service";
 import { navigationItems } from "../lib/parity";
+import { useEffect, useState } from "react";
+import { settingsApi, type SettingValue } from "../lib/settings-api";
+import { read } from "../lib/media-service";
 import type { Page } from "./MediaApp";
 const navIcons = {
   emby: Library,
@@ -53,6 +56,14 @@ export function WorkspaceSidebar({
   go,
   logout,
 }: SharedProps & { page: Page }) {
+  const [menus, setMenus] = useState<Record<string, SettingValue>>({});
+  useEffect(() => {
+    let active = true;
+    if (session.mode === "demo") setMenus(read("mediahub.hero.settings.menus", {}));
+    else settingsApi.get("menus").then(result => { if (active) setMenus(result.values); }).catch(() => {});
+    return () => { active = false; };
+  }, [session]);
+  const visibleNavigation = navigation.filter(([id, , , section]) => section !== "功能模块" || menus[`menus.${id}`] !== false);
   return (
     <aside className="sidebar media-sidebar">
       <div className="media-brand">
@@ -62,9 +73,9 @@ export function WorkspaceSidebar({
         </span>
       </div>
       <nav aria-label="主导航">
-        {navigation.map(([id, label, Icon, section], index) => (
+        {visibleNavigation.map(([id, label, Icon, section], index) => (
           <div key={id}>
-            {(index === 0 || navigation[index - 1][3] !== section) && (
+            {(index === 0 || visibleNavigation[index - 1][3] !== section) && (
               <div className="media-nav-label">{section}</div>
             )}
             <Button variant="ghost"

@@ -1,0 +1,15 @@
+import { useEffect, useState } from "react";
+import { Button, Input } from "@heroui/react";
+import { ListMusic } from "lucide-react";
+import { Overlay } from "../../components/ui/Overlay";
+import { Notice } from "../../components/ui/ManagementUI";
+import { errorText } from "../../components/media/MediaUI";
+import { request, type Session } from "../../lib/media-service";
+type Playlist = {id:string;name:string;songCount:number};
+export function AddToPlaylist({session,songIds,close,done}:{session:Session;songIds:string[];close:()=>void;done:()=>void}) {
+ const [lists,setLists]=useState<Playlist[]>([]);const [selected,setSelected]=useState("");const [name,setName]=useState("");const [error,setError]=useState("");const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [revision,setRevision]=useState(0);
+ useEffect(()=>{const c=new AbortController();setLoading(true);setError("");request<{playlists:{playlist:Playlist[]}}>("/api/v1/music/playlists",session,"GET",undefined,30000,c.signal).then(r=>{if(!c.signal.aborted)setLists(r.playlists.playlist);}).catch(e=>{if(!c.signal.aborted)setError(errorText(e));}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[session,revision]);
+ async function add(){if(busy||!selected)return;setBusy(true);setError("");try{await request("/api/v1/music/playlists",session,"POST",{id:selected,songIds,append:true});done();}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ async function create(){if(busy||!name.trim())return;setBusy(true);setError("");try{const r=await request<{playlist:Playlist}>("/api/v1/music/playlists",session,"POST",{name:name.trim(),songIds:[]});setLists(old=>[...old,r.playlist]);setSelected(r.playlist.id);setName("");}catch(e){setError(errorText(e));}finally{setBusy(false);}}
+ return <Overlay title="加入歌单" onClose={()=>{if(!busy)close();}} footer={<><Button variant="secondary" isDisabled={busy} onPress={close}>取消</Button><Button isDisabled={busy||loading||!selected} isPending={busy} onPress={()=>void add()}>确认加入</Button></>}><div className="management-stack"><p>将已选的 {songIds.length} 首歌曲加入：</p><Notice error={error}/>{error&&<Button variant="ghost" onPress={()=>setRevision(v=>v+1)}>重新加载歌单</Button>}{loading?<p role="status">正在读取歌单…</p>:<div className="music-playlist-picker" role="group" aria-label="选择目标歌单">{lists.map(list=><Button variant="ghost" key={list.id} aria-pressed={selected===list.id} isDisabled={busy} onPress={()=>setSelected(list.id)} className={`music-playlist-option ${selected===list.id?"is-selected":""}`}><ListMusic size={20}/><strong>{list.name}</strong><span>{list.songCount} 首</span></Button>)}{!lists.length&&!error&&<p>还没有歌单，可以先新建一个。</p>}</div>}<form className="management-actions" onSubmit={e=>{e.preventDefault();void create();}}><Input aria-label="新歌单名称" placeholder="新歌单名称" maxLength={100} value={name} onChange={e=>setName(e.target.value)}/><Button type="submit" variant="secondary" isDisabled={busy||loading||!name.trim()}>新建歌单</Button></form></div></Overlay>;
+}

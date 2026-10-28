@@ -33,6 +33,8 @@ type Server struct {
 	Library     *Library
 	Credentials Credentials
 	Root        func() string
+	APIKeyAuth  func(string) bool
+	Playlists   func(string, url.Values) (map[string]any, error)
 	mu          sync.Mutex
 	attempts    map[string]attempt
 	scanMu      sync.Mutex
@@ -68,6 +70,9 @@ func (s *Server) blocked(ip string) bool {
 	return ok && a.limiter.Tokens() < 1
 }
 func (s *Server) authorized(p url.Values) bool {
+	if key := p.Get("apiKey"); key != "" {
+		return s.APIKeyAuth != nil && s.APIKeyAuth(key)
+	}
 	user, password, err := s.Credentials()
 	if err != nil || user == "" || password == "" {
 		return false
@@ -100,7 +105,7 @@ func protocolError(code int, message string) object {
 	return object{"error": object{"code": code, "message": message}}
 }
 func writeResponse(w http.ResponseWriter, p url.Values, payload object) {
-	body := object{"status": "ok", "version": "1.16.1", "type": "MediaHub", "serverVersion": "0.0.6"}
+	body := object{"status": "ok", "version": "1.16.1", "type": "MediaHub", "serverVersion": "0.0.6", "openSubsonic": true}
 	if _, ok := payload["error"]; ok {
 		body["status"] = "failed"
 	}
@@ -207,7 +212,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	p := r.Form
 	fail := func(code int, message string) { writeResponse(w, p, protocolError(code, message)) }
-	if p.Get("v") == "" || p.Get("c") == "" || p.Get("u") == "" {
+	if p.Get("v") == "" || p.Get("c") == "" || (p.Get("u") == "" && p.Get("apiKey") == "") {
 		fail(10, "Parameters u, v and c are required")
 		return
 	}
@@ -239,6 +244,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	method := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/rest/"), ".view")
+	if s.Playlists != nil && (method == "getPlaylists" || method == "getPlaylist" || method == "createPlaylist") {
+		payload, err := s.Playlists(method, p)
+		if err != nil {
+			fail(70, err.Error())
+			return
+		}
+		writeResponse(w, p, payload)
+		return
+	}
 	switch method {
 	case "getArtist", "getAlbum", "getSong", "getMusicDirectory", "stream", "download", "getCoverArt":
 		if p.Get("id") == "" {
@@ -254,6 +268,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	result := object{}
 	switch method {
 	case "ping":
+	case "getOpenSubsonicExtensions":
+		result["openSubsonicExtensions"] = []object{{"name": "apiKeyAuthentication", "versions": []int{1}}}
 	case "getLicense":
 		result["license"] = object{"valid": true}
 	case "getMusicFolders":
@@ -267,7 +283,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fail(50, "Access denied")
 			return
 		}
-		result["user"] = object{"username": p.Get("u"), "email": "", "scrobblingEnabled": false, "adminRole": false, "settingsRole": false, "downloadRole": true, "uploadRole": false, "playlistRole": false, "coverArtRole": false, "commentRole": false, "podcastRole": false, "streamRole": true, "jukeboxRole": false, "shareRole": false, "videoConversionRole": false, "folder": []int{1}}
+		result["user"] = object{"username": p.Get("u"), "email": "", "scrobblingEnabled": false, "adminRole": false, "settingsRole": false, "downloadRole": true, "uploadRole": false, "playlistRole": true, "coverArtRole": false, "commentRole": false, "podcastRole": false, "streamRole": true, "jukeboxRole": false, "shareRole": false, "videoConversionRole": false, "folder": []int{1}}
 	case "getArtists", "getIndexes":
 		if id := p.Get("musicFolderId"); id != "" && id != "1" {
 			fail(70, "Music folder not found")

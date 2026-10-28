@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
@@ -14,6 +16,7 @@ import (
 
 	"github.com/dhowden/tag"
 	"github.com/gin-gonic/gin"
+	"mediahub/internal/store"
 	"mediahub/internal/subsonic"
 )
 
@@ -71,10 +74,11 @@ func (a *API) validateSubsonicSettings(values map[string]json.RawMessage) error 
 }
 
 func musicRoot() string {
-	if value := os.Getenv("MEDIAHUB_MUSIC_DIR"); value != "" {
-		return value
-	}
 	if runtime.GOOS == "windows" {
+		dataDir, _ := filepath.Abs(os.Getenv("MEDIAHUB_DATA_DIR"))
+		if strings.EqualFold(filepath.VolumeName(dataDir), "D:") {
+			return `D:\tmp\res\music`
+		}
 		return `E:\workspace\res\music`
 	}
 	return "/music"
@@ -82,23 +86,21 @@ func musicRoot() string {
 
 func (a *API) mountSubsonic(router *gin.Engine, v1 *gin.RouterGroup) {
 	library := subsonic.NewLibrary()
+	a.mountMusicPlaylists(v1, library)
 	service := subsonic.NewServer(library, func() (string, string, error) {
-		values, _, err := a.store.ReadSettings("subsonic")
-		if err != nil {
-			return "", "", err
-		}
-		enabled, _ := values["subsonic.enabled"].(bool)
-		if !enabled {
-			return "", "", nil
-		}
-		account, _ := values["subsonic.username"].(string)
-		// Keep the dedicated credential tied to an existing MediaHub account.
-		if _, err := a.store.UserByAccount(account); err != nil {
-			return "", "", err
-		}
-		password, err := a.store.ReadSecret("subsonic", "subsonic.password")
-		return account, password, err
+		return "", "", nil
 	}, musicRoot)
+	service.APIKeyAuth = func(key string) bool {
+		_, err := a.store.APIKeyUser(store.HashToken(key))
+		return err == nil
+	}
+	service.Playlists = func(method string, p url.Values) (map[string]any, error) {
+		owner, err := a.playlistOwner(p.Get("apiKey"))
+		if err != nil {
+			return nil, err
+		}
+		return a.musicPlaylists(owner, method, p, library)
+	}
 	streams := subsonic.NewWebStreams(library, func(hash string) bool { _, err := a.store.SessionUser(hash); return err == nil })
 	v1.POST("/music/songs/:id/play", a.requireUser(), func(c *gin.Context) {
 		url, err := streams.Issue(c.Param("id"), c.GetString("authTokenHash"))

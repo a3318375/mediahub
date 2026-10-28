@@ -485,7 +485,7 @@ func fail(c *gin.Context, status int, message string) {
 
 func validSection(section string) bool {
 	switch section {
-	case "tmdb", "emby", "115", "organize", "search", "pansou", "notifications", "subsonic":
+	case "tmdb", "emby", "115", "organize", "search", "pansou", "notifications", "subsonic", "menus":
 		return true
 	default:
 		return false

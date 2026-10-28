@@ -41,6 +41,7 @@ export function MediaLibrarySettings({ session }: { session: Session }) {
         if (!c.signal.aborted) {
           setConfig({
             ...r,
+            cron: r.cron ?? "",
             id: r.id || "",
             scheduleError: r.scheduleError || "",
           });
@@ -87,6 +88,7 @@ export function MediaLibrarySettings({ session }: { session: Session }) {
               const r = await organizeApi.saveConfig(value);
               setConfig({
                 ...r,
+                cron: r.cron ?? "",
                 id: r.id,
                 scheduleError: r.scheduleError || "",
               });

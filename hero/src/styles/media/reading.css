@@ -14,9 +14,9 @@
 .media-main[data-page="comics"] .media-filter > span { display: none; }
 .media-main[data-page="comics"] .media-filter .tabs__list-container { padding: 0; }
 .media-main[data-page="comics"] .media-filter .tabs__tab { min-height: 32px; padding: 4px 10px; font-size: 12px; }
-.media-main[data-page="comics"] .reading-controls { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 12px; gap: 12px; }
-.media-main[data-page="comics"] .reading-controls > .reading-search { flex: 1; min-width: min(100%, 340px); }
-.media-main[data-page="comics"] .reading-filters { gap: 16px; }
+.media-main:is([data-page="comics"], [data-page="novels"]) .reading-controls { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 12px; gap: 12px; }
+.media-main:is([data-page="comics"], [data-page="novels"]) .reading-controls > .reading-search { flex: 1; min-width: min(100%, 340px); }
+.media-main:is([data-page="comics"], [data-page="novels"]) .reading-filters { gap: 16px; }
 .media-main[data-page="comics"] .reading-summary { align-items: center; gap: 6px 16px; }
 .reading-inline-warning { color: var(--muted); font-size: 12px; }
 .media-main[data-page="comics"] .eh-search-form { display: flex; flex: 1; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -27,11 +27,11 @@
  .comics-header { gap: 10px; }
  .comics-source-tabs { width: min(100%, 340px); }
  .media-main[data-page="comics"] { padding: 12px 16px 24px; }
- .media-main[data-page="comics"] .reading-controls { padding: 10px; }
- .media-main[data-page="comics"] .reading-search { flex-wrap: nowrap; }
- .media-main[data-page="comics"] .reading-search > .input { flex-basis: 0; }
- .media-main[data-page="comics"] .reading-search > .button { flex: 0 0 auto; }
- .media-main[data-page="comics"] .reading-filters { width: 100%; gap: 8px; }
+ .media-main:is([data-page="comics"], [data-page="novels"]) .reading-controls { padding: 10px; }
+ .media-main:is([data-page="comics"], [data-page="novels"]) .reading-search { flex-wrap: nowrap; }
+ .media-main:is([data-page="comics"], [data-page="novels"]) .reading-search > .input { flex-basis: 0; }
+ .media-main:is([data-page="comics"], [data-page="novels"]) .reading-search > .button { flex: 0 0 auto; }
+ .media-main:is([data-page="comics"], [data-page="novels"]) .reading-filters { width: 100%; gap: 8px; }
  .media-main[data-page="comics"] .eh-filters { flex: 1; }
  .media-main[data-page="comics"] .eh-filters label { min-width: 0; flex: 1; }
 }
@@ -45,7 +45,7 @@
 .reading-search > .button { flex-shrink: 0; min-height: 44px; }
 .reading-filters { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .reading-filters .media-filter { padding: 0; }
-.media-main[data-page="comics"] .reading-filters { margin-left: auto; width: auto; }
+.media-main:is([data-page="comics"], [data-page="novels"]) .reading-filters { margin-left: auto; width: auto; }
 .reading-summary { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 12px; }
 .reading-summary > span:first-child { color: var(--foreground); font-size: 14px; font-weight: 500; }
 .reading-hint { padding: 14px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }

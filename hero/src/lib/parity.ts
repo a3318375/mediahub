@@ -14,8 +14,8 @@ export const navigationItems = [
   ["settings", "全局设置", "管理"],
 ] as const;
 export const settingsTabs = [
+  ["menus", "菜单管理"],
   ["basic", "基础配置"],
-  ["subsonic", "音乐服务"],
   ["organize", "媒体整理"],
   ["strm", "STRM 生成"],
   ["scraping", "元数据刮削"],

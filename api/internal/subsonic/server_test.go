@@ -243,3 +243,31 @@ func TestRefreshUpdatesTagsAndRetainsSnapshotOnCancellation(t *testing.T) {
 		t.Fatal("cancelled scan replaced the previous successful snapshot")
 	}
 }
+
+func TestPlaylistProtocolDispatch(t *testing.T) {
+	s := NewServer(NewLibrary(), func() (string, string, error) { return "", "", nil }, func() string { return "" })
+	s.APIKeyAuth = func(key string) bool { return key == "valid" }
+	called := false
+	s.Playlists = func(method string, p url.Values) (map[string]any, error) {
+		called = true
+		if method != "createPlaylist" || len(p["songId"]) != 2 {
+			t.Fatalf("lost playlist parameters: %s %v", method, p)
+		}
+		return map[string]any{"playlist": map[string]any{"id": "p1", "name": p.Get("name")}}, nil
+	}
+	for _, key := range []string{"invalid", "valid"} {
+		called = false
+		p := url.Values{"apiKey": {key}, "v": {"1.16.1"}, "c": {"test"}, "f": {"json"}, "name": {"我的歌单"}, "songId": {"one", "two"}}
+		w := httptest.NewRecorder()
+		s.ServeHTTP(w, httptest.NewRequest("POST", "/rest/createPlaylist.view", strings.NewReader(p.Encode())))
+		// Query parameters are supported by both GET and POST clients.
+		w = httptest.NewRecorder()
+		s.ServeHTTP(w, httptest.NewRequest("GET", "/rest/createPlaylist?"+p.Encode(), nil))
+		if called != (key == "valid") {
+			t.Fatalf("authentication bypass or missing dispatch: %s", w.Body.String())
+		}
+		if key == "valid" && !strings.Contains(w.Body.String(), "p1") {
+			t.Fatal(w.Body.String())
+		}
+	}
+}

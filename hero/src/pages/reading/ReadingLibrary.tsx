@@ -2,7 +2,7 @@ import { AppSelect } from "../../components/ui/AppSelect";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button, Card, Input, Link } from "@heroui/react";
 import { ArrowDownWideNarrow, BookOpen, BookText, FolderSync, Search } from "lucide-react";
-import { FilterTabs, errorText } from "../../components/media/MediaUI";
+import { errorText } from "../../components/media/MediaUI";
 import { Overlay } from "../../components/ui/Overlay";
 import { request, type Session } from "../../lib/media-service";
 import { readingPreview } from "../../mocks/reading-library";
@@ -15,7 +15,6 @@ type MetadataStatus = { running: boolean; total: number; done: number; updated: 
 type Page = { items: Item[]; total: number; page: number; pageSize: number };
 type Status = { configured: boolean; running: boolean; error: string; completedAt: string; found: number; root?: string; directoryError?: string };
 const names = { comics: "漫画", novels: "小说" };
-const formats = { comics: ["CBZ", "CBR"], novels: ["TXT", "EPUB"] };
 function date(value: string) { return value ? new Date(value).toLocaleString("zh-CN", { hour12: false }) : "尚未刷新"; }
 function size(bytes: number) { return bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`; }
 
@@ -135,7 +134,6 @@ function LibraryTab({ kind, session, demo }: { kind: Kind; session: Session; dem
         {kind === "comics" && <Button type="button" variant="secondary" isDisabled={demo || !!running || !!metadataRunning} onPress={() => setMetadataDialog(true)}>{metadataRunning ? "元数据刷新中…" : "刷新元数据"}</Button>}
       </form>
       <div className="reading-filters">
-        {kind !== "comics" && <FilterTabs label="格式" value={format} options={[["", "全部"], ...formats[kind].map((f) => [f, f])]} onChange={(value) => { setFormat(value); setPage(1); }} />}
         <AppSelect label="排序方式" value={sort} onChange={(value) => { setSort(value); setPage(1); }} options={[["title", "名称 A–Z"], ["recent", "最近入库"], ["modified", "文件更新"]]} icon={<ArrowDownWideNarrow size={16} aria-hidden="true" />} variant="compact" />
       </div>
     </Card>
