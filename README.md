@@ -181,3 +181,11 @@ PanSou 插件位于 `api/third_party/pansou/plugin/`，接口适配位于 `api/i
 资源搜索基于 [PanSou](https://github.com/fish2018/pansou)，项目通过固定版本的 fork 子模块集成。115 接口适配使用 [115driver](https://github.com/SheltonZhu/115driver)，前端使用 React、Vite、HeroUI 和 shadcn/ui。
 
 TMDB、豆瓣与 AniList 图标来自 [Simple Icons](https://simpleicons.org/)，Bangumi 图标来自其[官方客户端仓库](https://github.com/bangumi/Bangumi-iOS)。品牌标识归各自所有。
+
+## 许可证
+
+本项目采用 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）。
+
+你可以自由使用、修改和分发本软件，但需遵守：修改后的版本必须以同一许可证开源；**通过网络向用户提供服务时，也必须向使用者提供对应的完整源代码**。详见 [LICENSE](LICENSE) 全文。
+
+如需在无法满足 AGPL 条款的场景下使用（例如闭源集成或商业分发），请先联系作者获取另行授权。
