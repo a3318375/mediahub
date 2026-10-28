@@ -187,5 +187,3 @@ TMDB、豆瓣与 AniList 图标来自 [Simple Icons](https://simpleicons.org/)�
 本项目采用 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）。
 
 你可以自由使用、修改和分发本软件，但需遵守：修改后的版本必须以同一许可证开源；**通过网络向用户提供服务时，也必须向使用者提供对应的完整源代码**。详见 [LICENSE](LICENSE) 全文。
-
-如需在无法满足 AGPL 条款的场景下使用（例如闭源集成或商业分发），请先联系作者获取另行授权。
