@@ -3,7 +3,7 @@ import { formatRegion, presentTitle } from "../../lib/media-presentation";
 
 import { Button, Card, Chip, Link } from "@heroui/react";
 
-import { ChevronLeft, Film, Plus, Search } from "lucide-react";
+import { ChevronLeft, Film, Plus, Popcorn, Search } from "lucide-react";
 
 import { image } from "../../lib/media-service";
 
@@ -74,10 +74,7 @@ export function Detail({
             alt=""
           />
         )}
-        <h1>
-          {title}
-          {data.year && <small> ({data.year})</small>}
-        </h1>
+
         <div className="media-detail">
           <div className="media-detail-poster">
             {image(data.posterPath) ? (
@@ -86,7 +83,11 @@ export function Detail({
               <div className="poster-placeholder">{data.title}</div>
             )}
           </div>
-          <div>
+          <div className="detail-copy">
+        <h1>
+          {title}
+          {data.year && <small> ({data.year})</small>}
+        </h1>
             <p>{subtitle}</p>
             <p>
               {data.year} · {data.genres.join(" / ")}
@@ -103,6 +104,7 @@ export function Detail({
             {data.externalIds?.imdb &&
               /^tt\d+$/.test(data.externalIds.imdb) && (
                 <Link
+                  className="detail-imdb-link"
                   href={`https://www.imdb.com/title/${data.externalIds.imdb}/`}
                   target="_blank"
                   rel="noreferrer"
@@ -113,10 +115,16 @@ export function Detail({
             <div className="media-ratings">
               {data.ratings.map((r) => (
                 <Chip key={r.source} variant="soft">
-                  {r.source.toUpperCase()} · {r.value}
+                  <span className="detail-rating-icon" aria-hidden="true">
+                    {r.source === "tmdb" && <img src={`${import.meta.env.BASE_URL}icons/tmdb.svg`} alt="" />}
+                    {r.source === "tomatoes" && <svg viewBox="0 0 24 24" fill="none"><path d="M12 7C7 3 2 7 2 13c0 5 5 9 10 8 5 1 10-3 10-8 0-6-5-10-10-6Z" fill="#fa5555"/><path d="m12 8-5-3 4 1 1-4 2 4 4-1-4 4-2-1Z" fill="#71d48b"/><path d="M7 10c-2 1-2 3-2 4" stroke="#ffb3ab" strokeWidth="2" strokeLinecap="round"/></svg>}
+                    {r.source === "popcorn" && <Popcorn size={18} color="#ffe08a" />}
+                  </span>
+                  {r.source === "tomatoes" ? "烂番茄" : r.source === "popcorn" ? "爆米花" : r.source.toUpperCase()} · {r.value}{(r.source === "tomatoes" || r.source === "popcorn") ? "%" : ""}
                 </Chip>
               ))}
             </div>
+            {data.ratingsMessage && <p className="media-note" role="status">{data.ratingsMessage}</p>}
             <p>{busy ? "正在加载详情…" : data.overview || "暂无简介"}</p>
             {error && (
               <p role="alert" className="media-error">

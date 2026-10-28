@@ -6,7 +6,7 @@ type Schema = [string, string, SettingValue, "secret"?];
 export const schemas: Record<SettingsSection, Schema[]> = {
   menus: navigationItems.filter((item) => item[2] === "功能模块").map(([id, label]) => [`menus.${id}`, label, true] as Schema),
   subsonic: [],
-  tmdb: [["tmdb.apiKey", "TMDB API Key", "", "secret"]],
+  tmdb: [["tmdb.apiKey", "TMDB API Key", "", "secret"], ["tmdb.mdblistApiKey", "MDBList API Key（烂番茄 / 爆米花评分）", "", "secret"]],
   emby: [
     ["emby.localOverview", "使用系统本地概览（关闭时显示 Emby）", false],
     ["emby.url", "Emby 地址", ""],

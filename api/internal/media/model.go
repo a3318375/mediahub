@@ -65,6 +65,7 @@ type Summary struct {
 
 // Detail extends a summary with fields only needed on a work detail page.
 type Detail struct {
+	RatingsMessage string `json:"ratingsMessage,omitempty"`
 	Summary
 	RuntimeMinutes *int         `json:"runtimeMinutes,omitempty"`
 	Status         string       `json:"status,omitempty"`

@@ -138,6 +138,7 @@ func (a *API) detailMedia(c *gin.Context) {
 		mediaFailure(c, e)
 		return
 	}
+	a.enrichRatings(c.Request.Context(), &d)
 	c.JSON(200, d)
 }
 func (a *API) mediaProviders(c *gin.Context) {

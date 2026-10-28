@@ -400,3 +400,26 @@
 .anime-catalog-item small {
   color: var(--muted);
 }
+
+/* Keep hero content readable independently of the page theme or backdrop. */
+.detail-hero .media-detail { grid-template-columns: clamp(200px, 19vw, 280px) minmax(0, 1fr); gap: clamp(24px, 3vw, 44px); align-items: start; }
+.detail-hero .detail-copy { min-width: 0; max-width: 900px; }
+.detail-hero .detail-copy h1 { margin: 0 0 12px; font-size: clamp(26px, 3vw, 42px); font-weight: 750; line-height: 1.25; text-wrap: balance; }
+.detail-hero .detail-copy h1 small { font-size: .65em; font-weight: 500; color: #ffffffbd; }
+.detail-hero .detail-copy > p { font-size: 14px; line-height: 1.8; margin-bottom: 14px; }
+.detail-hero .detail-imdb-link { display: inline-flex; color: #ffe08a; text-decoration: underline; text-underline-offset: 4px; font-weight: 600; }
+.detail-hero .detail-imdb-link:hover { color: #fff3cf; }
+.detail-hero .detail-imdb-link:focus-visible { outline: 2px solid #ffe08a; outline-offset: 5px; border-radius: 4px; }
+.detail-hero .media-ratings > * { color: #fff; background: #172235db; border: 1px solid #ffffff45; }
+.detail-hero .media-detail-poster { filter: drop-shadow(0 12px 22px #0005); }
+@media (max-width: 700px) {
+ .detail-hero .media-detail { grid-template-columns: 140px minmax(0, 1fr); gap: 20px; }
+ .detail-hero .detail-copy h1 { font-size: 25px; }
+}
+@media (max-width: 480px) {
+ .detail-hero .media-detail { grid-template-columns: 1fr; }
+ .detail-hero .media-detail-poster { width: 160px; }
+}
+.detail-hero .detail-rating-icon { display: inline-flex; align-items: center; vertical-align: middle; margin-right: 6px; }
+.detail-rating-icon:empty { display: none; }
+.detail-rating-icon > img, .detail-rating-icon > svg { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
