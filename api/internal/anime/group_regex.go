@@ -17,6 +17,8 @@ type GroupRegex struct {
 var groupPatterns = func() []*regexp.Regexp {
 	patterns := []string{`1920[Xx]1080`, `3840[Xx]2160`, `1080[Pp]`, `720[Pp]`, `4[Kk]`, `繁`, `简`, `日`, `内嵌`, `内封`, `外挂`, `(?i)cht`, `(?i)chs`, `(?i)avc`, `(?i)hevc`, `(?i)h264`, `(?i)h265`, `(?i)10bit`, `(?i)mp4`, `(?i)mkv`}
 	result := make([]*regexp.Regexp, 0, len(patterns))
+	// Keep sources separate so identical encoding/container combinations do not merge.
+	patterns = append([]string{`(?i)\bCR\b`, `(?i)\bABEMA\b`, `(?i)\bBaha\b`, `(?i)\bB-Global\b`}, patterns...)
 	for _, pattern := range patterns {
 		result = append(result, regexp.MustCompile(pattern))
 	}
