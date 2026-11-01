@@ -82,9 +82,18 @@ func (s *Service) preview(ctx context.Context, id, date string, execute bool) (P
 		targeted = true
 		s.trace("待整理检测 rule=%s pending_files=%d scan=仅待整理文件", r.ID, len(candidates))
 		if len(candidates) == 0 {
-			s.trace("整理计划结束 rule=%s state=无待整理文件 requests=0", r.ID)
 			if !execute {
+				s.trace("整理计划结束 rule=%s state=无待整理文件 requests=0", r.ID)
 				return s.Store.CreateOrganizePlan(Plan{Rule: r, State: "preview", Actions: []Action{}, Issues: []Issue{}})
+			}
+			// Files may already have been moved by NAS services; empty shells still need cleanup.
+			s.trace("无待整理文件，检查来源空目录 rule=%s", r.ID)
+			g, err := s.gateway(ctx, r.AccountID)
+			if err != nil {
+				return Plan{}, err
+			}
+			if err := s.cleanupEmptyDirectories(ctx, g, r); err != nil {
+				return Plan{}, err
 			}
 			return Plan{}, nil
 		}
@@ -373,14 +382,8 @@ func (s *Service) tick(ctx context.Context, manual bool) error {
 				continue
 			}
 			p.State = "completed"
-			// Incremental runs must not crawl the whole source again for empty folders.
-			_, incremental := s.Store.(interface {
-				OrganizePending(string) ([]pan115.File, error)
-			})
-			if !incremental || p.Rule.AllowExisting || p.Rule.Binding != nil {
-				if e = s.cleanupEmptyDirectories(ctx, g, p.Rule); e != nil {
-					p.Issues = append(p.Issues, Issue{Code: "cleanup", Message: "空目录清理未完成：" + e.Error()})
-				}
+			if e = s.cleanupEmptyDirectories(ctx, g, p.Rule); e != nil {
+				p.Issues = append(p.Issues, Issue{Code: "cleanup", Message: "空目录清理未完成：" + e.Error()})
 			}
 			for _, a := range p.Actions {
 				if a.State == "conflict" {

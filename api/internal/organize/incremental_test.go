@@ -10,9 +10,10 @@ import (
 )
 
 type memoryOrganize struct {
-	rule    Rule
-	plans   map[string]Plan
-	pending []pan115.File
+	rule       Rule
+	plans      map[string]Plan
+	pending    []pan115.File
+	unfinished []download.Task
 }
 
 func (*memoryOrganize) ReadSecret(string, string) (string, error) {
@@ -42,8 +43,10 @@ func (*memoryOrganize) OrganizeLookup(string) Lookup {
 		return Binding{Ready: true, Media: download.MediaContext{Type: "anime", Title: "死神", Season: 1, Offset: -40}}, nil
 	}
 }
-func (*memoryOrganize) OrganizeUnfinished(string) ([]download.Task, error) { return nil, nil }
-func (m *memoryOrganize) OrganizePending(string) ([]pan115.File, error)    { return m.pending, nil }
+func (m *memoryOrganize) OrganizeUnfinished(string) ([]download.Task, error) {
+	return m.unfinished, nil
+}
+func (m *memoryOrganize) OrganizePending(string) ([]pan115.File, error) { return m.pending, nil }
 
 type countedFiles struct {
 	data                 map[string]pan115.File
@@ -96,6 +99,49 @@ func (g *countedFiles) MoveFile(id, parent string) error {
 		return &pan115.Error{Code: "timeout", Message: "response lost"}
 	}
 	return nil
+}
+
+func (g *countedFiles) DeleteEmptyDirectory(id string) error {
+	f, err := g.GetFile(id)
+	if err != nil || !f.Directory || id == "0" {
+		return fmt.Errorf("not a deletable directory: %s", id)
+	}
+	items, err := g.ListFiles(id)
+	if err != nil || len(items) != 0 {
+		return fmt.Errorf("directory is not empty: %s", id)
+	}
+	delete(g.data, id)
+	return nil
+}
+
+func TestNoPendingExecutionCleansEmptyDirectoriesOnly(t *testing.T) {
+	m, g, s := incrementalFixture()
+	// NAS already handled the files; no local download history is needed for empty shells.
+	g.data["30"] = pan115.File{ID: "30", ParentID: "10", Directory: true, Name: "[UHA-WINGS][Bleach Sennen Kessen-hen][41][x264 1080p][CHS].mp4"}
+	g.data["extras"] = pan115.File{ID: "extras", ParentID: "10", Directory: true, Name: "extras"}
+	g.data["nonempty"] = pan115.File{ID: "nonempty", ParentID: "10", Directory: true, Name: "other.mkv"}
+	g.data["note"] = pan115.File{ID: "note", ParentID: "nonempty", Name: "readme.txt", Size: 1}
+	g.data["active"] = pan115.File{ID: "active", ParentID: "10", Directory: true, Name: "downloading.mp4"}
+	m.unfinished = []download.Task{{AccountID: "123", DirectoryID: "active"}}
+	if _, err := s.preview(context.Background(), "rule", "", true); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"30", "extras"} {
+		if _, exists := g.data[id]; exists {
+			t.Fatalf("empty directory %s remains", id)
+		}
+	}
+	for _, id := range []string{"10", "20", "nonempty", "note", "active"} {
+		if _, exists := g.data[id]; !exists {
+			t.Fatalf("nonempty or protected item %s removed", id)
+		}
+	}
+	if g.moves != 0 || g.renames != 0 {
+		t.Fatal("empty-directory cleanup moved or renamed resources")
+	}
+	if g.lists["20"] != 0 {
+		t.Fatal("empty-directory cleanup inspected the media destination")
+	}
 }
 
 func incrementalFixture() (*memoryOrganize, *countedFiles, *Service) {
@@ -163,9 +209,9 @@ func TestTickDrainsMoreThanThreeFiles(t *testing.T) {
 			t.Fatal(a)
 		}
 	}
-	// Incremental completion does not recursively scan the source for cleanup.
-	if g.lists["10"] != 0 {
-		t.Fatal("full source scan after completing pending files")
+	// Incremental completion also removes the now-empty source directory.
+	if _, exists := g.data["30"]; exists || g.lists["10"] == 0 {
+		t.Fatal("empty source directory was not cleaned after completing pending files")
 	}
 	if err := s.Tick(context.Background()); err != nil {
 		t.Fatal(err)

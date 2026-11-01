@@ -15,6 +15,13 @@ func (s *Service) cleanupEmptyDirectories(ctx context.Context, g pan115.FileGate
 	if !ok {
 		return fmt.Errorf("115 空目录清理不可用")
 	}
+	source, err := g.GetFile(rule.SourceID)
+	if err != nil {
+		return pan115.SafeError(err)
+	}
+	if !source.Directory || source.ID != rule.SourceID || rule.SourceID == "0" {
+		return fmt.Errorf("空目录清理需要有效的未整理目录")
+	}
 	rules, err := s.Store.OrganizeRules()
 	if err != nil {
 		return err
@@ -70,7 +77,7 @@ func (s *Service) cleanupEmptyDirectories(ctx context.Context, g pan115.FileGate
 			if f.ParentID != id {
 				return fmt.Errorf("目录父级不匹配，停止清理")
 			}
-			if !f.Directory || protected[f.ID] || skipDirectory(f.Name) {
+			if !f.Directory || protected[f.ID] {
 				continue
 			}
 			if rule.Recursive {
