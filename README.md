@@ -38,6 +38,8 @@
 
 演示版与正式版共用界面，通过独立构建模式区分。`hero` 目录执行 `pnpm build:demo` 输出 `dist-demo/`，可部署到 GitHub Pages 等静态托管；正常 `pnpm build` 仍输出 `dist/`，保持正式登录和后端接口行为。推送前端更新到 `main` 后，Pages 工作流自动更新演示站。首次需在仓库 Settings → Pages 中将 Source 设为 GitHub Actions。
 
+另有 [UIArc 本地预览](uiarc/README.md)，用 UIArc 组件重新设计了 12 个主菜单，可构建为单文件 HTML 离线体验。正式版和线上演示的构建入口均为 `hero/`。
+
 ## Docker 部署
 
 前后端已打包为一个镜像。将以下内容保存为 `docker-compose.yml`：
