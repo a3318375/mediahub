@@ -5,7 +5,7 @@ import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion, typ
 import { motionTokens } from "../lib/motion-tokens";
 import { AnimatedCounter } from "../animated-counter/animated-counter";
 import styles from "./metric-card.module.css";
-export interface MetricCardProps { label: string; value: number; suffix?: string; context: string; change?: string }
+export interface MetricCardProps { label: string; value?: number; suffix?: string; context: string; change?: string; compact?: boolean }
 
 /** Copy that holds a number enters from the side it moved toward: a larger value rises from below, a smaller one drops from above. */
 const rise: Variants = { hidden: (direction: number) => ({ opacity: 0, y: `${.3 * direction}em`, filter: `blur(${motionTokens.blur.soft}px)` }), shown: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: motionTokens.duration.standard, ease: [...motionTokens.ease.enter] } }, gone: (direction: number) => ({ opacity: 0, y: `${-.3 * direction}em`, filter: `blur(${motionTokens.blur.subtle}px)`, transition: { duration: motionTokens.duration.fast, ease: [...motionTokens.ease.standard] } }) };
@@ -40,11 +40,11 @@ function Swap({ text, morph = false, block = false }: { text: string; morph?: bo
   </motion.span>;
 }
 
-export function MetricCard({ label, value, suffix, context, change }: MetricCardProps) {
+export function MetricCard({ label, value, suffix, context, change, compact }: MetricCardProps) {
   const reduceMotion = !!useReducedMotion();
-  return <article className={styles.card}>
+  return <article className={compact ? `${styles.card} ${styles.compact}` : styles.card}>
     <div className={styles.top}><span><Swap text={label} block /></span><AnimatePresence initial={false}>{change && <motion.small key="change" data-trend={/^[+]/.test(change) ? "up" : /^[-−]/.test(change) ? "down" : undefined} initial={{ opacity: 0, scale: reduceMotion ? 1 : .96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: reduceMotion ? 1 : .96, transition: { duration: motionTokens.duration.fast, ease: [...motionTokens.ease.standard] } }} transition={reduceMotion ? { duration: 0 } : motionTokens.spring.snappy}><Swap text={change} morph /></motion.small>}</AnimatePresence></div>
-    <AnimatedCounter value={value} suffix={suffix} animateOnView />
+    {value === undefined ? <span className={styles.missingValue} aria-label="暂无数据">—</span> : <AnimatedCounter value={value} suffix={suffix} animateOnView />}
     <p><Swap text={context} block /></p>
   </article>;
 }

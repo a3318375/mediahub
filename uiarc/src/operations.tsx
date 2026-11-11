@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Copy, Download, FolderOpen, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Copy, Download, FolderOpen, Plus, RefreshCw } from 'lucide-react';
 import { Accordion } from './arc/accordion/accordion';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
@@ -13,6 +13,8 @@ import { Switch } from './arc/switch/switch';
 import { PageHeading, SectionHeading, Status, WorkspaceTabs } from './ui';
 import { includes, options, resources, uid } from './model';
 import type { DemoState, Notify, Task, Update } from './model';
+import { requestError } from './live-api';
+import type { LiveApi, ServerLog } from './live-api';
 
 const providers = ['115 网盘', '夸克网盘', '百度网盘', '磁力链接'];
 const directories = ['自动归类', '电影 / 科幻', '剧集', '动画', '待整理'];
@@ -28,7 +30,7 @@ export function ResourceSearch({ state, initialQuery, remember, onDownload, noti
   const [provider, setProvider] = useState('全部网盘');
   const [detected, setDetected] = useState(false);
   const [copyError, setCopyError] = useState('');
-  const results = resources.filter(item => (!query || includes(item.title, query)) &&
+  const results = resources.filter(item => Boolean(query) && includes(item.title, query) &&
     state.settings[`search.drive.${item.provider}`] !== false &&
     (item.plugin !== '演示索引' || state.settings['search.index'] !== false) &&
     (item.plugin !== '动画资源' || state.settings['search.animation'] !== false));
@@ -112,8 +114,8 @@ function Downloads({ state, update, notify, onNew }: { state: DemoState; update:
   }
   return <div className="stack">
     <SectionHeading title="下载任务" description={`${shown.length} 项任务`} action={<Button onClick={onNew}><Plus size={16} aria-hidden="true" />新建下载</Button>} />
-    <div className="row fields"><SearchField label="搜索任务" value={query} onValueChange={setQuery} placeholder="按名称搜索" />
-      <Select label="下载状态" options={options(states)} value={status} onValueChange={setStatus} /></div>
+    <div className="row processing-toolbar"><div className="processing-search"><SearchField label="搜索任务" value={query} onValueChange={setQuery} placeholder="按任务名称搜索" /></div>
+      <div className="processing-kind"><Select label="下载状态" options={options(states)} value={status} onValueChange={setStatus} /></div></div>
     <div className="table-panel"><SortableDataTable rows={shown} rowKey="id" caption="下载任务列表" emptyMessage="没有符合条件的任务" columns={[
       { key: 'title', label: '名称', sortable: true, render: (_, row) => <span className="table-main"><strong>{row.title}</strong><small>{row.source}</small></span> },
       { key: 'status', label: '状态', render: (_, row) => <Status tone={taskTone[row.status]}>{row.status}</Status> },
@@ -172,43 +174,84 @@ export function Workflow({ id, state, update, notify }: { id: WorkflowId; state:
 }
 
 export function Processing({ state, update, notify, onNew }: { state: DemoState; update: Update; notify: Notify; onNew: () => void }) {
-  return <>
+  return <section className="processing-page">
     <PageHeading title="媒体处理" description="管理下载队列，预览整理、STRM 和元数据任务。" />
     <WorkspaceTabs label="媒体处理功能" items={processingTabs.map(([id, label]) => ({
       id, label, content: id === 'downloads'
         ? <><Downloads state={state} update={update} notify={notify} onNew={onNew} /><div className="section"><Accordion defaultOpen={-1} items={[{ title: '下载记录', content: <div className="stack">{state.tasks.filter(item => item.status === '已完成').map(item => <p key={item.id}>{item.title} · {item.directory}</p>)}</div> }]} /></div></>
         : <Workflow id={id} state={state} update={update} notify={notify} />,
     }))} />
-  </>;
+  </section>;
 }
 
-export function Logs({ state }: { state: DemoState }) {
+export function Logs({ state, api }: { state: DemoState; api?: LiveApi }) {
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState('所有级别');
   const [source, setSource] = useState('所有来源');
   const [limit, setLimit] = useState('50');
-  const rows = state.logs.filter(item => (level === '所有级别' || item.level === level) &&
+  const [remoteRows, setRemoteRows] = useState<ServerLog[]>([]);
+  const [sources, setSources] = useState<string[]>([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(Boolean(api));
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!api) return;
+    const controller = new AbortController();
+    setBusy(true);
+    setError('');
+    setRemoteRows([]);
+    const timer = setTimeout(() => {
+      api.logs({
+        limit, query: query.trim(),
+        ...(level !== '所有级别' ? { level } : {}),
+        ...(source !== '所有来源' ? { source } : {}),
+      }, controller.signal).then(items => {
+        if (controller.signal.aborted) return;
+        setRemoteRows(items);
+        setSources(previous => [...new Set([...previous, ...items.map(item => item.source)])].sort());
+      }).catch(reason => {
+        if (!controller.signal.aborted) setError(requestError(reason));
+      }).finally(() => {
+        if (!controller.signal.aborted) setBusy(false);
+      });
+    }, 250);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [api, level, limit, query, source, revision]);
+  const rows: Array<Omit<ServerLog, 'id'> & { id: string | number }> = api ? remoteRows : state.logs.filter(item =>
+    (level === '所有级别' || item.level === level) &&
     (source === '所有来源' || item.source === source) && includes(item.message, query)).slice(0, Number(limit));
+  const tones = { ...levelTone, INFO: 'info', WARN: 'warning', ERROR: 'danger', DEBUG: 'neutral' } as const;
   function exportLogs() {
     const blob = new Blob([rows.map(log => `[${log.time}] [${log.level}] [${log.source}] ${log.message}`).join('\n')], { type: 'text/plain;charset=utf-8' });
     const href = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = href;
-    anchor.download = 'uiarc-demo-logs.txt';
+    anchor.download = api ? 'mediahub-logs.txt' : 'uiarc-demo-logs.txt';
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(href), 1000);
   }
   return <>
-    <PageHeading title="日志中心" description="查看这次演示的操作记录。" action={<Button variant="secondary" disabled={!rows.length} onClick={exportLogs}><Download size={16} aria-hidden="true" />导出日志</Button>} />
-    <div className="row fields section">
-      <SearchField label="关键词" value={query} onValueChange={setQuery} placeholder="搜索日志内容" />
-      <Select label="级别" options={options(['所有级别', '信息', '警告', '错误'])} value={level} onValueChange={setLevel} />
-      <Select label="来源" options={options(['所有来源', ...new Set(state.logs.map(item => item.source))])} value={source} onValueChange={setSource} />
-      <Select label="显示条数" options={options(['20', '50', '100'])} value={limit} onValueChange={setLimit} />
+    <PageHeading title="日志中心" description={api ? '查询 MediaHub 服务日志。' : '查看这次演示的操作记录。'} />
+    <div className="stack log-content">
+      <div className="panel log-toolbar" role="group" aria-label="日志筛选与操作">
+        <div className="log-keyword"><SearchField label="关键词" value={query} onValueChange={setQuery} placeholder="搜索日志内容" /></div>
+        <div className="log-filters">
+          <Select label="级别" options={options(api ? ['所有级别', 'INFO', 'WARN', 'ERROR', 'DEBUG'] : ['所有级别', '信息', '警告', '错误'])} value={level} onValueChange={setLevel} />
+          <Select label="来源" options={options(['所有来源', ...(api ? sources : new Set(state.logs.map(item => item.source)))])} value={source} onValueChange={setSource} />
+          <Select label="显示条数" options={options(api ? ['50', '100', '200', '500', '1000'] : ['20', '50', '100'])} value={limit} onValueChange={setLimit} />
+        </div>
+        <div className="row log-actions">
+          {api && <Button size="sm" variant="ghost" aria-label="刷新" title="刷新" disabled={busy} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} aria-hidden="true" /><span className="log-action-label">刷新</span></Button>}
+          <Button size="sm" variant="ghost" aria-label="导出日志" title="导出日志" disabled={!rows.length} onClick={exportLogs}><Download size={15} aria-hidden="true" /><span className="log-action-label">导出</span></Button>
+        </div>
+      </div>
+      {error && <p role="alert">{error}</p>}
+      <SortableDataTable rows={rows} rowKey="id" caption="日志列表" emptyMessage={busy ? '正在读取日志…' : '没有符合条件的日志'} columns={[
+        { key: 'time', label: '时间', width: '11.5rem', sortable: true, render: (_, row) => <span className="log-time">{api ? new Date(row.time).toLocaleString('zh-CN') : row.time}</span> },
+        { key: 'level', label: '级别', width: '5.5rem', render: (_, row) => <Status tone={tones[row.level as keyof typeof tones]}>{row.level}</Status> },
+        { key: 'source', label: '来源', width: '6.5rem', sortable: true },
+        { key: 'message', label: '内容', width: 'auto' },
+      ]} />
     </div>
-    <div className="table-panel"><SortableDataTable rows={rows} rowKey="id" caption="日志列表" emptyMessage="没有符合条件的日志" columns={[
-      { key: 'time', label: '时间', sortable: true }, { key: 'level', label: '级别', render: (_, row) => <Status tone={levelTone[row.level]}>{row.level}</Status> },
-      { key: 'source', label: '来源', sortable: true }, { key: 'message', label: '内容' },
-    ]} /></div>
   </>;
 }

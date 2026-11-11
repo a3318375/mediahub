@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Eye, EyeOff, KeyRound, Plus } from 'lucide-react';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
@@ -46,7 +47,7 @@ const searchTabs: [string, string, Field[]][] = [
   ['detect', '链接检测', [{ key: 'search.detect', label: '自动检查搜索结果', kind: 'switch' }, { key: 'search.timeout', label: '检测超时（秒）', initial: '8' }]],
 ];
 
-function VisibilityButton({ label, visible, toggle }: { label: string; visible: boolean; toggle: () => void }) {
+export function VisibilityButton({ label, visible, toggle }: { label: string; visible: boolean; toggle: () => void }) {
   const action = `${visible ? '隐藏' : '显示'}${label}`;
   const Icon = visible ? EyeOff : Eye;
   return <Button type="button" variant="ghost" className="icon-button visibility-button" aria-label={action} title={action} onClick={toggle}><Icon size={18} aria-hidden="true" /></Button>;
@@ -112,25 +113,37 @@ function Keys({ state, update, notify }: SettingsProps) {
   </div>;
 }
 
+const settingsTabs = [
+  ['menus', '菜单管理'], ['basic', '基础配置'], ['organize', '媒体整理'], ['strm', 'STRM 生成'],
+  ['scraping', '元数据刮削'], ['rules', '搜索规则'], ['search', '资源搜索'], ['account', '账号与安全'],
+  ['keys', 'API 密钥'], ['notifications', '通知与机器人'],
+] as const;
+
+export function SettingsLayout({ description, panels }: {
+  description: string; panels: Record<(typeof settingsTabs)[number][0], ReactNode>;
+}) {
+  return <>
+    <PageHeading title="全局设置" description={description} />
+    <WorkspaceTabs label="设置分类" items={settingsTabs.map(([id, label]) => ({ id, label, content: panels[id] }))} />
+  </>;
+}
+
 export function Settings({ state, update, notify, menus }: SettingsProps & { menus: { id: string; label: string }[] }) {
   const props = { state, update, notify };
-  return <>
-    <PageHeading title="全局设置" description="调整菜单、连接参数、账号和通知的演示配置。" />
-    <WorkspaceTabs label="设置分类" items={[
-      { id: 'menus', label: '菜单管理', content: <SettingsForm {...props} title="菜单管理" description="选择侧边栏显示的模块。" fields={menus.map(item => ({ key: `menu.${item.id}`, label: item.label, kind: 'switch', initial: true }))} /> },
-      { id: 'basic', label: '基础配置', content: <SettingsForm {...props} title="基础配置" description="配置 Emby、TMDB、115、音乐和漫文书库的示例连接。" fields={basic} /> },
-      { id: 'organize', label: '媒体整理', content: <Workflow {...props} id="organize" /> },
-      { id: 'strm', label: 'STRM 生成', content: <Workflow {...props} id="strm" /> },
-      { id: 'scraping', label: '元数据刮削', content: <Workflow {...props} id="scraping" /> },
-      { id: 'rules', label: '搜索规则', content: <SettingsForm {...props} title="搜索规则" fields={rules} /> },
-      { id: 'search', label: '资源搜索', content: <WorkspaceTabs label="资源搜索设置" items={searchTabs.map(([id, label, fields]) => ({ id, label, content: <SettingsForm {...props} title={label} fields={fields} /> }))} /> },
-      { id: 'account', label: '账号与安全', content: <SettingsForm {...props} title="账号与安全" description="这些字段只影响本地预览。" fields={[
+  return <SettingsLayout description="调整菜单、连接参数、账号和通知的演示配置。" panels={{
+      menus: <SettingsForm {...props} title="菜单管理" description="选择侧边栏显示的模块。" fields={menus.map(item => ({ key: `menu.${item.id}`, label: item.label, kind: 'switch', initial: true }))} />,
+      basic: <SettingsForm {...props} title="基础配置" description="配置 Emby、TMDB、115、音乐和漫文书库的示例连接。" fields={basic} />,
+      organize: <Workflow {...props} id="organize" />,
+      strm: <Workflow {...props} id="strm" />,
+      scraping: <Workflow {...props} id="scraping" />,
+      rules: <SettingsForm {...props} title="搜索规则" fields={rules} />,
+      search: <WorkspaceTabs label="资源搜索设置" items={searchTabs.map(([id, label, fields]) => ({ id, label, content: <SettingsForm {...props} title={label} fields={fields} /> }))} />,
+      account: <SettingsForm {...props} title="账号与安全" description="这些字段只影响本地预览。" fields={[
         { key: 'account.name', label: '显示名称', initial: '演示用户' },
         { key: 'account.user', label: '演示账号', initial: 'demo' },
         { key: 'account.password', label: '示例密码', kind: 'secret' },
-      ]} /> },
-      { id: 'keys', label: 'API 密钥', content: <Keys {...props} /> },
-      { id: 'notifications', label: '通知与机器人', content: <SettingsForm {...props} title="通知与机器人" description="保存 Telegram 与 Webhook 的示例参数。" fields={notificationFields} /> },
-    ]} />
-  </>;
+      ]} />,
+      keys: <Keys {...props} />,
+      notifications: <SettingsForm {...props} title="通知与机器人" description="保存 Telegram 与 Webhook 的示例参数。" fields={notificationFields} />,
+  }} />;
 }

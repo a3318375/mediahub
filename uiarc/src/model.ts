@@ -17,6 +17,7 @@ import spider from './posters/spider.jpg';
 import fury from './posters/fury.jpg';
 import darkknight from './posters/darkknight.jpg';
 import everything from './posters/everything.jpg';
+import frieren from './posters/frieren.jpg';
 import duneWide from './posters/dune-wide.jpg';
 import interstellarWide from './posters/interstellar-wide.jpg';
 import bladeWide from './posters/blade-wide.jpg';
@@ -29,7 +30,12 @@ import jessicaPortrait from './posters/cast-jessica.jpg';
 
 export type Media = {
   id: string; title: string; original: string; year: number; genre: string; region: string;
-  kind: '电影' | '剧集' | '动画'; poster: string; score: number; duration: string; summary: string; cast: string[];
+  kind: '电影' | '剧集' | '动画'; poster: string; score: number; duration: string; summary: string; cast: string[]; backdrop?: string;
+  detail?: {
+    releaseDate?: string; status?: string; tagline?: string; imdb?: string; ratingsMessage?: string;
+    ratings?: { source: string; value: number }[];
+    credits?: { name: string; role: string; photo: string; personId?: string }[];
+  };
 };
 
 export const media: Media[] = [
@@ -52,6 +58,7 @@ export const media: Media[] = [
   { id: 'fury', title: '疯狂的麦克斯：狂暴之路', original: 'Mad Max: Fury Road', year: 2015, genre: '动作', region: '欧美', kind: '电影', poster: fury, score: 7.6, duration: '121 分钟', summary: '弗瑞奥萨驾驶战车逃离堡垒，和麦克斯在荒原上寻找生路。', cast: ['查理兹·塞隆', '汤姆·哈迪', '尼古拉斯·霍尔特'] },
   { id: 'darkknight', title: '蝙蝠侠：黑暗骑士', original: 'The Dark Knight', year: 2008, genre: '动作', region: '欧美', kind: '电影', poster: darkknight, score: 8.5, duration: '152 分钟', summary: '小丑的出现打破了哥谭的平衡，蝙蝠侠和盟友不得不面对一连串抉择。', cast: ['克里斯蒂安·贝尔', '希斯·莱杰', '艾伦·艾克哈特'] },
   { id: 'everything', title: '瞬息全宇宙', original: 'Everything Everywhere All at Once', year: 2022, genre: '科幻', region: '欧美', kind: '电影', poster: everything, score: 7.8, duration: '140 分钟', summary: '一位洗衣店老板在报税途中发现了无数种可能的人生。', cast: ['杨紫琼', '许玮伦', '关继威'] },
+  { id: 'frieren', title: '葬送的芙莉莲', original: '葬送のフリーレン', year: 2023, genre: '奇幻', region: '日本', kind: '动画', poster: frieren, score: 9.1, duration: '28 集', summary: '击败魔王多年后，精灵魔法使芙莉莲与新的同伴踏上旅程，试着理解曾并肩冒险的人们。', cast: ['种崎敦美', '市之濑加那', '小林千晃'] },
 ];
 
 export const backdrops: Record<string, string> = {
@@ -65,9 +72,13 @@ export const castProfiles: Partial<Record<string, Record<string, { photo: string
     '杰西卡·查斯坦': { photo: jessicaPortrait, character: '墨菲·库珀' },
   },
 };
-export const workPath = (page: string, id: string) => `${page}/work/${id}`;
+export const workPath = (page: string, id: string) => page + '/work/' + encodeURIComponent(id);
 
-export type Subscription = { id: string; title: string; kind: '动漫' | '追剧' | '电影'; source: string; rule: string; active: boolean; auto: boolean; episode: string; season?: string; backup?: string; directory?: string };
+export type AnimeSubscription = {
+  mediaId?: string; rss?: string; bangumiId?: string; group?: string; exclude?: string;
+  weekday?: number; start?: number; total?: number; knownEpisodes?: number[]; checkedAt?: string;
+};
+export type Subscription = { id: string; title: string; kind: '动漫' | '追剧' | '电影'; source: string; rule: string; active: boolean; auto: boolean; episode: string; season?: string; backup?: string; directory?: string; anime?: AnimeSubscription };
 export type Task = { id: string; title: string; source: string; status: '下载中' | '已暂停' | '已完成' | '失败' | '排队中'; progress: number; directory: string; mode?: string; files?: string[] };
 export type Log = { id: string; time: string; level: '信息' | '警告' | '错误'; source: string; message: string };
 export type Resource = { id: string; title: string; provider: string; plugin: string; size: string; code?: string };
@@ -90,8 +101,9 @@ resources.push(...media.filter(item => !indexedTitles.some(title => title.starts
 })));
 
 const initialSubscriptions: Subscription[] = [
-  { id: 'a1', title: '千与千寻', kind: '动漫', source: 'Bangumi', rule: '日语中字 · 1080p', active: true, auto: false, episode: '正片' },
+  { id: 'a1', title: '千与千寻', kind: '动漫', source: 'Bangumi', rule: '日语中字 · 1080p', active: true, auto: false, episode: '正片', anime: { mediaId: 'spirited', total: 1, knownEpisodes: [1] } },
   { id: 'a2', title: '你的名字。', kind: '动漫', source: '自定义 RSS', rule: '简体字幕 · 1080p', active: true, auto: true, episode: '正片' },
+  { id: 'a3', title: '葬送的芙莉莲', kind: '动漫', source: 'Mikan', rule: '简体字幕 · 1080p', active: true, auto: false, episode: '第 1 集', anime: { mediaId: 'frieren', group: '示例字幕组 A', weekday: 5, total: 28, knownEpisodes: [1, 2, 3, 4] } },
   { id: 's1', title: '怪奇物语', kind: '追剧', source: 'TMDB', rule: '第 5 季 · 1080p', active: true, auto: false, episode: '第 2 集' },
   { id: 's2', title: '绝命毒师', kind: '追剧', source: 'TMDB', rule: '第 5 季 · 1080p', active: false, auto: false, episode: '第 16 集' },
 ];
@@ -114,7 +126,7 @@ export const initialState = {
   subscriptions: initialSubscriptions,
   tasks: initialTasks,
   logs: initialLogs,
-  history: ['沙丘', '星际穿越', '怪奇物语'],
+  history: [] as string[],
   favorites: [] as string[],
   settings: {} as Record<string, string | boolean>,
   apiKeys: [] as ApiKey[],

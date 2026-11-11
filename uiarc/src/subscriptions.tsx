@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CalendarDays, Plus, RefreshCw, Tv } from 'lucide-react';
+import { AnimeSubscriptions } from './anime';
 import { Button } from './arc/button/button';
 import { Calendar } from './arc/calendar/calendar';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
@@ -13,7 +14,6 @@ import { MediaGrid, NoResults, PageHeading, SectionHeading, Status, WorkspaceTab
 import { dayKey, includes, media, options, uid } from './model';
 import type { DemoState, Media, Notify, Subscription, Update } from './model';
 
-type Kind = '动漫' | '追剧';
 type Download = (title: string, source: string) => void;
 const animeSources = ['Bangumi', '蜜柑计划', '动漫花园', '自定义 RSS'];
 const tvSources = ['TMDB', '自定义 RSS'];
@@ -36,7 +36,7 @@ function SubscriptionEditor({ seed, onSave, onClose }: {
       }}>
         <div className="field-grid">
           <Input label="作品名称" value={draft.title} error={error} onChange={event => change('title', event.target.value)} />
-          <Select label="来源" options={options(draft.kind === '动漫' ? animeSources : tvSources)} value={draft.source} onValueChange={value => change('source', value)} />
+          <Select label="来源" options={options(tvSources)} value={draft.source} onValueChange={value => change('source', value)} />
           <Input label={draft.source === '自定义 RSS' ? 'RSS 地址' : '字幕组 / 清晰度规则'} value={draft.rule} onChange={event => change('rule', event.target.value)} />
           <Input label="起始集数" value={draft.episode} onChange={event => change('episode', event.target.value)} />
           {draft.kind === '追剧' && <Select label="追踪季" options={options(['第 1 季', '第 2 季', '第 3 季', '第 4 季', '第 5 季'])} value={draft.season ?? '第 1 季'} onValueChange={value => change('season', value)} />}
@@ -57,48 +57,6 @@ function SubscriptionEditor({ seed, onSave, onClose }: {
   </Dialog>;
 }
 
-export function SubscriptionList({ kind, state, update, notify, onDownload }: {
-  kind: Kind; state: DemoState; update: Update; notify: Notify; onDownload: Download;
-}) {
-  const [draft, setDraft] = useState<Subscription | null>(null);
-  const [query, setQuery] = useState('');
-  const rows = state.subscriptions.filter(item => item.kind === kind && includes(item.title, query));
-  function save(entry: Subscription) {
-    update(current => ({ ...current, subscriptions: current.subscriptions.some(item => item.id === entry.id)
-      ? current.subscriptions.map(item => item.id === entry.id ? entry : item) : [...current.subscriptions, entry] }));
-    setDraft(null);
-    notify(`已保存${entry.title}的示例订阅`, '订阅');
-  }
-  function newSubscription() {
-    setDraft({ id: '', title: '', kind, source: kind === '动漫' ? animeSources[0] : tvSources[0], rule: '1080p', active: true, auto: false, episode: '第 1 集' });
-  }
-  return <div className="stack">
-    <SectionHeading title={kind === '动漫' ? '我的动漫订阅' : '我的追剧'} description={`${rows.length} 项订阅`}
-      action={<div className="row">
-        <Button variant="secondary" onClick={() => notify(`已核对 ${rows.length} 项示例订阅`, '订阅')}><RefreshCw size={15} aria-hidden="true" />刷新</Button>
-        <Button onClick={newSubscription}><Plus size={16} aria-hidden="true" />新建订阅</Button>
-      </div>} />
-    <div className="narrow"><SearchField label="查找订阅" value={query} onValueChange={setQuery} placeholder="按片名筛选" /></div>
-    <div className="table-panel"><SortableDataTable rows={rows} rowKey="id" caption={`${kind}订阅列表`} emptyMessage="没有符合条件的订阅" columns={[
-      { key: 'title', label: '作品', sortable: true, render: (_, row) => <span className="table-main"><strong>{row.title}</strong><small>{row.season ? `${row.season} · ` : ''}{row.episode}</small></span> },
-      { key: 'source', label: '来源' }, { key: 'rule', label: '匹配规则' },
-      { key: 'active', label: '追踪状态', render: (_, row) => <div className="row no-wrap"><Switch aria-label={`追踪${row.title}`} checked={row.active} onCheckedChange={active => {
-        update(current => ({ ...current, subscriptions: current.subscriptions.map(item => item.id === row.id ? { ...item, active } : item) }));
-        notify(`${row.title} · ${active ? '已恢复' : '已暂停'}`, '订阅');
-      }} /><Status tone={row.active ? 'success' : 'neutral'}>{row.active ? '追踪中' : '已暂停'}</Status></div> },
-      { key: 'action', label: '操作', render: (_, row) => <div className="row no-wrap">
-        <Button variant="secondary" size="sm" onClick={() => setDraft(row)}>编辑</Button>
-        <Button variant="ghost" size="sm" onClick={() => onDownload(`${row.title} · ${row.episode}`, '115 网盘')}>下载资源</Button>
-        <Button variant="ghost" size="sm" onClick={() => {
-          update(current => ({ ...current, subscriptions: current.subscriptions.filter(item => item.id !== row.id) }));
-          notify(`已移除${row.title}的示例订阅`, '订阅');
-        }}>移除</Button>
-      </div> },
-    ]} /></div>
-    {draft && <SubscriptionEditor seed={draft} onClose={() => setDraft(null)} onSave={save} />}
-  </div>;
-}
-
 export function Anime({ state, update, notify, onOpen, onDownload }: {
   state: DemoState; update: Update; notify: Notify; onOpen: (item: Media) => void; onDownload: Download;
 }) {
@@ -108,11 +66,12 @@ export function Anime({ state, update, notify, onOpen, onDownload }: {
     (source === 'Bangumi' || item.id === (source === '蜜柑计划' ? 'yourname' : 'spirited')) &&
     (includes(item.title, query) || includes(item.original, query)));
   const automation = state.subscriptions.filter(item => item.kind === '动漫');
-  const candidate = (row: Subscription) => state.tasks.find(task => task.title === row.title && task.status !== '失败');
+  const candidate = (row: Subscription) => state.tasks.find(task =>
+    (task.title === row.title || task.title.startsWith(row.title + ' · ') || task.title.includes('] ' + row.title + ' · ')) && task.status !== '失败');
   return <>
-    <PageHeading title="动漫订阅" description="发现动画，按来源和字幕规则追踪更新。" />
+    <PageHeading title="动漫订阅" description="管理番剧更新、字幕组与自动下载。" />
     <WorkspaceTabs label="动漫订阅功能" items={[
-      { id: 'list', label: '订阅管理', content: <SubscriptionList kind="动漫" state={state} update={update} notify={notify} onDownload={onDownload} /> },
+      { id: 'list', label: '订阅管理', content: <AnimeSubscriptions items={automation} update={update} notify={notify} onOpen={onOpen} onDownload={onDownload} /> },
       { id: 'browse', label: '动画片库', content: <div className="stack">
         <div className="row fields">
           <Select label="片库来源" value={source} options={options(animeSources.slice(0, 3))} onValueChange={setSource} />

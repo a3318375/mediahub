@@ -1,0 +1,50 @@
+.main:has(> .processing-page) { padding-top: var(--space-5); }
+.processing-page { --control-height-md: 36px; --control-height-sm: 34px; }
+.processing-page .page-heading { margin-bottom: var(--space-3); }
+.processing-page .page-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: var(--space-3); }
+.processing-page h1 { font-size: var(--text-2xl); }
+.processing-page [role="tab"] { min-width: 0; padding-inline: .65rem; }
+.processing-page [role="tabpanel"] { margin-top: var(--space-3); }
+.processing-content, .processing-section { display: grid; gap: var(--space-3); min-width: 0; }
+.processing-section { margin-top: var(--space-2); }
+.processing-toolbar { gap: var(--space-2); }
+.processing-count { margin-inline-end: var(--space-2); }
+.processing-count h2 { font-size: var(--text-base); }
+.processing-count .muted { font-size: var(--text-xs); }
+.processing-search { flex: 1 1 10rem; max-width: 15rem; min-width: 0; }
+.processing-kind { flex: 0 0 8rem; }
+.processing-toolbar label { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; white-space: nowrap; }
+.processing-actions { margin-inline-start: auto; flex-wrap: nowrap; }
+.processing-actions button[aria-label="刷新状态"] { width: var(--control-height-md); padding-inline: 0; }
+.processing-work-icon { display: grid; place-items: center; flex: none; width: 2.125rem; height: 2.125rem; border-radius: .5rem; background: var(--surface-muted); color: var(--text-muted); }
+.processing-work-name { display: grid; min-width: 0; }
+.processing-work-name strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.processing-work-name small, .processing-page time { color: var(--text-muted); font-size: var(--text-xs); }
+.processing-work-name small:empty { display: none; }
+.processing-job { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding: var(--space-3); }
+.processing-job-counts { gap: var(--space-3); font-variant-numeric: tabular-nums; }
+.processing-job p, .processing-job details { flex-basis: 100%; }
+.processing-error { color: var(--danger); }
+.processing-progress[data-state="failed"] { --accent: var(--danger); --success: var(--danger); }
+.processing-progress[data-state="unknown"], .processing-progress[data-state="awaiting_files"] { --accent: var(--warning); --success: var(--warning); }
+.processing-progress[data-state="cancelled"] { --accent: var(--text-muted); --success: var(--text-muted); }
+.processing-no-tasks { font-size: var(--text-xs); }
+@media (max-width: 640px) {
+  .processing-page { --control-height-md: 40px; --control-height-sm: 38px; }
+  .processing-page [role="tab"] { padding-inline: .5rem; }
+  .processing-toolbar .processing-count { flex-basis: 100%; }
+  .processing-search { flex: 1 1 8rem; max-width: none; }
+  .processing-kind { flex-basis: 7rem; }
+  .processing-actions { flex: 1 0 auto; justify-content: flex-end; }
+}
+@media (max-width: 620px) {
+  .processing-content .table-panel thead { display: none; }
+  .processing-content .table-panel tbody tr { align-items: center; column-gap: var(--space-3); }
+  .processing-content .table-panel tbody tr::after { display: none; }
+  .processing-content .table-panel td[data-primary] { flex: 0 0 100%; }
+  .processing-content .table-panel td[data-numeric]:not([data-primary]) {
+    order: 2; margin-left: 0; padding-left: 0; font-size: var(--text-xs);
+  }
+  .processing-content .table-panel td[data-numeric]::before { content: attr(data-label) ' '; color: var(--text-muted); }
+  .processing-content td[data-label="进度"] { flex: 1 1 6rem; }
+}

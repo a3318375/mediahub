@@ -22,13 +22,20 @@ func (a *API) mountComics(v1 *gin.RouterGroup) {
 		}
 		return value, e
 	}
+	cookieSettings := func(c *gin.Context, value string) {
+		result := gin.H{"configured": value != ""}
+		if value != "" && c.GetString("authMethod") == "session" {
+			result["maskedCookie"] = store.MaskSecret(value)
+		}
+		c.JSON(http.StatusOK, result)
+	}
 	group.GET("/settings", func(c *gin.Context) {
 		value, e := cookie()
 		if e != nil {
 			fail(c, 500, "读取漫画 Cookie 失败")
 			return
 		}
-		c.JSON(200, gin.H{"configured": value != ""})
+		cookieSettings(c, value)
 	})
 	group.PUT("/settings", func(c *gin.Context) {
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 12<<10)
@@ -49,7 +56,7 @@ func (a *API) mountComics(v1 *gin.RouterGroup) {
 			fail(c, 500, "漫画 Cookie 保存失败")
 			return
 		}
-		c.JSON(200, gin.H{"configured": true})
+		cookieSettings(c, value)
 	})
 	credentials := func(c *gin.Context) (string, string, bool) {
 		site := c.DefaultQuery("site", "e-hentai.org")

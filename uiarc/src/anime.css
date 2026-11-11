@@ -1,0 +1,51 @@
+.anime-subscriptions { grid-template-columns: minmax(0, 1fr); }
+.row.anime-actions { flex: 1 1 28rem; justify-content: end; align-items: end; }
+.anime-actions > :first-child { flex: 1 1 13rem; min-width: 0; max-width: 19rem; }
+.anime-actions > button { flex: none; }
+.anime-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); }
+.anime-filter > span { flex: 0 0 3.5rem; color: var(--text-muted); }
+.anime-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13.5rem), 1fr)); gap: var(--space-4); }
+.panel.anime-card { display: flex; flex-direction: column; max-width: 19rem; padding: var(--space-2); }
+.anime-card .anime-cover {
+  display: grid;
+  width: 100%;
+  padding: 0;
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: calc(var(--radius-panel) - var(--space-2));
+  background: var(--surface-muted);
+}
+.anime-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.anime-cover:focus-visible { --focus-outline-offset: -4px; }
+.anime-card-body { display: grid; align-content: start; flex: 1; gap: var(--space-2); padding: var(--space-3) var(--space-2) var(--space-1); min-width: 0; }
+.anime-card-title { padding: 0; border: 0; background: transparent; color: inherit; text-align: start; font-weight: 600; overflow-wrap: anywhere; }
+.anime-card-title:hover { text-decoration: underline; text-underline-offset: .2em; }
+.anime-rating { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text-muted); font-size: var(--text-xs); }
+.anime-rating svg { color: var(--accent-strong); }
+.row.anime-card-footer { gap: 0; padding-top: var(--space-1); }
+.anime-card-footer > span { display: inline-flex; align-items: center; gap: var(--space-1); margin-inline-end: auto; font-size: var(--text-xs); }
+.anime-choices { gap: var(--space-2); }
+.anime-choices .anime-choice { justify-content: start; text-align: start; padding: var(--space-2) var(--space-3); }
+.anime-choice img { width: 32px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: .25rem; }
+.anime-choice span { white-space: normal; }
+.anime-step { color: var(--accent-strong); }
+.anime-detail { display: flex; align-items: start; gap: var(--space-4); }
+.anime-detail img { width: min(25%, 7rem); border-radius: var(--radius-control); }
+.anime-detail dl { display: grid; gap: var(--space-2); margin: 0; }
+.anime-detail dl > div { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: var(--space-2); }
+.anime-detail dt { color: var(--text-muted); }
+.anime-detail dd { margin: 0; overflow-wrap: anywhere; }
+.anime-resources { display: grid; list-style: none; padding: 0; }
+.anime-resources li { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding-block: var(--space-2); border-top: 1px solid var(--border); }
+.anime-resources small { display: block; overflow-wrap: anywhere; }
+.anime-error { color: var(--danger); }
+@media (max-width: 700px) {
+  .row.anime-actions { flex-basis: 100%; justify-content: start; }
+  .anime-actions > :first-child { flex-basis: 100%; max-width: none; }
+  .anime-filter > span { flex-basis: 100%; }
+  .anime-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9rem), 1fr)); gap: var(--space-2); }
+  .panel.anime-card { max-width: none; }
+  .anime-card-body { padding: var(--space-2); }
+}
