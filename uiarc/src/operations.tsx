@@ -10,6 +10,7 @@ import SegmentedControl from './arc/segmented-control/segmented-control';
 import { Select } from './arc/select/select';
 import { SortableDataTable } from './arc/sortable-data-table/sortable-data-table';
 import { Switch } from './arc/switch/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './arc/tabs/tabs';
 import { PageHeading, SectionHeading, Status, WorkspaceTabs } from './ui';
 import { includes, options, resources, uid } from './model';
 import type { DemoState, Notify, Task, Update } from './model';
@@ -53,17 +54,23 @@ export function ResourceSearch({ state, initialQuery, remember, onDownload, noti
     <div className="section stack">
       <SectionHeading title="资源结果" description={`${results.length} 条示例资源`}
         action={<Button variant="secondary" disabled={!shown.length} onClick={() => { setDetected(true); notify(`已检查 ${shown.length} 条本地样例`); }}>检查可见结果</Button>} />
-      <div className="row">
-        <SegmentedControl label="网盘来源" options={['全部网盘', ...providers].map(value => ({ value, label: value === '全部网盘' ? `全部 ${results.length}` : `${value} ${results.filter(item => item.provider === value).length}` }))} value={provider} onValueChange={value => { setProvider(value); setDetected(false); }} />
-      </div>
-      {copyError && <p role="status">{copyError}</p>}
-      <div className="table-panel"><SortableDataTable rows={shown} rowKey="id" caption="资源搜索结果" emptyMessage="没有匹配的示例资源" columns={[
-        { key: 'title', label: '资源名称', sortable: true, render: (_, row) => <span className="table-main"><strong>{row.title}</strong><small>{row.plugin}</small></span> },
-        { key: 'provider', label: '网盘', render: (_, row) => <Status tone={checked ? 'success' : 'neutral'}>{row.provider}</Status> },
-        { key: 'size', label: '大小' },
-        { key: 'code', label: '提取码', render: (_, row) => row.code ? <Button size="sm" variant="ghost" onClick={() => void copy(row.code!)}><Copy size={14} aria-hidden="true" />{row.code}</Button> : '—' },
-        { key: 'action', label: '操作', render: (_, row) => <Button variant="secondary" size="sm" aria-label={`下载${row.title}`} onClick={() => onDownload(row.title, row.provider)}>下载</Button> },
-      ]} /></div>
+      <Tabs value={provider} onValueChange={value => { setProvider(value); setDetected(false); }}>
+        <TabsList aria-label="网盘来源" appearance="underline">
+          {['全部网盘', ...providers].map(value => <TabsTrigger key={value} value={value}>
+            {value === '全部网盘' ? `全部 (${results.length})` : `${value} (${results.filter(item => item.provider === value).length})`}
+          </TabsTrigger>)}
+        </TabsList>
+        <TabsContent value={provider} forceMount>
+          {copyError && <p role="status">{copyError}</p>}
+          <div className="table-panel"><SortableDataTable rows={shown} rowKey="id" caption="资源搜索结果" emptyMessage="没有匹配的示例资源" columns={[
+            { key: 'title', label: '资源名称', sortable: true, render: (_, row) => <span className="table-main"><strong>{row.title}</strong><small>{row.plugin}</small></span> },
+            { key: 'provider', label: '网盘', render: (_, row) => <Status tone={checked ? 'success' : 'neutral'}>{row.provider}</Status> },
+            { key: 'size', label: '大小' },
+            { key: 'code', label: '提取码', render: (_, row) => row.code ? <Button size="sm" variant="ghost" onClick={() => void copy(row.code!)}><Copy size={14} aria-hidden="true" />{row.code}</Button> : '—' },
+            { key: 'action', label: '操作', render: (_, row) => <Button variant="secondary" size="sm" aria-label={`下载${row.title}`} onClick={() => onDownload(row.title, row.provider)}>下载</Button> },
+          ]} /></div>
+        </TabsContent>
+      </Tabs>
     </div>
   </>;
 }
@@ -188,7 +195,8 @@ export function Logs({ state, api }: { state: DemoState; api?: LiveApi }) {
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState('所有级别');
   const [source, setSource] = useState('所有来源');
-  const [limit, setLimit] = useState('50');
+  const [limit, setLimit] = useState(api ? '500' : '50');
+  const [auto, setAuto] = useState(true);
   const [remoteRows, setRemoteRows] = useState<ServerLog[]>([]);
   const [sources, setSources] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -200,23 +208,31 @@ export function Logs({ state, api }: { state: DemoState; api?: LiveApi }) {
     setBusy(true);
     setError('');
     setRemoteRows([]);
-    const timer = setTimeout(() => {
-      api.logs({
-        limit, query: query.trim(),
-        ...(level !== '所有级别' ? { level } : {}),
-        ...(source !== '所有来源' ? { source } : {}),
-      }, controller.signal).then(items => {
+    let timer: ReturnType<typeof setTimeout>;
+    async function load() {
+      if (!api) return;
+      try {
+        const items = await api.logs({
+          limit, query: query.trim(),
+          ...(level !== '所有级别' ? { level } : {}),
+          ...(source !== '所有来源' ? { source } : {}),
+        }, controller.signal);
         if (controller.signal.aborted) return;
+        setError('');
         setRemoteRows(items);
         setSources(previous => [...new Set([...previous, ...items.map(item => item.source)])].sort());
-      }).catch(reason => {
+      } catch (reason) {
         if (!controller.signal.aborted) setError(requestError(reason));
-      }).finally(() => {
-        if (!controller.signal.aborted) setBusy(false);
-      });
-    }, 250);
+      } finally {
+        if (!controller.signal.aborted) {
+          setBusy(false);
+          if (auto) timer = setTimeout(load, 5000);
+        }
+      }
+    }
+    timer = setTimeout(load, 250);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [api, level, limit, query, source, revision]);
+  }, [api, auto, level, limit, query, source, revision]);
   const rows: Array<Omit<ServerLog, 'id'> & { id: string | number }> = api ? remoteRows : state.logs.filter(item =>
     (level === '所有级别' || item.level === level) &&
     (source === '所有来源' || item.source === source) && includes(item.message, query)).slice(0, Number(limit));
@@ -241,6 +257,7 @@ export function Logs({ state, api }: { state: DemoState; api?: LiveApi }) {
           <Select label="显示条数" options={options(api ? ['50', '100', '200', '500', '1000'] : ['20', '50', '100'])} value={limit} onValueChange={setLimit} />
         </div>
         <div className="row log-actions">
+          {api && <Switch label="自动刷新" checked={auto} onCheckedChange={setAuto} />}
           {api && <Button size="sm" variant="ghost" aria-label="刷新" title="刷新" disabled={busy} onClick={() => setRevision(value => value + 1)}><RefreshCw size={15} aria-hidden="true" /><span className="log-action-label">刷新</span></Button>}
           <Button size="sm" variant="ghost" aria-label="导出日志" title="导出日志" disabled={!rows.length} onClick={exportLogs}><Download size={15} aria-hidden="true" /><span className="log-action-label">导出</span></Button>
         </div>

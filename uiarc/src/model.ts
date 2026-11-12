@@ -32,7 +32,8 @@ export type Media = {
   id: string; title: string; original: string; year: number; genre: string; region: string;
   kind: '电影' | '剧集' | '动画'; poster: string; score: number; duration: string; summary: string; cast: string[]; backdrop?: string;
   detail?: {
-    releaseDate?: string; status?: string; tagline?: string; imdb?: string; ratingsMessage?: string;
+    releaseDate?: string; status?: string; tagline?: string; imdb?: string; tmdbId?: string; ratingsMessage?: string;
+    seasons?: { seasonNumber: number; name?: string; episodeCount?: number }[];
     ratings?: { source: string; value: number }[];
     credits?: { name: string; role: string; photo: string; personId?: string }[];
   };
@@ -141,4 +142,6 @@ export type Notify = (message: string, source?: string, level?: Log['level']) =>
 export const options = (values: readonly string[]) => values.map(value => ({ label: value, value }));
 export const includes = (value: string, query: string) => value.toLowerCase().includes(query.trim().toLowerCase());
 export const uid = () => crypto.randomUUID();
-export const dayKey = (date: Date) => [date.getFullYear(), date.getMonth(), date.getDate()].join('-');
+export const dayKey = (date: Date) => [
+  date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0'),
+].join('-');

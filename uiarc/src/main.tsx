@@ -10,10 +10,12 @@ import { Dialog, DialogContent, DialogTrigger } from './arc/dialog/dialog';
 import { Input } from './arc/input/input';
 import { EmbyHome, Discovery, Rankings, MediaDetail } from './catalog';
 import { LiveResourceSearch } from './live-resource-search';
+import { LiveSeriesCalendar, LiveTVEditor } from './live-calendar';
 import { Music } from './library';
 import { Reading } from './reading';
 import { LiveMusic } from './live-library';
 import { LiveComics } from './live-comics';
+import { LiveNovels } from './live-novels';
 import { DownloadEditor, Logs, Processing, ResourceSearch } from './operations';
 import { LiveProcessing } from './live-processing';
 import { Anime, SeriesCalendar } from './subscriptions';
@@ -21,9 +23,12 @@ import { LiveAnime } from './live-anime';
 import { Settings } from './settings';
 import { LiveSettings } from './live-settings';
 import { MediaGrid } from './ui';
-import { ApiError, createLiveApi, liveIdentity, loginLive, logoutLive, presentLiveMedia, readLiveToken, readLiveUser, readSetupStatus, requestError, saveLiveToken } from './live-api';
+import { ApiError, createLiveApi, liveIdentity, loginLive, logoutLive, presentLiveMedia, readLiveToken, readLiveUser, readSetupStatus, requestError, saveLiveToken, setupLive } from './live-api';
 import type { LiveSession } from './live-api';
 import type { SettingValue } from '../../hero/src/lib/settings-api';
+import { mediaContextFromRecord } from '../../hero/src/lib/download-api';
+import type { DownloadMediaContext } from '../../hero/src/lib/download-api';
+import type { TVDraft } from '../../hero/src/lib/media-service';
 import { initialState, media, uid, workPath } from './model';
 import type { DemoState, Media, Notify, Task } from './model';
 import screeningRoom from './sign-in-screening-room.jpg';
@@ -45,7 +50,7 @@ const groups = [
 ];
 const pages = groups.flatMap(group => group.items);
 const settingsMenus = pages.filter(item => !['emby', 'settings'].includes(item.id));
-const connectedPages = new Set(['emby', 'search', 'anime', 'music', 'comics', 'processing', 'logs', 'settings']);
+const connectedPages = new Set(['emby', 'search', 'anime', 'calendar', 'music', 'comics', 'novels', 'processing', 'logs', 'settings']);
 const storageKey = 'mediahub.uiarc.preview.v1';
 const offline = window.location.protocol === 'file:';
 
@@ -78,29 +83,33 @@ function SignIn({ account, password, onEnter, onLogin }: {
 }) {
   const [enteredAccount, setEnteredAccount] = useState(offline ? account : '');
   const [enteredPassword, setEnteredPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [setup, setSetup] = useState<boolean | null>(null);
+  const [setupCheck, setSetupCheck] = useState(0);
   const [error, setError] = useState('');
   const [serviceError, setServiceError] = useState('');
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (offline) return;
     const controller = new AbortController();
+    setServiceError('');
     readSetupStatus(controller.signal).then(({ setupRequired }) => {
-      if (!controller.signal.aborted && setupRequired) setServiceError('服务尚无管理员账号。请确认后端使用已有数据目录。');
+      if (!controller.signal.aborted) setSetup(setupRequired);
     }).catch(error => {
       if (!controller.signal.aborted) setServiceError(requestError(error));
     });
     return () => controller.abort();
-  }, []);
+  }, [setupCheck]);
 
   return <main className="sign-in">
     <section className="sign-in-card" aria-labelledby="sign-in-title">
       <div className="sign-in-content">
         <Brand />
         <div>
-          <h1 id="sign-in-title">进入媒体工作台</h1>
+          <h1 id="sign-in-title">{setup ? '创建管理员账号' : '进入媒体工作台'}</h1>
           <p className="muted">{offline
             ? password ? '使用此浏览器中设置的演示账号登录。' : '当前演示账号未设置密码，密码可留空。'
-            : '使用现有 MediaHub 账号登录。'}</p>
+            : setup ? '首次使用 MediaHub，请创建管理员账号。' : '使用现有 MediaHub 账号登录。'}</p>
           <form className="stack sign-in-form" onSubmit={async event => {
             event.preventDefault();
             if (busy) return;
@@ -111,20 +120,36 @@ function SignIn({ account, password, onEnter, onLogin }: {
               else setError('账号或密码不正确。');
               return;
             }
+            if (setup === null) return;
+            if (setup) {
+              if (!/^[A-Za-z0-9._-]{3,32}$/.test(submittedAccount)) { setError('账号需为 3 到 32 位字母、数字、点、下划线或短横线。'); return; }
+              if (enteredPassword !== confirmPassword) { setError('两次输入的密码不一致。'); return; }
+              if (new TextEncoder().encode(enteredPassword).length > 72) { setError('密码不能超过 72 字节。'); return; }
+            }
             setBusy(true);
             setError('');
             setServiceError('');
-            try { onLogin(await loginLive(submittedAccount, enteredPassword)); }
-            catch (error) { setError(requestError(error)); }
+            try { onLogin(await (setup ? setupLive : loginLive)(submittedAccount, enteredPassword)); }
+            catch (error) {
+              setError(requestError(error));
+              if (setup && error instanceof ApiError && error.status === 409) {
+                setSetup(null); setSetupCheck(value => value + 1);
+              }
+            }
             finally { setBusy(false); }
           }}>
             <Input label={offline ? '演示账号' : '账号'} name="username" autoComplete="username" autoCapitalize="none" spellCheck={false}
               required value={enteredAccount} onChange={event => { setEnteredAccount(event.target.value); setError(''); }} />
-            <Input label="密码" name="password" type="password" autoComplete="current-password"
+            <Input label="密码" name="password" type="password" autoComplete={setup ? 'new-password' : 'current-password'}
               required={!offline || Boolean(password)} value={enteredPassword} onChange={event => { setEnteredPassword(event.target.value); setError(''); }} />
-            {serviceError && !error && <p className="sign-in-error" role="status">{serviceError}</p>}
+            {setup && <Input label="确认密码" name="confirm-password" type="password" autoComplete="new-password" required
+              value={confirmPassword} onChange={event => { setConfirmPassword(event.target.value); setError(''); }} />}
+            {serviceError && <div className="row"><p className="sign-in-error" role="alert">{serviceError}</p>
+              <Button size="sm" variant="secondary" onClick={() => setSetupCheck(value => value + 1)}>重试</Button></div>}
             {error && <p className="sign-in-error" role="alert">{error}</p>}
-            <Button size="lg" type="submit" disabled={busy}>{busy ? '正在登录…' : offline ? '进入演示' : '登录'} <ArrowRight size={16} aria-hidden="true" /></Button>
+            <Button size="lg" type="submit" disabled={busy || (!offline && setup === null)}>
+              {busy ? setup ? '正在创建…' : '正在登录…' : offline ? '进入演示' : setup ? '创建账号并登录' : '登录'} <ArrowRight size={16} aria-hidden="true" />
+            </Button>
           </form>
         </div>
       </div>
@@ -164,7 +189,9 @@ function App() {
   const [profile, setProfile] = useState(false);
   const [notice, setNotice] = useState('');
   const [download, setDownload] = useState<{ title: string; source: string } | null>(null);
-  const [resourceSearch, setResourceSearch] = useState({ query: '', version: 0 });
+  const [resourceSearch, setResourceSearch] = useState<{ query: string; version: number; media?: DownloadMediaContext }>({ query: '', version: 0 });
+  const [visitedSearch, setVisitedSearch] = useState(false);
+  const [tvDraft, setTVDraft] = useState<TVDraft>();
   const [storageAvailable, setStorageAvailable] = useState(true);
   const main = useRef<HTMLElement>(null);
   const previousRoute = useRef(route);
@@ -233,6 +260,7 @@ function App() {
     }
   }, [page, mediaId]);
   useEffect(() => {
+    if (page === 'search') setVisitedSearch(true);
     if (page === 'discover' || page === 'rankings') {
       setVisitedCatalogs(current => current.includes(page) ? current : [...current, page]);
     }
@@ -261,9 +289,9 @@ function App() {
     setNotice(message);
     if (source) setState(current => ({ ...current, logs: [{ id: uid(), message, source, level, time: new Date().toLocaleTimeString('zh-CN', { hour12: false }) }, ...current.logs].slice(0, 100) }));
   };
-  function go(target: string, resourceQuery = '') {
+  function go(target: string, resourceQuery = '', resourceMedia?: DownloadMediaContext) {
     const current = readRoute();
-    if (target === 'search') setResourceSearch(previous => ({ query: resourceQuery, version: previous.version + 1 }));
+    if (target === 'search' && (resourceQuery || !api)) setResourceSearch(previous => ({ query: resourceQuery, media: resourceMedia, version: previous.version + 1 }));
     setRoute({ page: target, mediaId: null }); setMobile(false);
     if (current.page !== target || current.mediaId || !window.location.hash) window.location.hash = target;
     else window.scrollTo(0, 0);
@@ -287,10 +315,12 @@ function App() {
     const query = value.trim();
     if (query) setState(current => ({ ...current, history: [query, ...current.history.filter(item => item !== query)].slice(0, 16) }));
   }
-  function startSearch(query: string) {
+  function startSearch(item: Media) {
+    const query = item.title;
+    const identity = liveIdentity(item.id);
     if (!api) remember(query);
     if (!mediaId && (page === 'discover' || page === 'rankings')) searchOrigin.current = { page, scroll: window.scrollY };
-    go('search', query);
+    go('search', query, identity ? mediaContextFromRecord({ ...identity, title: item.title, year: item.year || undefined }) : undefined);
   }
   function startDownload(title = '', source = '115 网盘') {
     setDownload({ title, source });
@@ -324,6 +354,12 @@ function App() {
     setDemoEntered(false);
   }
   function toggleSubscription(item: Media, season: string) {
+    const identity = liveIdentity(item.id);
+    if (api && identity?.mediaType === 'tv') {
+      const tmdbId = item.detail?.tmdbId || (identity.source === 'tmdb' ? identity.sourceId : '');
+      if (tmdbId) setTVDraft({ title: item.title, tmdbId, season: 0, source: 'pansou', channels: [], enabled: true, match: '', exclude: '' });
+      return;
+    }
     const existing = state.subscriptions.find(entry => entry.title === item.title);
     if (existing) {
       setState(current => ({ ...current, subscriptions: current.subscriptions.filter(entry => entry.id !== existing.id) }));
@@ -343,13 +379,15 @@ function App() {
   const account = String(state.settings['account.user'] || '').trim() || 'demo';
   const renderPage = () => {
     switch (page) {
-      case 'search': return api ? <LiveResourceSearch key={resourceSearch.version} api={api} initialQuery={resourceSearch.query} />
-        : <ResourceSearch key={resourceSearch.version} state={state} initialQuery={resourceSearch.query} remember={remember} onDownload={startDownload} notify={notify} />;
+      case 'search': return api ? null : <ResourceSearch key={resourceSearch.version} state={state} initialQuery={resourceSearch.query} remember={remember} onDownload={startDownload} notify={notify} />;
       case 'anime': return api ? <LiveAnime api={api} /> : <Anime {...common} onOpen={openDetail} onDownload={startDownload} />;
-      case 'calendar': return <SeriesCalendar {...common} onDownload={startDownload} />;
-      case 'music': return api ? <LiveMusic api={api} /> : <Music {...common} />;
+      case 'calendar': return api ? <LiveSeriesCalendar api={api} discover={() => {
+        go('discover'); notify('在剧集详情中点击「订阅此剧」。');
+      }} notify={notify} />
+        : <SeriesCalendar {...common} onDownload={startDownload} />;
+      case 'music': return api && session ? <LiveMusic api={api} account={session.user.account} /> : <Music {...common} />;
       case 'comics': return api ? <LiveComics api={api} /> : <Reading key={page} kind={page} state={state} update={update} />;
-      case 'novels': return <Reading key={page} kind={page} state={state} update={update} />;
+      case 'novels': return api ? <LiveNovels api={api} /> : <Reading key={page} kind={page} state={state} update={update} />;
       case 'processing': return api ? <LiveProcessing api={api} /> : <Processing {...common} onNew={() => startDownload()} />;
       case 'logs': return <Logs state={state} api={api} />;
       case 'settings': return api && session ? <LiveSettings api={api} user={session.user} menuSources={settingsMenus} onMenus={setServerMenus}
@@ -409,6 +447,12 @@ function App() {
       <main ref={main} className={detail ? 'main detail-main' : 'main'} id="main-content">
         {(page === 'discover' || visitedCatalogs.includes('discover')) && <div hidden={page !== 'discover' || viewingDetail}><Discovery {...catalogActions} api={api} onSearch={remember} /></div>}
         {(page === 'rankings' || visitedCatalogs.includes('rankings')) && <div hidden={page !== 'rankings' || viewingDetail}><Rankings {...catalogActions} api={api} /></div>}
+        {api && session && token && (page === 'search' || visitedSearch) && <div hidden={page !== 'search' || viewingDetail}>
+          <LiveResourceSearch key={session.user.account + ':' + resourceSearch.version} api={api} token={token} account={session.user.account}
+            active={page === 'search' && !viewingDetail} initialQuery={resourceSearch.query} media={resourceSearch.media}
+            backLabel={searchOrigin.current?.page === 'rankings' ? '返回榜单推荐' : '返回影视探索'}
+            onBack={() => go(searchOrigin.current?.page || 'discover')} notify={notify} />
+        </div>}
         {page !== 'discover' && page !== 'rankings' && <div hidden={viewingDetail}>
           {session && !connectedPages.has(page) && <p className="muted catalog-status">此页使用本地演示数据。</p>}
           {renderPage()}
@@ -422,10 +466,12 @@ function App() {
         </div>}
         {detail && <MediaDetail key={detail.id} item={detail} api={api} favorite={state.favorites.includes(detail.id)} subscribed={state.subscriptions.some(entry => entry.title === detail.title)}
           detailError={detailFailure?.id === detail.id ? detailFailure.message : undefined} onRetry={() => setDetailRetry(value => value + 1)}
-          onClose={closeDetail} onFavorite={toggleFavorite} onSubscribe={toggleSubscription} onSearch={item => startSearch(item.title)} onDownload={item => startDownload(item.title)} />}
+          onClose={closeDetail} onFavorite={toggleFavorite} onSubscribe={toggleSubscription} onSearch={startSearch} onDownload={item => startDownload(item.title)} />}
       </main>
     </div>
     {download && <DownloadEditor seed={download} onClose={() => setDownload(null)} onSave={addTask} />}
+    {api && tvDraft && <LiveTVEditor api={api} value={tvDraft} close={() => setTVDraft(undefined)}
+      saved={() => { setTVDraft(undefined); notify('已添加追剧订阅。'); go('calendar'); }} />}
     <div className="notice-region" role="status" aria-live="polite">{notice && <span>{notice}</span>}</div>
   </div>;
 }

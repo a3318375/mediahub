@@ -7,6 +7,7 @@ import { Input } from './arc/input/input';
 import { Select } from './arc/select/select';
 import { Switch } from './arc/switch/switch';
 import { requestError } from './live-api';
+import { DirectoryPicker } from './live-download';
 import type { LiveApi, LiveSession, LiveUser } from './live-api';
 import { AccountSettings, LiveKeys, ResourceSettings } from './live-settings-panels';
 import { SettingsLayout, VisibilityButton } from './settings';
@@ -14,7 +15,7 @@ import { SectionHeading } from './ui';
 import { options } from './model';
 
 type Values = Record<string, SettingValue>;
-type Field = { key: string; label: string; initial?: string | boolean | number; secret?: boolean; readOnly?: boolean; choices?: string[] };
+type Field = { key: string; label: string; initial?: string | boolean | number; secret?: boolean; readOnly?: boolean; choices?: string[]; directory?: boolean };
 type Source = {
   id: string;
   fields: Field[];
@@ -64,7 +65,7 @@ const notificationSources = [section('notifications', schemaFields('notification
 const organizeSources: Source[] = [{
   id: 'organize',
   fields: [
-    { key: 'sourceId', label: '来源目录（115）' }, { key: 'targetId', label: '输出目录（115）' },
+    { key: 'sourceId', label: '来源目录（115）', directory: true }, { key: 'targetId', label: '输出目录（115）', directory: true },
     { key: 'cron', label: '定时规则（北京时间）' },
     { key: 'enabled', label: '定时整理已启用', initial: false, readOnly: true },
     { key: 'scheduleError', label: '定时规则错误', readOnly: true },
@@ -83,7 +84,7 @@ function outputSources(kind: 'strm' | 'scraping'): Source[] {
   return [{
     id: kind,
     fields: kind === 'strm' ? [
-      { key: 'sourceId', label: '来源目录（115）' }, { key: 'outputDir', label: '输出目录' },
+      { key: 'sourceId', label: '来源目录（115）', directory: true }, { key: 'outputDir', label: '输出目录' },
       { key: 'cron', label: '定时规则（北京时间）' }, { key: 'baseUrl', label: '播放服务地址' },
     ] : [{ key: 'outputDir', label: '刮削目录' }],
     load: async (api, signal) => valuesOnly({ ...(await api.outputConfig(kind, signal)).config }),
@@ -105,6 +106,7 @@ function ServerSettingsForm({ api, sources, title, description, onSaved }: {
   const [loaded, setLoaded] = useState<Record<string, SettingsResponse>>();
   const [draft, setDraft] = useState<Record<string, string | boolean>>({});
   const [shown, setShown] = useState<Record<string, string>>({});
+  const [picking, setPicking] = useState<Field>();
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -171,7 +173,7 @@ function ServerSettingsForm({ api, sources, title, description, onSaved }: {
     else setSaved(true);
   }
 
-  return <form className="panel stack" onSubmit={event => { event.preventDefault(); void save(); }}>
+  return <><form className="panel stack" onSubmit={event => { event.preventDefault(); void save(); }}>
     <SectionHeading title={title} description={description} />
     {error && <p role="alert">{error}</p>}
     {!loaded ? error ? <div><Button variant="secondary" onClick={() => setRevision(value => value + 1)}>重新读取</Button></div>
@@ -190,13 +192,15 @@ function ServerSettingsForm({ api, sources, title, description, onSaved }: {
           const placeholder = secret && config.configuredSecrets.includes(key)
             ? config.maskedSecrets?.[key]?.replace('••••••••', '****') || '****'
             : undefined;
-          return <div key={key} className={secret ? 'secret-field' : undefined}>
+          return <div key={key} className={secret ? 'secret-field' : field.directory ? 'row fields settings-directory' : undefined}>
             <Input label={label} type={secret && !visible ? 'password' : typeof initial === 'number' ? 'number' : 'text'}
               value={storedValue || String(value)} readOnly={readOnly || Boolean(storedValue)} disabled={busy}
               autoComplete={secret ? 'new-password' : undefined} required={typeof initial === 'number'}
               min={typeof initial === 'number' ? 1 : undefined} placeholder={placeholder}
               onChange={event => edit(key, event.target.value)} />
             {secret && <VisibilityButton label={label} visible={visible} toggle={() => { if (!busy) void toggleSecret(source, field); }} />}
+            {field.directory && <Button size="sm" variant="secondary" disabled={busy} aria-label={'浏览' + label}
+              onClick={() => setPicking(field)}>浏览文件夹</Button>}
           </div>;
         }))}</div>
         <div className="row">
@@ -204,7 +208,9 @@ function ServerSettingsForm({ api, sources, title, description, onSaved }: {
           {saved && <span role="status" className="muted">已保存到服务器</span>}
         </div>
       </>}
-  </form>;
+  </form>{picking && <DirectoryPicker api={api} title={'选择' + picking.label} close={() => setPicking(undefined)} choose={folder => {
+    edit(picking.key, folder.id); setPicking(undefined);
+  }} />}</>;
 }
 
 export function LiveSettings({ api, user, onUser, onSession, menuSources, onMenus }: {

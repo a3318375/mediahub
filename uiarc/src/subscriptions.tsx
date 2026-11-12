@@ -94,7 +94,7 @@ export function Anime({ state, update, notify, onOpen, onDownload }: {
   </>;
 }
 
-function beijingToday() {
+export function beijingToday() {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Shanghai', year: 'numeric', month: 'numeric', day: 'numeric',
   }).formatToParts(new Date());

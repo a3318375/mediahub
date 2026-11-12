@@ -3,6 +3,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
   plugins: [viteSingleFile()],
+  resolve: { dedupe: ['react', 'react-dom'] },
   build: { target: 'esnext' },
   server: {
     proxy: {

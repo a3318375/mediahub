@@ -57,8 +57,12 @@ html:has(.comic-reader) { scrollbar-gutter: stable; }
 .music-page [role="tabpanel"] { margin-top: var(--space-3); }
 .music-library-summary { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-4); padding: var(--space-3); }
 .music-library-summary h2 { font-size: var(--text-lg); }
-.music-library-art, .music-player-icon { display: grid; place-items: center; aspect-ratio: 1; border-radius: var(--radius-control); color: var(--accent-strong); background: var(--accent-subtle); }
+.music-library-art, .music-player-icon, .music-cover { display: grid; place-items: center; aspect-ratio: 1; overflow: hidden; border-radius: var(--radius-control); color: var(--accent-strong); background: var(--accent-subtle); }
 .music-library-art { width: 4.25rem; background: radial-gradient(circle, var(--surface) 22%, transparent 23%), var(--accent-subtle); }
+.music-library-art > svg { width: 2.5rem; height: 2.5rem; }
+.music-cover { width: 2rem; flex: none; }
+.music-library-art img, .music-player-icon img, .music-cover img { width: 100%; height: 100%; object-fit: cover; }
+.music-track-title { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .music-tools > :first-child { flex: 1 1 12rem; min-width: 0; }
 .music-section-heading h2, .music-pane > h2 { font-size: var(--text-base); }
 .music-empty { display: grid; justify-items: center; gap: var(--space-2); padding: var(--space-7) var(--space-4); color: var(--text-muted); }
@@ -74,6 +78,7 @@ html:has(.comic-reader) { scrollbar-gutter: stable; }
 .music-player:has(audio) { position: sticky; bottom: var(--space-2); z-index: 2; }
 .music-player-icon { width: 2.5rem; }
 .music-player audio { width: 100%; }
+.music-player-controls { grid-column: 2 / -1; justify-self: end; }
 @media (max-width: 620px) {
   .comic-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.25rem), 1fr)); }
   .comic-tools > :first-child { flex-basis: calc(100% - 6rem); }
@@ -85,6 +90,7 @@ html:has(.comic-reader) { scrollbar-gutter: stable; }
   .comic-reader-back .comic-reader-button-label { display: none; }
   .music-player { grid-template-columns: auto minmax(0, 1fr); }
   .music-player audio { grid-column: 1 / -1; }
+  .music-player-controls { grid-column: 1 / -1; }
   .music-library-summary { grid-template-columns: auto minmax(0, 1fr); gap: var(--space-3); }
   .music-library-summary > button { grid-column: 2; justify-self: start; }
 }

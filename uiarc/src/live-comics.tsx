@@ -58,7 +58,7 @@ function ComicImage({ api, path, alt = '', onError, onRetry }: { api: LiveApi; p
   </div>;
 }
 
-function ComicCard({ api, title, cover, meta, open }: { api: LiveApi; title: string; cover?: string; meta: string; open: () => void }) {
+export function ReadingShelfCard({ api, title, cover, meta, open }: { api: LiveApi; title: string; cover?: string; meta: string; open: () => void }) {
   return <button className="comic-card" type="button" onClick={open} aria-label={`查看《${title}》详情`}>
     <ComicImage key={cover} api={api} path={cover} />
     <strong title={title}>{title}</strong><small title={meta}>{meta}</small>
@@ -66,7 +66,7 @@ function ComicCard({ api, title, cover, meta, open }: { api: LiveApi; title: str
 }
 
 function GalleryCards({ api, items, select }: { api: LiveApi; items: ComicGallery[]; select: (gallery: ComicGallery) => void }) {
-  return <div className="comic-grid">{items.map(item => <ComicCard key={galleryKey(item)} api={api} title={item.title}
+  return <div className="comic-grid">{items.map(item => <ReadingShelfCard key={galleryKey(item)} api={api} title={item.title}
     cover={item.cover ? comicCoverPath(item.cover) : undefined} meta={[item.category || '画廊', item.posted].filter(Boolean).join(' · ')} open={() => select(item)} />)}</div>;
 }
 
@@ -272,7 +272,7 @@ function ComicShelf({ api, read }: { api: LiveApi; read: (item: Reading) => void
     {listError ? <div role="alert" className="panel row comic-feedback">{listError}<Button size="sm" variant="ghost" onClick={() => setRevision(value => value + 1)}>重试</Button></div>
       : <div aria-busy={loading}>
         {loading ? <p className="panel comic-empty" role="status">正在读取漫画…</p> : result?.items?.length
-          ? <div className="comic-grid">{result.items.map(item => <ComicCard key={item.id} api={api} title={titleOf(item)} cover={localCover(item)}
+          ? <div className="comic-grid">{result.items.map(item => <ReadingShelfCard key={item.id} api={api} title={titleOf(item)} cover={localCover(item)}
             meta={size(item.size) + (item.available ? '' : ' · 文件未找到')} open={() => { chooseAction(undefined); setSelected(item); }} />)}</div>
           : <p className="panel comic-empty">{query ? '没有找到匹配的漫画。' : '书架还没有本地漫画。'}</p>}
       </div>}

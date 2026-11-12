@@ -32,7 +32,7 @@ export function Tabs({ value, defaultValue, onValueChange, className, ...props }
   return <TabsContext.Provider value={{ active, layoutId, direction, panelHeightRef, leavingRectRef }}><LayoutGroup id={layoutId}><TabsPrimitive.Root {...props} ref={root} className={[styles.root, className].filter(Boolean).join(" ")} value={active} onValueChange={handleChange}/></LayoutGroup></TabsContext.Provider>;
 }
 
-export function TabsList({ className, appearance = "pill", ...props }: ComponentPropsWithoutRef<typeof TabsPrimitive.List> & { appearance?: "pill" | "underline" }) {
+export function TabsList({ className, appearance = "pill", wrap = false, ...props }: ComponentPropsWithoutRef<typeof TabsPrimitive.List> & { appearance?: "pill" | "underline"; wrap?: boolean }) {
   const { active } = useContext(TabsContext);
   const reduced = useReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
@@ -49,7 +49,7 @@ export function TabsList({ className, appearance = "pill", ...props }: Component
   }, []);
   const reveal = useCallback((tab: HTMLElement | null) => {
     const scroll = viewport.current;
-    if (!scroll || !tab) return;
+    if (wrap || !scroll || !tab) return;
     const frame = scroll.getBoundingClientRect();
     const item = tab.getBoundingClientRect();
     const max = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
@@ -57,12 +57,12 @@ export function TabsList({ className, appearance = "pill", ...props }: Component
     const right = frame.right - (scroll.scrollLeft < max - 1 ? 34 : 0);
     const delta = item.left < left ? item.left - left : item.right > right ? item.right - right : 0;
     if (delta) scroll.scrollBy({ left: delta, behavior: reduced ? "instant" : "smooth" });
-  }, [reduced]);
+  }, [reduced, wrap]);
   useLayoutEffect(() => {
     const frame = shell.current;
     const scroll = viewport.current;
     const content = list.current;
-    if (!frame || !scroll || !content) return;
+    if (wrap || !frame || !scroll || !content) return;
     const observer = new ResizeObserver(update);
     observer.observe(frame);
     observer.observe(scroll);
@@ -70,15 +70,15 @@ export function TabsList({ className, appearance = "pill", ...props }: Component
     scroll.addEventListener("scroll", update, { passive: true });
     update();
     return () => { observer.disconnect(); scroll.removeEventListener("scroll", update); };
-  }, [update]);
+  }, [update, wrap]);
   useLayoutEffect(() => { reveal(list.current?.querySelector<HTMLElement>('[role="tab"][data-state="active"]') ?? null); }, [active, reveal]);
   const scrollTabs = (direction: number) => viewport.current?.scrollBy({ left: direction * (viewport.current?.clientWidth ?? 0) * .75, behavior: reduced ? "instant" : "smooth" });
-  return <div ref={shell} className={styles.listShell} data-appearance={appearance} data-overflow={edges.overflow} data-left={edges.left} data-right={edges.right}>
-    {edges.overflow && <button type="button" className={`${styles.scrollButton} ${styles.scrollLeft}`} aria-label="Scroll tabs left" disabled={!edges.left} onClick={() => scrollTabs(-1)}><NavArrowLeft width={17} height={17} aria-hidden="true"/></button>}
+  return <div ref={shell} className={styles.listShell} data-appearance={appearance} data-wrap={wrap ? '' : undefined} data-overflow={!wrap && edges.overflow} data-left={!wrap && edges.left} data-right={!wrap && edges.right}>
+    {!wrap && edges.overflow && <button type="button" className={`${styles.scrollButton} ${styles.scrollLeft}`} aria-label="Scroll tabs left" disabled={!edges.left} onClick={() => scrollTabs(-1)}><NavArrowLeft width={17} height={17} aria-hidden="true"/></button>}
     <motion.div ref={viewport} layoutScroll className={styles.viewport} onFocusCapture={event => { if (event.target instanceof HTMLElement && event.target.getAttribute("role") === "tab") reveal(event.target); }}>
       <TabsPrimitive.List {...props} ref={list} className={[styles.list, className].filter(Boolean).join(" ")}/>
     </motion.div>
-    {edges.overflow && <button type="button" className={`${styles.scrollButton} ${styles.scrollRight}`} aria-label="Scroll tabs right" disabled={!edges.right} onClick={() => scrollTabs(1)}><NavArrowRight width={17} height={17} aria-hidden="true"/></button>}
+    {!wrap && edges.overflow && <button type="button" className={`${styles.scrollButton} ${styles.scrollRight}`} aria-label="Scroll tabs right" disabled={!edges.right} onClick={() => scrollTabs(1)}><NavArrowRight width={17} height={17} aria-hidden="true"/></button>}
   </div>;
 }
 

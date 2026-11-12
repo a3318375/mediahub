@@ -1,11 +1,11 @@
 import type { MediaDetail, MediaPage, MediaProvidersResponse, MediaSummary } from '../../hero/src/lib/media-contract';
 import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from '../../hero/src/lib/anime-api';
 import type { SettingsResponse, SettingsSection, SettingValue } from '../../hero/src/lib/settings-api';
-import type { AnimeDownloadCandidate, AnimeDownloadRule, DownloadTask } from '../../hero/src/lib/download-api';
+import type { AnimeDownloadCandidate, AnimeDownloadRule, DownloadFile, DownloadRequest, DownloadTask } from '../../hero/src/lib/download-api';
 import type { APIKeyInfo } from '../../hero/src/lib/api-keys-api';
 import type { OutputConfig, OutputJob, OutputKind } from '../../hero/src/lib/media-output-api';
 import type { ResourceSearchMeta } from '../../hero/src/lib/resource-search';
-import type { Resource, Resources } from '../../hero/src/lib/media-service';
+import type { Resources, TV, TVDraft } from '../../hero/src/lib/media-service';
 import type { OrganizeMediaItem } from '../../hero/src/lib/organize-api';
 import type { Media } from './model';
 
@@ -14,28 +14,31 @@ export type LiveSession = { accessToken: string; user: LiveUser };
 export type Platform = { id: number; name: string; logo?: string };
 export type ServerLog = { id: number; time: string; source: string; level: string; message: string };
 export type LibraryPage<T> = { items: T[]; page: number; pageSize: number; total: number };
-export type MusicSong = { id: string; title: string; artist: string; album: string; duration?: number };
+export type MusicSong = { id: string; title: string; artist: string; album: string; duration?: number; coverArt?: string };
 export type ComicGallery = {
   id: string; token: string; site: string; title: string; japaneseTitle: string; cover: string;
   category: string; uploader: string; posted: string; language: string; rating: string; pages: number; tags?: Record<string, string[]>;
 };
-export type Comic = { id: string; title: string; path: string; format: string; size: number; modifiedAt: string; importedAt: string; available: boolean; metadata?: ComicGallery };
+export type LibraryItem = { id: string; title: string; path: string; format: string; size: number; modifiedAt: string; importedAt: string; available: boolean };
+export type Comic = LibraryItem & { metadata?: ComicGallery };
 type ComicShelfStatus = { configured: boolean; running: boolean; error: string; directoryError: string; completedAt: string; found: number };
 type ComicMetadataStatus = { running: boolean; total: number; done: number; updated: number; skipped: number; failed: number; error: string; completedAt: string };
 type ComicCredentials = { configured: boolean; maskedCookie?: string };
 export type MusicPlaylist = { id: string; name: string; songCount: number; entry?: MusicSong[] };
 const comicShelfPath = '/api/v1/reading/comics';
+const novelShelfPath = '/api/v1/reading/novels';
 const comicSourcePath = '/api/v1/comics/ehentai';
 export const localComicPath = (id: string) => comicShelfPath + '/' + encodeURIComponent(id);
 export const comicGalleryPath = ({ id, token }: ComicGallery) => `${comicSourcePath}/gallery/${encodeURIComponent(id)}/${encodeURIComponent(token)}`;
 export const comicCoverPath = (url: string) => comicSourcePath + '/cover?' + new URLSearchParams({ url });
-type ResourceSearchResult = Omit<Resources, 'linksByCloud'> & { linksByCloud?: Record<string, (Resource & { title?: string })[]> };
 export type OrganizeConfig = { sourceId: string; targetId: string; cron: string; enabled: boolean; scheduleError?: string };
 export type LiveMedia = Pick<MediaSummary, 'source' | 'sourceId' | 'mediaType'>;
 export type EmbyLibrary = { id: string; title: string; url: string; count: number };
 export type EmbyItem = { id: string; title: string; url: string; kind: string; year: number; rating: string };
 export type EmbyResumeItem = EmbyItem & { progress: number; resumeLabel: string; remaining: string };
 export type EmbyDashboardData = {
+  updatedAt: string;
+  stats: Record<string, { movies: number; series: number; episodes: number; plays: number; viewers: number; hours: number }>;
   warnings: string[];
   libraries: EmbyLibrary[];
   recentlyAdded: EmbyItem[];
@@ -80,6 +83,8 @@ export function presentLiveMedia(item: MediaDetail): Media {
       status: item.status,
       tagline: item.tagline,
       imdb: item.externalIds?.imdb,
+      tmdbId: item.externalIds?.tmdb ?? (item.source === 'tmdb' ? item.sourceId : undefined),
+      seasons: item.seasons,
       ratings: item.ratings,
       ratingsMessage: item.ratingsMessage,
       credits: item.credits?.map(credit => ({ ...credit, photo: imageUrl(credit.profilePath) })),
@@ -135,6 +140,8 @@ async function request<T>(path: string, {
 
 export const loginLive = (account: string, password: string) =>
   request<LiveSession>('/api/auth/login', { method: 'POST', body: { account, password }, authOrigin: true });
+export const setupLive = (account: string, password: string) =>
+  request<LiveSession>('/api/auth/setup', { method: 'POST', body: { account, password }, authOrigin: true });
 export const readLiveUser = (token: string, signal: AbortSignal) =>
   request<LiveUser>('/api/auth/me', { token, signal, authOrigin: true });
 export const readSetupStatus = (signal: AbortSignal) =>
@@ -161,14 +168,24 @@ export function createLiveApi(token: string, onExpired: () => void) {
   return {
     image: (path: string, signal: AbortSignal) => call<Blob>(path, { signal, image: true }),
     embyDashboard: (signal: AbortSignal) => call<EmbyDashboardData>('/api/emby/dashboard', { signal, timeoutMs: 105_000 }),
-    tvSubscriptions: (signal: AbortSignal) => get<{ enabled: boolean }[]>('/api/v1/subscriptions/tv', signal),
+    tvSubscriptions: (signal: AbortSignal) => get<TV[]>('/api/v1/subscriptions/tv', signal),
+    saveTV: (body: TVDraft, id?: string) => call<TV>('/api/v1/subscriptions/tv' + (id ? '/' + encodeURIComponent(id) : ''),
+      { method: id ? 'PUT' : 'POST', body }),
+    refreshTV: (id: string) => call<TV>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/refresh', { method: 'POST', timeoutMs: 95_000 }),
+    removeTV: (id: string) => call<void>('/api/v1/subscriptions/tv/' + encodeURIComponent(id), { method: 'DELETE' }),
+    createDownload: (body: DownloadRequest) => call<{ task: DownloadTask; created: boolean }>('/api/v1/downloads', { method: 'POST', body }),
+    changeDownload: (id: string, action: 'cancel' | 'retry' | 'resume') =>
+      call<{ message?: string }>('/api/v1/downloads/' + encodeURIComponent(id) + '/' + action, { method: 'POST' }),
+    downloadDirectories: (parentId: string, signal: AbortSignal) =>
+      get<{ items: DownloadFile[] }>('/api/v1/115/directories?' + new URLSearchParams({ parentId }), signal),
+    shareFiles: (url: string, receiveCode: string, directoryId: string, signal: AbortSignal) =>
+      call<{ items: DownloadFile[] }>('/api/v1/115/share/list', { method: 'POST', body: { url, receiveCode, directoryId }, signal }),
     downloadTasks: (signal: AbortSignal) => get<{ items: DownloadTask[] }>('/api/v1/downloads', signal),
     processingItems: (signal: AbortSignal) => get<{ items: OrganizeMediaItem[] }>('/api/v1/organize/items', signal),
     runProcessing: (mode: 'downloads' | 'organize' | OutputKind) => {
       const path = mode === 'downloads' || mode === 'organize' ? mode : 'processing/' + mode;
-      return call<{ message: string }>('/api/v1/' + path + '/run', {
-        method: 'POST', body: mode === 'strm' ? { baseUrl: window.location.origin } : undefined,
-      });
+      // The STRM job uses the playback address saved in its configuration.
+      return call<{ message: string }>('/api/v1/' + path + '/run', { method: 'POST' });
     },
     providers: (signal: AbortSignal) => get<MediaProvidersResponse>('/api/media/providers', signal),
     discover: (query: Record<string, string>, signal: AbortSignal) =>
@@ -190,8 +207,9 @@ export function createLiveApi(token: string, onExpired: () => void) {
       const result = await get<{ items: ServerLog[] }>('/api/logs?' + new URLSearchParams(filters), signal);
       return result.items ?? [];
     },
-    musicStatus: (signal: AbortSignal) => get<{ scanning: boolean; error: string }>('/api/v1/music/status', signal),
-    musicCatalogue: (signal: AbortSignal) => get<{ songCount: number; albums: { id: string; name: string; artist: string; artistId: string; songCount: number }[]; artists: { id: string; name: string; albumCount: number }[] }>('/api/v1/music/catalogue', signal),
+    musicStatus: (signal: AbortSignal) => get<{ scanning: boolean; error: string; completedAt: string }>('/api/v1/music/status', signal),
+    scanMusic: (signal: AbortSignal) => call<{ count: number }>('/api/v1/music/scan', { method: 'POST', signal, timeoutMs: 600_000 }),
+    musicCatalogue: (signal: AbortSignal) => get<{ songCount: number; albums: { id: string; name: string; artist: string; artistId: string; songCount: number; coverArt?: string }[]; artists: { id: string; name: string; albumCount: number }[] }>('/api/v1/music/catalogue', signal),
     musicSongs: (query: Record<string, string>, signal: AbortSignal) =>
       get<LibraryPage<MusicSong>>('/api/v1/music/songs?' + new URLSearchParams(query), signal),
     musicPlay: (id: string, signal: AbortSignal) =>
@@ -205,6 +223,14 @@ export function createLiveApi(token: string, onExpired: () => void) {
     comicsStatus: (signal: AbortSignal) => get<ComicShelfStatus>(comicShelfPath + '/status', signal),
     comicMetadataStatus: (signal: AbortSignal) => get<ComicMetadataStatus>(comicShelfPath + '/metadata/status', signal),
     refreshComics: () => call<{ running: boolean }>(comicShelfPath + '/refresh', { method: 'POST' }),
+    novels: (query: Record<string, string>, signal: AbortSignal) =>
+      get<LibraryPage<LibraryItem>>(novelShelfPath + '?' + new URLSearchParams(query), signal),
+    novelsStatus: (signal: AbortSignal) => get<ComicShelfStatus & { root?: string }>(novelShelfPath + '/status', signal),
+    refreshNovels: () => call<{ running: boolean }>(novelShelfPath + '/refresh', { method: 'POST' }),
+    novelBook: (id: string, signal: AbortSignal) =>
+      get<{ count: number; chapters: { title: string }[] }>(novelShelfPath + '/' + encodeURIComponent(id) + '/book', signal),
+    novelChapter: (id: string, index: number, signal: AbortSignal) =>
+      get<{ title: string; paragraphs: string[] }>(novelShelfPath + '/' + encodeURIComponent(id) + '/chapters/' + index, signal),
     refreshComicMetadata: (mode: 'missing' | 'all') => call<{ running: boolean }>(comicShelfPath + '/metadata/refresh', { method: 'POST', body: { mode } }),
     deleteComic: (id: string) => call<{ deleted: boolean }>(localComicPath(id), { method: 'DELETE' }),
     comicBook: (id: string, signal: AbortSignal) => get<{ count: number }>(localComicPath(id) + '/book', signal),
@@ -223,9 +249,9 @@ export function createLiveApi(token: string, onExpired: () => void) {
     saveComicCredentials: (cookie: string) =>
       call<ComicCredentials>('/api/v1/comics/ehentai/settings', { method: 'PUT', body: { cookie } }),
     resourceMeta: (signal: AbortSignal) => get<{ data: ResourceSearchMeta }>('/api/v1/resources/meta', signal),
-    searchResources: (query: string, signal: AbortSignal) =>
-      call<{ data: ResourceSearchResult }>(
-        '/api/v1/resources/search', { method: 'POST', body: { query, mode: 'merge' }, signal }),
+    searchResources: (query: string, source: string, selection: ResourceSearchMeta['selection'], signal: AbortSignal) =>
+      call<{ data: Resources }>('/api/v1/resources/search',
+        { method: 'POST', body: { ...selection, query, source, mode: 'merge', refresh: false }, signal }),
     organizeConfig: (signal: AbortSignal) => get<OrganizeConfig>('/api/v1/organize/config', signal),
     saveOrganizeConfig: (body: Pick<OrganizeConfig, 'sourceId' | 'targetId' | 'cron'>) =>
       call<OrganizeConfig>('/api/v1/organize/config', { method: 'PUT', body }),
@@ -241,10 +267,11 @@ export function createLiveApi(token: string, onExpired: () => void) {
     createKey: (name: string) => call<{ item: APIKeyInfo; key: string }>('/api/auth/api-keys', { method: 'POST', body: { name } }),
     revokeKey: (id: string) => call<void>('/api/auth/api-keys/' + encodeURIComponent(id), { method: 'DELETE' }),
     animeList: (signal: AbortSignal) => get<SavedAnimeSubscription[]>('/api/v1/subscriptions/anime', signal),
-    animeCatalog: (source: Exclude<AnimeDraft['source'], 'other'>, query: string, season: string, signal: AbortSignal) => {
+    animeCatalog: (source: Exclude<AnimeDraft['source'], 'other'>, query: string, season: string, refresh: boolean, signal: AbortSignal) => {
       const [year, quarter] = season.split(' ');
       const params = new URLSearchParams({
         query,
+        refresh: String(refresh),
         ...(season ? source === 'mikan' ? { year, season: quarter } : { season } : {}),
       });
       return get<{ items: MikanItem[]; seasons: string[] }>('/api/v1/anime/sources/' + source + '/catalog?' + params, signal);
@@ -261,6 +288,8 @@ export function createLiveApi(token: string, onExpired: () => void) {
       call<SavedAnimeSubscription>('/api/v1/subscriptions/anime/' + encodeURIComponent(id) + '/refresh', { signal, method: 'POST', timeoutMs: 105_000 }),
     animeEnable: (id: string, enabled: boolean, signal: AbortSignal) =>
       call<SavedAnimeSubscription>('/api/v1/subscriptions/anime/' + encodeURIComponent(id), { signal, method: 'PATCH', body: { enabled } }),
+    animeRemove: (id: string) =>
+      call<void>('/api/v1/subscriptions/anime/' + encodeURIComponent(id), { method: 'DELETE' }),
     animeDownloads: (id: string, signal: AbortSignal) =>
       get<{ rule: AnimeDownloadRule; items: AnimeDownloadCandidate[] }>('/api/v1/subscriptions/anime/' + encodeURIComponent(id) + '/downloads', signal),
     saveAnimeDownloads: (id: string, body: AnimeDownloadRule) =>

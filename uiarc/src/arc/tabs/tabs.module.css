@@ -49,4 +49,9 @@
   box-shadow: none;
 }
 .listShell[data-appearance="underline"] .scrollButton { background: var(--background); }
+.listShell[data-wrap] { display: flex; border: 0; background: transparent; }
+.listShell[data-wrap] .viewport { flex: 1; overflow: visible; }
+.listShell[data-wrap] .list { width: 100%; flex-wrap: wrap; gap: var(--space-1); padding: 0; }
+.listShell[data-wrap] .trigger { min-width: 0; padding-inline: var(--space-1); }
+.listShell[data-appearance="pill"][data-wrap] .selection { border: 0; background: var(--accent-subtle); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) { .trigger { transition: none; } }

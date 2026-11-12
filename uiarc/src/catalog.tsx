@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Film, Heart, Plus, Popcorn, Search, Star, UserRound, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
+import { rankingDescriptions, sourceLinks } from '../../hero/src/lib/catalog-options';
+import { optionLabel } from '../../hero/src/lib/discovery-labels';
 import { saveMediaSearchHistory } from '../../hero/src/lib/resource-search';
+import tmdbIcon from '../../hero/public/icons/tmdb.svg?inline';
+import doubanIcon from '../../hero/public/icons/douban.svg?inline';
+import bangumiIcon from '../../hero/public/icons/bangumi.svg?inline';
+import anilistIcon from '../../hero/public/icons/anilist.svg?inline';
 import { Badge } from './arc/badge/badge';
 import { Button } from './arc/button/button';
 import { LineChart } from './arc/line-chart/line-chart';
@@ -22,10 +28,16 @@ import type { MediaPage, MediaSummary, ProviderCapabilities } from '../../hero/s
 import wide from './posters/dune-wide.jpg';
 
 type Open = (item: Media) => void;
-type CatalogActions = { onOpen: Open; onSearchResource: (title: string) => void; onFavorite: Open; favorites: string[] };
+type CatalogActions = { onOpen: Open; onSearchResource: Open; onFavorite: Open; favorites: string[] };
+const providerIcons: Record<string, string> = { tmdb: tmdbIcon, douban: doubanIcon, bangumi: bangumiIcon, anilist: anilistIcon };
 const sources = ['TMDB', '豆瓣', 'AniList', 'Bangumi'];
 const types = options(['全部', '电影', '剧集', '动画']);
 const pageSize = 18;
+const beijingDateTime = new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', dateStyle: 'short', timeStyle: 'short' });
+function updatedAt(value?: string) {
+  const time = Date.parse(value ?? '');
+  return Number.isFinite(time) ? beijingDateTime.format(time) : '';
+}
 const chart = [4, 7, 5, 12, 8, 16, 13].map((count, index) => ({
   key: String(index), label: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][index], axisLabel: ['一', '二', '三', '四', '五', '六', '日'][index], values: { count },
 }));
@@ -130,6 +142,7 @@ function EmbyDashboard({ state, onOpen, go, api }: EmbyProps) {
   const [revision, setRevision] = useState(0);
   const [subscriptions, setSubscriptions] = useState<number>();
   const [downloads, setDownloads] = useState<number>();
+  const [showMore, setShowMore] = useState(false);
   useEffect(() => {
     if (!api) return;
     const controller = new AbortController();
@@ -147,10 +160,12 @@ function EmbyDashboard({ state, onOpen, go, api }: EmbyProps) {
 
   const libraries = data?.libraries ?? [];
   const recent = data?.recentlyAdded ?? [];
-  const resume = data?.continueWatching.slice(0, 3) ?? [];
+  const resume = data?.continueWatching.slice(0, 10) ?? [];
+  const stats = data?.stats?.all;
+  const syncedAt = updatedAt(data?.updatedAt);
   const featured = media[0];
   return <>
-    <PageHeading title="Emby 看板" description="查看媒体库、观看进度和下载活动。" />
+    <PageHeading title="Emby 看板" description={syncedAt ? '更新于 ' + syncedAt + '（北京时间）' : '查看媒体库、观看进度和下载活动。'} />
     <div className="dashboard-top">
       {api ? data ? <EmbyLibraryCarousel libraries={libraries} api={api} /> : <section className="feature">
         <div className="feature-content">
@@ -168,8 +183,12 @@ function EmbyDashboard({ state, onOpen, go, api }: EmbyProps) {
         </div>
       </section>}
       <section className="panel continue" aria-label={api ? '继续播放' : '继续观看'}>
-        <SectionHeading title={api ? '继续播放' : '继续观看'} />
-        {api ? resume.length ? resume.map((item, index) => <EmbyContinueRow item={item} api={api} key={item.id + ':' + index} />)
+        <SectionHeading title={api ? '继续播放' : '继续观看'} action={api && resume.length > 3 && (
+          <Button size="sm" variant="ghost" aria-expanded={showMore} onClick={() => setShowMore(value => !value)}>
+            {showMore ? '收起' : '查看更多（' + resume.length + '）'}
+          </Button>
+        )} />
+        {api ? resume.length ? (showMore ? resume : resume.slice(0, 3)).map((item, index) => <EmbyContinueRow item={item} api={api} key={item.id + ':' + index} />)
         : <p className="muted emby-continue-empty">{data ? '暂无观看进度' : error ? '继续播放暂不可用' : '正在读取观看进度…'}</p>
         : [media[1], media[7], media[5]].map((item, index) => <div className="continue-row" key={item.id}>
           <img src={item.poster} alt="" />
@@ -183,6 +202,11 @@ function EmbyDashboard({ state, onOpen, go, api }: EmbyProps) {
       <MetricCard compact label="启用订阅" value={api ? subscriptions : state.subscriptions.filter(item => item.active).length} suffix=" 项" context={api ? '动漫和追剧' : '动漫、追剧及影片'} />
       <MetricCard compact label="下载中" value={api ? downloads : state.tasks.filter(item => item.status === '下载中').length} suffix=" 项" context="媒体处理中的任务" />
     </div>
+    {stats && <div className="row muted" role="group" aria-label="媒体分类统计">
+      <span>电影 {stats.movies.toLocaleString('zh-CN')} 部</span>
+      <span>剧集 {stats.series.toLocaleString('zh-CN')} 部</span>
+      <span>总集数 {stats.episodes.toLocaleString('zh-CN')} 集</span>
+    </div>}
     <section className="section">
       <SectionHeading title="最近入库" />
       {api ? recent.length ? <EmbyRecentGrid items={recent} api={api} /> :
@@ -195,9 +219,11 @@ function EmbyDashboard({ state, onOpen, go, api }: EmbyProps) {
   </>;
 }
 
-const filterFields = [['genre', '类型'], ['region', '地区'], ['year', '年份']] as const;
+const filterFields = [['genre', '类型'], ['region', '地区'], ['year', '年份'], ['month', '月份'],
+  ['season', '季度'], ['status', '播出状态']] as const;
 type DiscoveryFilter = (typeof filterFields)[number][0];
 type DiscoveryFilters = Partial<Record<DiscoveryFilter, string>>;
+type FilterChoices = Partial<Record<DiscoveryFilter, ReturnType<typeof options>>>;
 const demoFilterOptions = {
   genre: options(['科幻', '剧情', '动作', '犯罪', '悬疑', '奇幻', '爱情', '动画', '冒险', '喜剧', '历史']),
   region: options(['欧美', '英国', '日本', '韩国', '大陆', '香港', '台湾']),
@@ -205,12 +231,15 @@ const demoFilterOptions = {
 };
 
 function DiscoverySelects({ filters, choices, onChange }: {
-  filters: DiscoveryFilters; choices: typeof demoFilterOptions; onChange: (id: DiscoveryFilter, value: string) => void;
+  filters: DiscoveryFilters; choices: FilterChoices; onChange: (id: DiscoveryFilter, value: string) => void;
 }) {
-  return <div className="catalog-filters">{filterFields.map(([id, label]) => <Select key={id} label={label}
-    options={[{ value: 'all', label: '全部' + label }, ...choices[id]]} disabled={!choices[id].length}
-    value={choices[id].some(option => option.value === filters[id]) ? filters[id] : 'all'}
-    onValueChange={value => onChange(id, value === 'all' ? '' : value)} />)}</div>;
+  return <div className="catalog-filters">{filterFields.map(([id, label]) => {
+    const entries = choices[id];
+    if (!entries) return null;
+    return <Select key={id} label={label} options={[{ value: 'all', label: '全部' + label }, ...entries]} disabled={!entries.length}
+      value={entries.some(option => option.value === filters[id]) ? filters[id] : 'all'}
+      onValueChange={value => onChange(id, value === 'all' ? '' : value)} />;
+  })}</div>;
 }
 
 function CatalogArtwork({ src, alt = '', api, className, lazy = false, fallback }: {
@@ -256,16 +285,15 @@ function CatalogGrid({ items, origin, source, ranked, api, onOpen, onSearchResou
           {item.score > 0 && <span><Star size={12} fill="currentColor" aria-hidden="true" />{item.score.toFixed(1)}</span>}
         </div>
         <div className="catalog-poster-copy">
-          {origin === 'discover' && <small className="catalog-poster-meta">{[item.year || '', item.kind, source].filter(Boolean).join(' · ')}</small>}
+          <small className="catalog-poster-meta">{[item.year || '', item.kind, source].filter(Boolean).join(' · ')}</small>
           <h3 title={item.title}>{item.title}</h3>
           <div className="catalog-poster-description">
-            {origin === 'rankings' && <small>{[item.year || '', item.genre].filter(Boolean).join(' · ')}</small>}
             {item.summary && <p>{item.summary}</p>}
           </div>
         </div>
       </a>
       <div className="catalog-quick-actions">
-        {(origin === 'discover' || !api) && <Button variant="ghost" className="catalog-action" aria-label={'搜索' + item.title + '资源'} title="搜索资源" onClick={() => onSearchResource(item.title)}><Search size={16} aria-hidden="true" /></Button>}
+        <Button variant="ghost" className="catalog-action" aria-label={'搜索' + item.title + '资源'} title="搜索资源" onClick={() => onSearchResource(item)}><Search size={16} aria-hidden="true" /></Button>
         <Button variant="ghost" className="catalog-action" aria-label={`收藏${item.title}`} aria-pressed={favorite} title={favorite ? '取消收藏' : '收藏'} onClick={() => onFavorite(item)}><Heart size={16} fill={favorite ? 'currentColor' : 'none'} aria-hidden="true" /></Button>
       </div>
     </article>;
@@ -396,13 +424,18 @@ function LiveDiscoveryPanel({ api, provider, ...actions }: CatalogActions & { ap
   const years = year && (!onlySearch || source !== 'bangumi')
     ? Array.from({ length: year.max - year.min + 1 }, (_, index) => String(year.max - index)) : [];
   const genres = ranges.genre.filter(value => source !== 'tmdb' || !(kind === 'tv' ? movieGenres : tvGenres).has(value));
-  const choices = {
+  const choices: FilterChoices = {
     genre: onlySearch ? [] : genres.map(value => ({ value, label: genreLabels[value] ?? value })),
     region: onlySearch ? [] : ranges.region.map(value => ({ value, label: regionLabel(value) })),
     year: options(years),
+    month: ranges.month ? (!onlySearch && years.includes(filters.year ?? '') ? Array.from({ length: 12 }, (_, i) => ({
+      value: String(i + 1), label: (i + 1) + ' 月',
+    })) : []) : undefined,
+    season: ranges.season?.length ? ranges.season.map(value => ({ value, label: optionLabel(value) })) : undefined,
+    status: ranges.status?.length ? ranges.status.map(value => ({ value, label: optionLabel(value) })) : undefined,
   };
   const activeFilters = Object.fromEntries(filterFields.flatMap(([id]) =>
-    choices[id].some(option => option.value === filters[id]) ? [[id, filters[id]]] : []));
+    choices[id]?.some(option => option.value === filters[id]) ? [[id, filters[id]]] : []));
   const key = JSON.stringify({
     source, mediaType: kind, query, pageSize: String(Math.min(20, provider.pageSizeMax || 20)),
     ...activeFilters,
@@ -456,7 +489,8 @@ function LiveDiscoveryPanel({ api, provider, ...actions }: CatalogActions & { ap
       <SegmentedControl label="作品类型" options={kinds.map(value => ({ value, label: mediaLabels[value] ?? value }))} value={kind}
         onValueChange={value => { setKind(value); setFilters({}); setPage(1); }} />
       <DiscoverySelects filters={filters} choices={choices} onChange={(id, value) => {
-        setFilters(previous => ({ ...previous, [id]: value })); setPage(1);
+        setFilters(previous => ({ ...previous, [id]: value, ...(id === 'year' && !value ? { month: '' } : {}) }));
+        setPage(1);
       }} />
       <Select label="排序" placeholder="默认排序" disabled={onlySearch || !ranges.sort.length} options={[
         { value: 'default', label: '默认排序' }, ...ranges.sort.map(value => ({ value, label: sortLabels[value] ?? value })),
@@ -526,12 +560,21 @@ function LiveRankingResults({ api, source, chart, label, ranked = true, ...actio
     return () => controller.abort();
   }, [api, source, chart, revision]);
   const items = result?.items?.map(presentLiveMedia) ?? [];
+  const platformChart = chart.startsWith('platform_');
+  const sourceUrl = sourceLinks[platformChart ? 'streaming' : source];
+  const fetchedAt = updatedAt(result?.fetchedAt);
   return <>
-    <SectionHeading title={label} description={result ? items.length + ' 部作品' : undefined} />
+    <SectionHeading title={label} description={result ? [rankingDescriptions[chart], items.length + ' 部作品'].filter(Boolean).join(' · ') : undefined} />
     {error ? <CatalogError message={error} retry={() => setRevision(value => value + 1)} /> : result === undefined
       ? <p className="muted" role="status">正在加载榜单…</p>
       : items.length ? <CatalogGrid origin="rankings" ranked={ranked} items={items} api={api} {...actions} />
       : <NoResults title="当前榜单暂无作品" description={result?.message || '请选择其他榜单或筛选条件。'} />}
+    {result && (fetchedAt || sourceUrl) && <p className="row muted">
+      {fetchedAt && <span>数据抓取于 {fetchedAt}（北京时间）</span>}
+      {sourceUrl && <a className="catalog-source-link" href={sourceUrl} target="_blank" rel="noopener noreferrer">
+        {platformChart ? '可观看性数据：JustWatch' : '查看' + (rankingSources.find(item => item.id === source)?.label ?? source) + '来源'}
+      </a>}
+    </p>}
   </>;
 }
 
@@ -540,35 +583,19 @@ const liveViewingOptions = [
   { value: 'rent', label: '租借' }, { value: 'buy', label: '购买' },
 ];
 
-function LiveStreamingCatalog({ api, ...actions }: CatalogActions & { api: LiveApi }) {
-  const [kind, setKind] = useState('tv');
-  const [region, setRegion] = useState('US');
-  const [platform, setPlatform] = useState('');
+function LiveStreamingCatalog({ api, kind, setKind, region, setRegion, platform, setPlatform, result, error, retry, ...actions }: CatalogActions & {
+  api: LiveApi; kind: string; setKind: (value: string) => void; region: string; setRegion: (value: string) => void;
+  platform: string; setPlatform: (value: string) => void; result?: Awaited<ReturnType<LiveApi['platforms']>>;
+  error: string; retry: () => void;
+}) {
   const [query, setQuery] = useState('');
   const [access, setAccess] = useState('flatrate');
-  const [result, setResult] = useState<Awaited<ReturnType<LiveApi['platforms']>>>();
-  const [error, setError] = useState('');
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    setResult(undefined);
-    setError('');
-    api.platforms(kind, region, controller.signal).then(items => {
-      if (!controller.signal.aborted) setResult(items);
-    }).catch(reason => {
-      if (!controller.signal.aborted) setError(requestError(reason));
-    });
-    return () => controller.abort();
-  }, [api, kind, region, retry]);
   const selected = result?.find(item => String(item.id) === platform) ?? result?.[0];
   const visible = result?.filter(item => item === selected || includes(item.name, query)) ?? [];
-  const quickPlatforms = result?.filter(item => /^(Netflix|Prime Video|Amazon Prime Video|Disney(?:\+| Plus)|Apple TV\+?|HBO Max|Max|Crunchyroll|Hulu)$/i.test(item.name)).slice(0, 8) ?? [];
   const chart = selected ? ['platform', kind, region, selected.id, access].join('_') : '';
   return <div className="stack">
     <div className="panel rank-tools">
       <SegmentedControl label="作品类型" options={[{ value: 'movie', label: '电影' }, { value: 'tv', label: '剧集' }]} value={kind} onValueChange={setKind} />
-      {!!quickPlatforms.length && <SegmentedControl label="常用平台" value={String(selected?.id ?? '')}
-        options={quickPlatforms.map(item => ({ value: String(item.id), label: item.name }))} onValueChange={setPlatform} />}
       <div className="row fields compact-fields">
         <Select label="地区" options={rankingRegions} value={region} onValueChange={setRegion} />
         <SearchField label="搜索平台" value={query} onValueChange={setQuery} placeholder="输入平台名称" />
@@ -576,18 +603,18 @@ function LiveStreamingCatalog({ api, ...actions }: CatalogActions & { api: LiveA
           value={String(selected?.id ?? '')} onValueChange={setPlatform} />
       </div>
       <SegmentedControl label="观看方式" options={liveViewingOptions} value={access} onValueChange={setAccess} />
+      <p className="muted">平台片库按 TMDB 热度排序，可按地区与观看方式筛选。</p>
     </div>
-    {error ? <CatalogError message={error} retry={() => setRetry(value => value + 1)} />
+    {error ? <CatalogError message={error} retry={retry} />
       : !result ? <p className="muted" role="status">正在读取平台…</p>
       : selected ? <LiveRankingResults key={chart} api={api} source="tmdb" chart={chart} label={selected.name} {...actions} />
       : <NoResults title="此地区暂无平台" description="可切换地区或作品类型。" />}
   </div>;
 }
 
-function StreamingCatalog(actions: CatalogActions) {
+function StreamingCatalog({ platform, setPlatform, ...actions }: CatalogActions & { platform: string; setPlatform: (value: string) => void }) {
   const [kind, setKind] = useState('剧集');
   const [region, setRegion] = useState('US');
-  const [platform, setPlatform] = useState('Netflix');
   const [query, setQuery] = useState('');
   const [access, setAccess] = useState('订阅');
   const localPlatforms = platformCatalogs.filter(provider => provider.offers.some(offer => offer.regions.includes(region)));
@@ -612,13 +639,55 @@ function StreamingCatalog(actions: CatalogActions) {
   </div>;
 }
 
+const featuredPlatform = /^(Netflix|奈飞|奈菲|Disney\+|Disney Plus|Amazon Prime Video|Prime Video|HBO Max|Max|HBO|Apple TV(?:\+| Plus)?|Crunchyroll|Hulu|Amazon Video|Paramount\+|Peacock(?: Premium)?)$/i;
+
 export function Rankings({ api, ...actions }: CatalogActions & { api?: LiveApi }) {
+  const [sourceId, setSourceId] = useState('tmdb');
+  const [kind, setKind] = useState('tv');
+  const [region, setRegion] = useState('US');
+  const [platform, setPlatform] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [platformData, setPlatformData] = useState<{ key: string; items?: Awaited<ReturnType<LiveApi['platforms']>>; error?: string }>();
+  const platformKey = kind + ':' + region + ':' + retry;
+  const data = platformData?.key === platformKey ? platformData : undefined;
+  const availablePlatforms = api ? data?.items ?? [] : platformCatalogs.map(item => ({ id: item.name, name: item.name, logo: undefined }));
+  const quickPlatforms = availablePlatforms.filter(item => featuredPlatform.test(item.name)).slice(0, 10);
+  const featuredSelection = platform && quickPlatforms.some(item => String(item.id) === platform);
+  const site = rankingSources.find(item => item.id === sourceId);
+  useEffect(() => {
+    if (!api) return;
+    const controller = new AbortController();
+    api.platforms(kind, region, controller.signal).then(items => {
+      if (!controller.signal.aborted) setPlatformData({ key: platformKey, items });
+    }).catch(reason => {
+      if (!controller.signal.aborted) setPlatformData({ key: platformKey, error: requestError(reason) });
+    });
+    return () => controller.abort();
+  }, [api, kind, region, platformKey]);
+
   return <section className="rankings-page">
     <PageHeading title="榜单推荐" description={api ? '浏览站点榜单，或按地区和观看方式探索平台片库。' : '浏览各站点的示例榜单，或按地区和观看方式探索平台片库。'} />
-    <WorkspaceTabs label="榜单来源" appearance="underline" items={[
-      ...rankingSources.map(source => ({ id: source.id, label: source.label, content: <SiteRanking source={source} api={api} {...actions} /> })),
-      { id: 'streaming', label: '平台片库', content: api ? <LiveStreamingCatalog api={api} {...actions} /> : <StreamingCatalog {...actions} /> },
-    ]} />
+    <div className="ranking-sources" role="group" aria-label="榜单与平台">
+      {rankingSources.map(item => <Button key={item.id} variant="secondary" aria-pressed={sourceId === item.id} onClick={() => setSourceId(item.id)}>
+        <img src={providerIcons[item.id]} alt="" />{item.label}
+      </Button>)}
+      {quickPlatforms.map(item => <Button key={item.id} variant="secondary" aria-pressed={sourceId === 'streaming' && platform === String(item.id)}
+        onClick={() => { setPlatform(String(item.id)); setSourceId('streaming'); }}>
+        {item.logo ? <img src={item.logo.startsWith('/') ? 'https://image.tmdb.org/t/p/w45' + item.logo : item.logo} alt="" loading="lazy" />
+          : <span className="ranking-source-icon" aria-hidden="true">{item.name[0]}</span>}
+        {item.name}
+      </Button>)}
+      <Button variant="secondary" aria-pressed={sourceId === 'streaming' && !featuredSelection} onClick={() => { setPlatform(''); setSourceId('streaming'); }}>
+        <Film size={17} aria-hidden="true" />更多平台
+      </Button>
+    </div>
+    {site ? <>
+      {data?.error && <CatalogError message={data.error} retry={() => setRetry(value => value + 1)} />}
+      <SiteRanking key={site.id} source={site} api={api} {...actions} />
+    </> : api ? <LiveStreamingCatalog api={api} {...actions}
+        kind={kind} setKind={setKind} region={region} setRegion={setRegion} platform={platform} setPlatform={setPlatform}
+        result={data?.items} error={data?.error ?? ''} retry={() => setRetry(value => value + 1)} />
+      : <StreamingCatalog platform={platform} setPlatform={setPlatform} {...actions} />}
   </section>;
 }
 
@@ -636,8 +705,7 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
   const imdb = detail?.imdb;
   const credits = detail?.credits ?? item.cast.map(name => ({ name, role: cast?.[name]?.character || '', photo: cast?.[name]?.photo || '', personId: undefined }));
   const ratings = detail?.ratings?.filter(rating => Number.isFinite(rating.value)) ?? [];
-  const supportsExtraRatings = identity?.source === 'tmdb' && (identity.mediaType === 'movie' || identity.mediaType === 'tv');
-  const missingRatings = supportsExtraRatings ? ['tomatoes', 'popcorn'].filter(source => !ratings.some(rating => rating.source === source)) : [];
+  const canSubscribe = live && identity?.mediaType === 'tv' && Boolean(detail?.tmdbId || identity.source === 'tmdb');
   const facts = [
     ['类型', item.kind], ['原名', item.original], ['发布日期', detail?.releaseDate], ['年份', item.year || ''],
     ['地区', item.region], ['题材', item.genre], ['片长', item.duration], ['来源', identity?.source.toUpperCase()], ['状态', detail?.status],
@@ -658,15 +726,17 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
             {imdb && /^tt\d+$/.test(imdb) && <a className="work-imdb" href={`https://www.imdb.com/title/${imdb}/`} target="_blank" rel="noopener noreferrer">查看 IMDb 条目</a>}
             <div className="row work-ratings">
               {ratings.map(rating => <span className="work-rating" key={rating.source}>
-                {rating.source === 'tomatoes' ? <span aria-hidden="true">🍅</span> : rating.source === 'popcorn' ? <Popcorn size={16} aria-hidden="true" /> : <Star size={14} fill="currentColor" aria-hidden="true" />}
+                {providerIcons[rating.source] ? <img src={providerIcons[rating.source]} alt="" />
+                  : rating.source === 'tomatoes' ? <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 7C7 3 2 7 2 13c0 5 5 9 10 8 5 1 10-3 10-8 0-6-5-10-10-6Z" fill="#fa5555" />
+                    <path d="m12 8-5-3 4 1 1-4 2 4 4-1-4 4-2-1Z" fill="#71d48b" />
+                    <path d="M7 10c-2 1-2 3-2 4" stroke="#ffb3ab" strokeWidth="2" strokeLinecap="round" />
+                  </svg> : rating.source === 'popcorn' ? <Popcorn size={18} aria-hidden="true" /> : <Star size={16} fill="currentColor" aria-hidden="true" />}
                 {rating.source === 'tomatoes' ? '烂番茄' : rating.source === 'popcorn' ? '爆米花' : rating.source.toUpperCase()} · {rating.value}{['tomatoes', 'popcorn'].includes(rating.source) ? '%' : ''}
               </span>)}
               {!ratings.length && item.score > 0 && <span className="work-rating"><Star size={14} fill="currentColor" aria-hidden="true" />{item.score.toFixed(1)}</span>}
-              {missingRatings.map(source => <span className="work-rating work-rating-unavailable" key={source}>
-                {source === 'tomatoes' ? '烂番茄' : '爆米花'} · 暂无
-              </span>)}
             </div>
-            {detail?.ratingsMessage && <p className="work-rating-note">{detail.ratingsMessage}</p>}
+            {detail?.ratingsMessage && <p className="work-rating-note" role="status">{detail.ratingsMessage}</p>}
             {item.summary && <p className="work-summary">{item.summary}</p>}
             {detailError && <CatalogError message={detailError} retry={onRetry} />}
             <div className="row work-actions">
@@ -675,6 +745,7 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
                 <Heart size={17} fill={favorite ? 'currentColor' : 'none'} aria-hidden="true" />{favorite ? '已收藏' : '收藏'}
               </Button>
               {!live && <Button variant="ghost" onClick={() => onDownload(item)}>添加下载任务</Button>}
+              {canSubscribe && <Button onClick={() => onSubscribe(item, '')}><Plus size={16} aria-hidden="true" />订阅此剧</Button>}
             </div>
             {!live && <div className="row work-subscribe">
               {item.kind === '剧集' && <Select label="订阅季" options={options(['第 1 季', '第 2 季', '第 3 季', '第 4 季', '第 5 季'])} value={season} onValueChange={setSeason} />}
@@ -690,6 +761,12 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
       <section className="panel stack">
         <SectionHeading title="作品资料" />
         <dl className="work-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        {!!detail?.seasons?.length && <>
+          <h3>季与集</h3>
+          <dl className="work-facts">{detail.seasons.map(entry => <div key={entry.seasonNumber}>
+            <dt>{entry.name || '第 ' + entry.seasonNumber + ' 季'}</dt><dd>{entry.episodeCount ? entry.episodeCount + ' 集' : '待公布'}</dd>
+          </div>)}</dl>
+        </>}
       </section>
       <section className="panel stack work-cast">
         <SectionHeading title="演职员" />

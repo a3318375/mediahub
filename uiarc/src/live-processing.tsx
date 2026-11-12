@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { Clapperboard, RefreshCw } from 'lucide-react';
+import { is115ShareURL } from '../../hero/src/lib/download-api';
 import type { DownloadTask } from '../../hero/src/lib/download-api';
 import type { OrganizeMediaItem } from '../../hero/src/lib/organize-api';
 import type { OutputJob } from '../../hero/src/lib/media-output-api';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent, DialogTrigger } from './arc/dialog/dialog';
+import { Input } from './arc/input/input';
 import { Progress } from './arc/progress/progress';
 import { SearchField } from './arc/search-field/search-field';
 import { Select } from './arc/select/select';
 import { SortableDataTable } from './arc/sortable-data-table/sortable-data-table';
 import { requestError, type LiveApi } from './live-api';
+import { ResourceDownload, type DownloadResource } from './live-download';
 import { processingTabs } from './operations';
 import { PageHeading, Status, WorkspaceTabs } from './ui';
 import './processing.css';
@@ -22,7 +25,7 @@ const mediaTypes: Record<string, string> = { anime: '番剧', tv: '电视剧', m
 const states: Record<string, [string, Tone]> = {
   queued: ['排队中', 'neutral'], preparing: ['准备中', 'info'], submitting: ['提交中', 'info'],
   submitted: ['已提交', 'info'], downloading: ['下载中', 'info'], awaiting_files: ['等待文件', 'warning'],
-  completed: ['已完成', 'success'], failed: ['失败', 'danger'], cancelled: ['已取消', 'neutral'],
+  completed: ['已完成', 'success'], failed: ['失败', 'danger'], cancelled: ['已停止跟踪', 'neutral'],
   unknown: ['待确认', 'warning'], running: ['执行中', 'info'], interrupted: ['已中断', 'warning'],
   completed_with_issues: ['部分完成', 'warning'],
 };
@@ -46,10 +49,46 @@ function taskTitle(task: DownloadTask) {
   return task.references?.find(ref => ref.media?.title)?.media.title || task.artifacts?.[0]?.name || `任务 ${task.id.slice(0, 8)}`;
 }
 
-function DownloadQueue({ tasks }: { tasks: DownloadTask[] }) {
+function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadTask[]; refresh: () => void }) {
+  const [manual, setManual] = useState(false);
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [resource, setResource] = useState<DownloadResource>();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const trimmed = url.trim();
+  const valid = /^magnet:\?/i.test(trimmed) || is115ShareURL(trimmed);
+  const visible = tasks.filter(task => (filter === 'all' || filter === task.state) &&
+    `${taskTitle(task)} ${task.id}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+
+  async function change(id: string, action: 'cancel' | 'retry' | 'resume') {
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const result = await api.changeDownload(id, action);
+      setMessage(result.message || (action === 'resume' ? '已恢复排队或跟踪。' : '任务已重新排队。'));
+      refresh();
+    } catch (reason) { setError(requestError(reason)); }
+    finally { setBusy(false); }
+  }
+
   return <section className="processing-section">
-    <div className="row processing-count"><h2>下载任务</h2><span className="muted">{tasks.length} 项</span></div>
-    <div className="table-panel"><SortableDataTable rows={tasks} rowKey="id" caption="下载任务" columns={[
+    <div className="row processing-toolbar">
+      <div className="row processing-count"><h2>下载任务</h2><span className="muted">{visible.length} 项</span></div>
+      <SearchField label="搜索任务" placeholder="搜索下载任务" value={query} onValueChange={setQuery} />
+      <Select label="任务状态" value={filter} onValueChange={setFilter} options={[
+        { value: 'all', label: '全部状态' },
+        ...Object.entries(states).filter(([value]) => !['running', 'interrupted', 'completed_with_issues'].includes(value))
+          .map(([value, [label]]) => ({ value, label })),
+      ]} />
+      <Button size="sm" onClick={() => { setTitle(''); setUrl(''); setManual(true); }}>新建下载</Button>
+    </div>
+    {message && <p role="status" className="muted">{message}</p>}
+    {error && <p role="alert" className="processing-error">{error}</p>}
+    <div className="table-panel"><SortableDataTable rows={visible} rowKey="id" caption="下载任务" emptyMessage="没有符合条件的下载任务" columns={[
       { key: 'name', label: '任务', sortable: false, render: (_, task) => {
         const title = taskTitle(task);
         return <div className="table-main"><strong title={title}>{title}</strong><small>{task.kind === 'share_transfer' ? '115 分享转存' : '115 离线下载'}</small></div>;
@@ -61,13 +100,52 @@ function DownloadQueue({ tasks }: { tasks: DownloadTask[] }) {
         <DialogTrigger asChild><Button size="sm" variant="ghost" aria-label={`查看${taskTitle(task)}的下载详情`}>详情</Button></DialogTrigger>
         <DialogContent title={taskTitle(task)} description={`最近更新 ${formatTime(task.updatedAt || task.createdAt)}`}>
           <div className="stack"><div><TaskState state={task.state} /></div><DownloadProgress task={task} />
-            {task.directoryId && <p>115 目标目录 ID · {task.directoryId}</p>}
+            <dl className="comic-facts">
+              <dt>资源 ID</dt><dd>{task.resourceId || '—'}</dd>
+              <dt>115 远程任务 ID</dt><dd>{task.remoteId || '—'}</dd>
+              <dt>115 目标目录</dt><dd>{task.directoryId || '自动分类'}</dd>
+            </dl>
             {task.error && <p role="status">{task.error}</p>}
-            {!!task.artifacts?.length && <ul>{task.artifacts.map(file => <li key={file.id}>{file.name}</li>)}</ul>}
+            {!!task.references?.length && <div className="stack">
+              <h3>关联来源</h3>
+              <ul>{task.references.map((ref, index) => <li key={index}>{[ref.media.title, ref.source,
+                ref.media.season ? '第 ' + ref.media.season + ' 季' : ''].filter(Boolean).join(' · ')}</li>)}</ul>
+            </div>}
+            {!!task.artifacts?.length && <div className="stack">
+              <h3>生成文件</h3>
+              <ul>{task.artifacts.map(file => <li key={file.id}>{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB · ID {file.id}</li>)}</ul>
+            </div>}
+            <div className="row form-actions">
+              {task.state === 'cancelled' && <Button disabled={busy} onClick={() => void change(task.id, 'resume')}>恢复排队或跟踪</Button>}
+              {task.state === 'failed' && !task.remoteId && <Button disabled={busy} onClick={() => void change(task.id, 'retry')}>重试排队</Button>}
+              {!['completed', 'failed', 'cancelled'].includes(task.state) && <Button variant="secondary" disabled={busy} onClick={() => void change(task.id, 'cancel')}>
+                {task.state === 'queued' ? '取消排队' : '停止跟踪'}
+              </Button>}
+            </div>
+            {!['completed', 'failed', 'cancelled'].includes(task.state) && <p className="muted">停止跟踪只影响 MediaHub。115 已接受的任务可能继续运行。</p>}
+            {error && <p role="alert" className="processing-error">{error}</p>}
+            {message && <p role="status" className="muted">{message}</p>}
           </div>
         </DialogContent>
       </Dialog> },
     ]} /></div>
+    {manual && <Dialog open onOpenChange={setManual}><DialogContent title="新建下载">
+      <form className="stack" onSubmit={event => {
+        event.preventDefault();
+        if (!valid) return;
+        const name = title.trim() || '手动下载';
+        setManual(false);
+        setResource({ url: trimmed, title: name, reference: { source: 'manual', media: { title: name } } });
+      }}>
+        <Input label="作品标题" value={title} onChange={event => setTitle(event.target.value)} />
+        <Input label="磁力或 115 分享链接" value={url} onChange={event => setUrl(event.target.value)} required />
+        <div className="row form-actions"><Button variant="ghost" onClick={() => setManual(false)}>取消</Button>
+          <Button type="submit" disabled={!valid}>下一步</Button></div>
+      </form>
+    </DialogContent></Dialog>}
+    {resource && <ResourceDownload api={api} resource={resource} close={() => setResource(undefined)} done={text => {
+      setError(''); setMessage(text); refresh();
+    }} />}
   </section>;
 }
 
@@ -172,7 +250,7 @@ function ProcessingPanel({ api, mode }: { api: LiveApi; mode: Mode }) {
       {!!status.issues?.length && <details><summary>查看未完成原因</summary><ul>{status.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}
     </div>}
     <ProcessingRecords mode={mode} items={visible} emptyMessage={items ? (kind !== 'all' || query.trim() ? '没有符合条件的作品' : '暂无作品处理记录') : loading ? '正在读取最近记录…' : '暂时无法读取作品记录'} />
-    {tasks && (tasks.length ? <DownloadQueue tasks={tasks} /> : <p className="muted processing-no-tasks">暂无下载任务</p>)}
+    {mode === 'downloads' && <DownloadQueue api={api} tasks={tasks ?? []} refresh={refresh} />}
   </div>;
 }
 
