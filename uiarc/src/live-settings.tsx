@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { schemas } from '../../hero/src/lib/settings-schema';
-import { directoryIdFromInput } from '../../hero/src/lib/download-api';
-import type { SettingsResponse, SettingsSection, SettingValue } from '../../hero/src/lib/settings-api';
+import { schemas } from './lib/settings-schema';
+import { directoryIdFromInput } from './lib/download-api';
+import type { SettingsResponse, SettingsSection, SettingValue } from './lib/settings-api';
 import { Button } from './arc/button/button';
 import { Input } from './arc/input/input';
 import { Select } from './arc/select/select';

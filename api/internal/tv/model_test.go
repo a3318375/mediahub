@@ -21,13 +21,13 @@ func TestSelectRanksPerEpisodeAndFilters(t *testing.T) {
 		{Title: "测试 4K 完整合集", URL: "https://115.com/s/unknown", Channel: "shows"},
 	}
 	got := Select(d, items)
-	if len(got) != 2 || got[0].URL != "https://115.com/s/bbbb" || got[1].URL != "magnet:?xt=urn%3Abtih%3A"+strings.Repeat("c", 40) {
+	if len(got) != 2 || got[0].URL != "https://115.com/s/aaaa" || got[1].URL != "magnet:?xt=urn%3Abtih%3A"+strings.Repeat("b", 40) {
 		t.Fatalf("unexpected choices: %+v", got)
 	}
 }
 
 func TestRulesValidation(t *testing.T) {
-	d := Draft{TMDBID: "12", Title: "测试", Season: 1, Rules: Rules{Channels: []string{"https://t.me/shows", "@other"}}}
+	d := Draft{TMDBID: "12", Title: "测试", Season: 1, Rules: Rules{Channels: []string{"https://t.me/shows", "@other"}, Match: "测试"}}
 	if err := Validate(&d); err != nil || d.Channels[0] != "shows" || d.Channels[1] != "other" {
 		t.Fatalf("normalize: %+v %v", d, err)
 	}
@@ -38,7 +38,7 @@ func TestRulesValidation(t *testing.T) {
 }
 
 func TestRejectsInvalidLinksAndAmbiguousEpisodes(t *testing.T) {
-	d := Draft{Title: "测试", TMDBID: "1", Season: 1}
+	d := Draft{Title: "测试", TMDBID: "1", Season: 1, Rules: Rules{Match: "测试"}}
 	for _, item := range []Candidate{
 		{Title: "测试 S01E01", URL: "magnet:?xt=urn:btih:abc"},
 		{Title: "测试 S01E01", URL: "https://115.com/profile"},
@@ -58,7 +58,7 @@ func TestRejectsInvalidLinksAndAmbiguousEpisodes(t *testing.T) {
 }
 
 func TestRepeatedEpisodeMarkersAreNotMultipleEpisodes(t *testing.T) {
-	d := Draft{Title: "测试", TMDBID: "1", Season: 1}
+	d := Draft{Title: "测试", TMDBID: "1", Season: 1, Rules: Rules{Match: "测试"}}
 	for _, title := range []string{"测试 S01E02 测试 S01E02 4K 5GB", "测试 第2集 4K 正文：第2集", "测试 S01E02 EP02"} {
 		got := Select(d, []Candidate{{Title: title, URL: "https://115.com/s/abcd"}})
 		if len(got) != 1 || got[0].Episode != 2 {

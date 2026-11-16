@@ -16,7 +16,8 @@ func (c *Client) TVSchedule(ctx context.Context, key, id string, season int) (tv
 		Seasons []struct {
 			Number int `json:"season_number"`
 		} `json:"seasons"`
-		Poster string `json:"poster_path"`
+		Poster string  `json:"poster_path"`
+		Rating float64 `json:"vote_average"`
 	}
 	if key == "" {
 		return tv.Metadata{}, fmt.Errorf("请先配置 TMDB API Key；当前按每日搜索回退")
@@ -30,7 +31,7 @@ func (c *Client) TVSchedule(ctx context.Context, key, id string, season int) (tv
 		return tv.Metadata{}, err
 	}
 	if season == 0 {
-		out := tv.Metadata{Title: show.Name, Poster: show.Poster, Episodes: []tv.Episode{}}
+		out := tv.Metadata{Title: show.Name, Poster: show.Poster, Rating: show.Rating, Episodes: []tv.Episode{}}
 		for _, entry := range show.Seasons {
 			if entry.Number < 1 {
 				continue
@@ -60,7 +61,7 @@ func (c *Client) TVSchedule(ctx context.Context, key, id string, season int) (tv
 	}); err != nil {
 		return tv.Metadata{}, err
 	}
-	out := tv.Metadata{Title: show.Name, Poster: show.Poster, Episodes: []tv.Episode{}}
+	out := tv.Metadata{Title: show.Name, Poster: show.Poster, Rating: show.Rating, Episodes: []tv.Episode{}}
 	for _, e := range *data.Episodes {
 		if e.Number < 1 {
 			continue

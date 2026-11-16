@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { KeyRound, Plus } from 'lucide-react';
-import { cloudLabels } from '../../hero/src/lib/parity';
-import { normalizeResourceChannel } from '../../hero/src/lib/resource-search';
-import type { APIKeyInfo } from '../../hero/src/lib/api-keys-api';
-import type { ResourceSearchMeta } from '../../hero/src/lib/resource-search';
+import { cloudLabels } from './lib/parity';
+import { normalizeResourceChannel } from './lib/resource-search';
+import type { APIKeyInfo } from './lib/api-keys-api';
+import type { ResourceSearchMeta } from './lib/resource-search';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
 import { Input } from './arc/input/input';

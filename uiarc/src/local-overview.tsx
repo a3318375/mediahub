@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Clapperboard, Download, Files, RefreshCw, Sparkles } from 'lucide-react';
-import type { DownloadTask } from '../../hero/src/lib/download-api';
-import type { OrganizeMediaItem } from '../../hero/src/lib/organize-api';
+import type { DownloadTask } from './lib/download-api';
+import type { OrganizeMediaItem } from './lib/organize-api';
 import { Button } from './arc/button/button';
 import { MetricCard } from './arc/metric-card/metric-card';
 import type { LiveApi } from './live-api';

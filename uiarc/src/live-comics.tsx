@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, FolderSync, LoaderCircle, RotateCw, Search, Sparkles, Star } from 'lucide-react';
-import { languageLabel, namespaceLabel, searchTag, tagLabel } from '../../hero/src/lib/ehentai-tags';
+import { languageLabel, namespaceLabel, searchTag, tagLabel } from './lib/ehentai-tags';
 import { Badge } from './arc/badge/badge';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';

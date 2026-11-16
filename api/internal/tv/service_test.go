@@ -16,7 +16,7 @@ func TestScheduleFallbackMissingEpisodesAndRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub, err := db.CreateTV(tv.Draft{TMDBID: "123", Title: "测试", Season: 1, Enabled: true})
+	sub, err := db.CreateTV(tv.Draft{TMDBID: "123", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestConcurrentRuleEditAndPauseSurviveRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	sub, err := db.CreateTV(tv.Draft{TMDBID: "9", Title: "测试", Season: 1, Enabled: true})
+	sub, err := db.CreateTV(tv.Draft{TMDBID: "9", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,7 +126,7 @@ func TestInFlightRefreshCannotOverwritePauseResumeOrRecreatedSubscription(t *tes
 		t.Fatal(err)
 	}
 	defer db.Close()
-	sub, err := db.CreateTV(tv.Draft{TMDBID: "19", Title: "测试", Season: 1, Enabled: true})
+	sub, err := db.CreateTV(tv.Draft{TMDBID: "19", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestLaterSearchCannotDowngradeExistingShare(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	sub, err := db.CreateTV(tv.Draft{TMDBID: "21", Title: "测试", Season: 1, Enabled: true})
+	sub, err := db.CreateTV(tv.Draft{TMDBID: "21", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}})
 	if err != nil {
 		t.Fatal(err)
 	}

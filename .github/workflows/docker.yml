@@ -35,7 +35,7 @@ jobs:
           context: ./api
           file: ./Dockerfile
           build-contexts: |
-            hero=./hero
+            uiarc=./uiarc
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

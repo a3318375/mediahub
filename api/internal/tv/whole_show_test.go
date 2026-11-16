@@ -19,7 +19,7 @@ func TestWholeShowSelectionAndPriority(t *testing.T) {
 		{Title: "绿灯军团 S02E03 1080p", URL: "https://115.com/s/quality", Source: "plugin:first"},
 	}
 	got := Select(d, items)
-	if len(got) != 2 || got[0].URL != "https://115.com/s/first" || got[0].Season != 1 || got[1].Season != 2 {
+	if len(got) != 3 || got[2].Source != "plugin:other" || got[0].URL != "https://115.com/s/first" || got[0].Season != 1 || got[1].Season != 2 {
 		t.Fatalf("%+v", got)
 	}
 	if Covers(got[0], 1, 2) {
@@ -34,7 +34,7 @@ func (r *wholeShowRepo) GetTV(string) (Subscription, error)                 { re
 func (r *wholeShowRepo) SaveTVRefresh(s Subscription) (Subscription, error) { r.sub = s; return s, nil }
 
 func TestWholeShowRefreshKeepsSameEpisodeAcrossSeasons(t *testing.T) {
-	r := &wholeShowRepo{sub: Subscription{ID: "show", Draft: Draft{Source: "pansou", TMDBID: "1", Title: "剧集", Season: 0}}}
+	r := &wholeShowRepo{sub: Subscription{ID: "show", Draft: Draft{Source: "pansou", TMDBID: "1", Title: "剧集", Season: 0, Rules: Rules{Match: "剧集"}}}}
 	s := New(r)
 	s.Now = func() time.Time { return time.Date(2026, 10, 16, 0, 0, 0, 0, time.UTC) }
 	s.Metadata = func(context.Context, string, int) (Metadata, error) {
@@ -51,11 +51,11 @@ func TestWholeShowRefreshKeepsSameEpisodeAcrossSeasons(t *testing.T) {
 
 func TestWholeShowChineseSeasonAndLegacySeasonFilter(t *testing.T) {
 	items := []Candidate{{Title: "剧集 第三季 更新至8集", URL: "https://115.com/s/three"}}
-	got := Select(Draft{Source: "pansou", Season: 0}, items)
+	got := Select(Draft{Source: "pansou", Season: 0, Rules: Rules{Match: "剧集"}}, items)
 	if len(got) != 1 || got[0].Season != 3 || got[0].CollectionEnd != 8 {
 		t.Fatalf("%+v", got)
 	}
-	if len(Select(Draft{Source: "pansou", Season: 1}, items)) != 0 {
+	if len(Select(Draft{Source: "pansou", Season: 1, Rules: Rules{Match: "剧集"}}, items)) != 0 {
 		t.Fatal("legacy single-season subscription accepted another season")
 	}
 }

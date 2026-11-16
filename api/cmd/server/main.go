@@ -111,7 +111,12 @@ func run() error {
 		})
 	}
 	handler := httpapi.NewRouterWithBackground(db, updater, downloads, organizer, background, search.Handler(), search.MetaHandler(), search.CheckHandler())
-	httpapi.MountTV(handler, db, tvUpdater)
+	replacements := &tv.ReplacementService{Store: db, Downloads: downloads, Organizer: organizer}
+	httpapi.MountTV(handler, db, tvUpdater, replacements)
+	httpapi.MountCompleteResourceSearch(handler, db, search.CompleteHandler())
+	// Only explicitly submitted replacement jobs run here, even during a review
+	// process that pauses general scheduled automation.
+	background.Go(replacements.Run)
 	if staticDir := os.Getenv("MEDIAHUB_WEB_DIR"); staticDir != "" {
 		if err := httpapi.MountFrontend(handler, staticDir); err != nil {
 			return err

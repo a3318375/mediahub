@@ -15,4 +15,13 @@ foreach ($hook in $hooks) {
  git -C $submodule apply $patch
  if ($LASTEXITCODE -ne 0) { throw "Failed to apply $($hook.Patch)." }
 }
-Write-Host 'PanSou embedding lifecycle hooks verified.'
+$completeSearch = Join-Path $submodule 'service/subscription_search.go'
+$waitComplete = Select-String -LiteralPath (Join-Path $submodule 'plugin/plugin.go') -SimpleMatch '_wait_complete' -Quiet
+if (-not (Test-Path -LiteralPath $completeSearch) -or -not $waitComplete) {
+ $patch = Join-Path $repo 'third_party/pansou-subscription-search.patch'
+ git -C $submodule apply --check $patch
+ if ($LASTEXITCODE -ne 0) { throw 'Subscription search patch no longer applies. Inspect local or upstream changes before building.' }
+ git -C $submodule apply $patch
+ if ($LASTEXITCODE -ne 0) { throw 'Failed to apply subscription search patch.' }
+}
+Write-Host 'PanSou embedding lifecycle and complete subscription search hooks verified.'

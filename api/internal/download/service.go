@@ -199,6 +199,13 @@ func (s *Service) Run(ctx context.Context, report func(string)) {
 	}
 }
 func (s *Service) Tick(ctx context.Context) (resultErr error) {
+	return s.tick(ctx, "")
+}
+
+// TickTask advances only the explicitly requested task, without running RSS candidates.
+func (s *Service) TickTask(ctx context.Context, id string) error { return s.tick(ctx, id) }
+
+func (s *Service) tick(ctx context.Context, onlyID string) (resultErr error) {
 	if notifier, ok := s.Store.(interface{ NotifyProcessing() }); ok {
 		defer notifier.NotifyProcessing()
 	}
@@ -214,10 +221,22 @@ func (s *Service) Tick(ctx context.Context) (resultErr error) {
 			resultErr = submitError
 		}
 	}()
-	if err := s.processCandidates(ctx); err != nil {
-		return err
+	if onlyID == "" {
+		if err := s.processCandidates(ctx); err != nil {
+			return err
+		}
 	}
-	tasks, err := s.Store.ListDownloads(true)
+	var tasks []Task
+	var err error
+	if onlyID == "" {
+		tasks, err = s.Store.ListDownloads(true)
+	} else {
+		var task Task
+		task, err = s.Store.GetDownload(onlyID)
+		if err == nil && task.Active() {
+			tasks = []Task{task}
+		}
+	}
 	if err != nil || len(tasks) == 0 {
 		return err
 	}

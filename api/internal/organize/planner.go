@@ -313,7 +313,7 @@ func preview(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup, candi
 
 func skipDirectory(name string) bool {
 	switch strings.ToLower(name) {
-	case "bdmv", "video_ts", "extras", "trailers", "sample", "samples":
+	case "bdmv", "video_ts", "extras", "trailers", "sample", "samples", "tmp":
 		return true
 	}
 	return false

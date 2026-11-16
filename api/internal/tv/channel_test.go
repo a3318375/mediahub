@@ -69,7 +69,7 @@ func TestChannelReaderRejectsUnavailablePreviewAndPanSouMode(t *testing.T) {
 	reader := NewChannelReader()
 	reader.BaseURL = server.URL
 	reader.HTTP = server.Client()
-	d := Draft{Source: "tg", TMDBID: "1", Title: "测试", Season: 1, Rules: Rules{Channels: []string{"vip115hot"}}}
+	d := Draft{Source: "tg", TMDBID: "1", Title: "测试", Season: 1, Rules: Rules{Channels: []string{"vip115hot"}, Match: "测试"}}
 	if _, err := reader.Search(context.Background(), d); err == nil {
 		t.Fatal("unavailable preview reported as valid empty search")
 	}

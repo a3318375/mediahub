@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight, Film, Heart, Plus, Popcorn, Search, Star, UserRound, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
-import { rankingDescriptions, sourceLinks } from '../../hero/src/lib/catalog-options';
-import { optionLabel } from '../../hero/src/lib/discovery-labels';
-import { saveMediaSearchHistory } from '../../hero/src/lib/resource-search';
-import tmdbIcon from '../../hero/public/icons/tmdb.svg?inline';
-import doubanIcon from '../../hero/public/icons/douban.svg?inline';
-import bangumiIcon from '../../hero/public/icons/bangumi.svg?inline';
-import anilistIcon from '../../hero/public/icons/anilist.svg?inline';
+import { rankingDescriptions, sourceLinks } from './lib/catalog-options';
+import { optionLabel } from './lib/discovery-labels';
+import { saveMediaSearchHistory } from './lib/resource-search';
+import tmdbIcon from './assets/icons/tmdb.svg?inline';
+import doubanIcon from './assets/icons/douban.svg?inline';
+import bangumiIcon from './assets/icons/bangumi.svg?inline';
+import anilistIcon from './assets/icons/anilist.svg?inline';
 import { Badge } from './arc/badge/badge';
 import { Button } from './arc/button/button';
 import { LineChart } from './arc/line-chart/line-chart';
@@ -24,7 +24,7 @@ import { platformCatalogs, rankingRegions, rankingSources, viewingOptions } from
 import { liveIdentity, presentLiveMedia, requestError } from './live-api';
 import { LocalOverview } from './local-overview';
 import type { EmbyDashboardData, EmbyItem, EmbyLibrary, EmbyResumeItem, LiveApi } from './live-api';
-import type { MediaPage, MediaSummary, ProviderCapabilities } from '../../hero/src/lib/media-contract';
+import type { MediaPage, MediaSummary, ProviderCapabilities } from './lib/media-contract';
 import wide from './posters/dune-wide.jpg';
 
 type Open = (item: Media) => void;
@@ -691,7 +691,8 @@ export function Rankings({ api, ...actions }: CatalogActions & { api?: LiveApi }
   </section>;
 }
 
-export function MediaDetail({ item, api, favorite, subscribed, detailError, onRetry, onClose, onFavorite, onSubscribe, onSearch, onDownload }: {
+export function MediaDetail({ item, api, favorite, subscribed, detailError, onRetry, onClose, onFavorite, onSubscribe, onSearch, onDownload, children, hideSubscribe }: {
+	children?: ReactNode; hideSubscribe?: boolean;
   item: Media; favorite: boolean; subscribed: boolean; onClose: () => void; onFavorite: Open;
   api?: LiveApi; detailError?: string; onRetry: () => void;
   onSubscribe: (item: Media, season: string) => void; onSearch: Open; onDownload: Open;
@@ -745,7 +746,7 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
                 <Heart size={17} fill={favorite ? 'currentColor' : 'none'} aria-hidden="true" />{favorite ? '已收藏' : '收藏'}
               </Button>
               {!live && <Button variant="ghost" onClick={() => onDownload(item)}>添加下载任务</Button>}
-              {canSubscribe && <Button onClick={() => onSubscribe(item, '')}><Plus size={16} aria-hidden="true" />订阅此剧</Button>}
+              {canSubscribe && !hideSubscribe && <Button onClick={() => onSubscribe(item, '')}><Plus size={16} aria-hidden="true" />订阅此剧</Button>}
             </div>
             {!live && <div className="row work-subscribe">
               {item.kind === '剧集' && <Select label="订阅季" options={options(['第 1 季', '第 2 季', '第 3 季', '第 4 季', '第 5 季'])} value={season} onValueChange={setSeason} />}
@@ -778,5 +779,6 @@ export function MediaDetail({ item, api, favorite, subscribed, detailError, onRe
         </li>)}</ul> : <p className="muted">暂无演职员资料</p>}
       </section>
     </div>
+    {children}
   </article>;
 }

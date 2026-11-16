@@ -1,0 +1,225 @@
+diff --git a/plugin/plugin.go b/plugin/plugin.go
+index d691699..3a545a9 100644
+--- a/plugin/plugin.go
++++ b/plugin/plugin.go
+@@ -665,6 +665,10 @@ func (p *BaseAsyncPlugin) AsyncSearch(
+ 	mainCacheKey string,
+ 	ext map[string]interface{},
+ ) ([]model.SearchResult, error) {
++	// Subscription callers need the actual result, not the short-response cache snapshot.
++	if ext["_wait_complete"] == true {
++		return searchFunc(p.backgroundHTTPClient(), keyword, ext)
++	}
+ 	// 确保ext不为nil
+ 	if ext == nil {
+ 		ext = make(map[string]interface{})
+@@ -955,6 +959,10 @@ func (p *BaseAsyncPlugin) AsyncSearchWithResult(
+ 	mainCacheKey string,
+ 	ext map[string]interface{},
+ ) (model.PluginSearchResult, error) {
++	if ext["_wait_complete"] == true {
++		results, err := searchFunc(p.backgroundHTTPClient(), keyword, ext)
++		return model.PluginSearchResult{Results: results, IsFinal: err == nil, Source: p.name, Timestamp: time.Now()}, err
++	}
+ 	// 确保ext不为nil
+ 	if ext == nil {
+ 		ext = make(map[string]interface{})
+diff --git a/service/subscription_search.go b/service/subscription_search.go
+new file mode 100644
+--- /dev/null
++++ b/service/subscription_search.go
+@@ -0,0 +1,99 @@
++package service
++
++import (
++	"context"
++	"fmt"
++	"strings"
++
++	"pansou/model"
++	"pansou/plugin"
++)
++
++// SearchComplete waits for each explicitly selected source. Unlike interactive
++// search it bypasses the short async response and never infers completion from
++// an unchanged result count. Successful sources survive a sibling's failure.
++func (s *SearchService) SearchComplete(ctx context.Context, keyword string, channels, plugins []string) (model.SearchResponse, error) {
++	return s.SearchCompleteClouds(ctx, keyword, channels, plugins, []string{"115", "magnet"})
++}
++
++func (s *SearchService) SearchCompleteClouds(ctx context.Context, keyword string, channels, plugins, clouds []string) (model.SearchResponse, error) {
++	accepted := map[string]bool{}
++	for _, cloud := range clouds {
++		accepted[strings.ToLower(cloud)] = true
++	}
++	type result struct {
++		items []model.SearchResult
++		err   error
++	}
++	tasks := []func() result{}
++	for _, channel := range channels {
++		tasks = append(tasks, func() result {
++			items, err := s.searchChannelWithContext(ctx, keyword, channel)
++			return result{items, err}
++		})
++	}
++	available := map[string]plugin.AsyncSearchPlugin{}
++	for _, p := range s.pluginManager.GetPlugins() {
++		available[p.Name()] = p
++	}
++	for _, name := range plugins {
++		tasks = append(tasks, func() result {
++			p, ok := available[name]
++			if !ok {
++				return result{err: fmt.Errorf("plugin unavailable: %s", name)}
++			}
++			items, err := p.Search(keyword, map[string]interface{}{
++				"_wait_complete": true, "refresh": true, "referer": "https://dm.xueximeng.com", plugin.ExtContextKey: ctx,
++			})
++			// Retain plugin identity even when its own results omit Channel.
++			for i := range items {
++				items[i].Channel = "plugin:" + name
++			}
++			return result{items, err}
++		})
++	}
++	results := make(chan result, len(tasks))
++	gate := make(chan struct{}, 12)
++	for _, task := range tasks {
++		go func() {
++			select {
++			case gate <- struct{}{}:
++			case <-ctx.Done():
++				results <- result{err: ctx.Err()}
++				return
++			}
++			defer func() { <-gate }()
++			results <- task()
++		}()
++	}
++	out := model.SearchResponse{}
++	failed := 0
++	for range tasks {
++		select {
++		case <-ctx.Done():
++			out.Total = len(out.Results)
++			return out, fmt.Errorf("PanSou 搜索未全部完成，等待补查: %w", ctx.Err())
++		case r := <-results:
++			if r.err != nil {
++				failed++
++			}
++			for _, item := range r.items {
++				links := []model.Link{}
++				for _, link := range item.Links {
++					if accepted[strings.ToLower(link.Type)] {
++						links = append(links, link)
++					}
++				}
++				item.Links = links
++				if len(links) > 0 {
++					out.Results = append(out.Results, item)
++				}
++			}
++		}
++	}
++	out.Total = len(out.Results)
++	if failed > 0 {
++		return out, fmt.Errorf("PanSou %d/%d 个来源失败，已保留其他结果，等待补查", failed, len(tasks))
++	}
++	return out, nil
++}
+diff --git a/plugin/subscription_search_test.go b/plugin/subscription_search_test.go
+new file mode 100644
+--- /dev/null
++++ b/plugin/subscription_search_test.go
+@@ -0,0 +1,34 @@
++package plugin
++
++import (
++	"net/http"
++	"testing"
++	"time"
++
++	"pansou/model"
++)
++
++func TestSubscriptionWaitsBeyondInteractiveTimeout(t *testing.T) {
++	for _, rich := range []bool{false, true} {
++		t.Run(map[bool]string{false: "plain", true: "rich"}[rich], func(t *testing.T) {
++			t.Parallel()
++			p := &BaseAsyncPlugin{name: "subscription"}
++			search := func(*http.Client, string, map[string]interface{}) ([]model.SearchResult, error) {
++				time.Sleep(4200 * time.Millisecond)
++				return []model.SearchResult{{Title: "late episode"}}, nil
++			}
++			ext := map[string]interface{}{"_wait_complete": true}
++			if rich {
++				got, err := p.AsyncSearchWithResult("show", search, "", ext)
++				if err != nil || !got.IsFinal || len(got.Results) != 1 {
++					t.Fatalf("partial rich result: %+v %v", got, err)
++				}
++			} else {
++				got, err := p.AsyncSearch("show", search, "", ext)
++				if err != nil || len(got) != 1 {
++					t.Fatalf("partial result: %+v %v", got, err)
++				}
++			}
++		})
++	}
++}
+diff --git a/service/subscription_search_test.go b/service/subscription_search_test.go
+new file mode 100644
+--- /dev/null
++++ b/service/subscription_search_test.go
+@@ -0,0 +1,51 @@
++package service
++
++import (
++	"context"
++	"errors"
++	"testing"
++	"time"
++
++	"pansou/model"
++	"pansou/plugin"
++)
++
++type subscriptionPlugin struct {
++	*plugin.BaseAsyncPlugin
++	name  string
++	delay time.Duration
++	fail  bool
++}
++
++func (p *subscriptionPlugin) Name() string { return p.name }
++func (p *subscriptionPlugin) Search(_ string, ext map[string]interface{}) ([]model.SearchResult, error) {
++	if ext["_wait_complete"] != true {
++		return nil, errors.New("partial mode")
++	}
++	select {
++	case <-time.After(p.delay):
++	case <-plugin.ContextFromExt(ext).Done():
++		return nil, plugin.ContextFromExt(ext).Err()
++	}
++	if p.fail {
++		return nil, errors.New("unavailable")
++	}
++	return []model.SearchResult{{Title: p.name, Links: []model.Link{{Type: "115", URL: "https://115.com/s/" + p.name}}}}, nil
++}
++func TestSubscriptionSearchWaitsAndReportsFailure(t *testing.T) {
++	manager := plugin.NewPluginManager()
++	manager.RegisterPlugin(&subscriptionPlugin{name: "fast"})
++	manager.RegisterPlugin(&subscriptionPlugin{name: "slow", delay: 40 * time.Millisecond})
++	manager.RegisterPlugin(&subscriptionPlugin{name: "broken", fail: true})
++	s := &SearchService{pluginManager: manager}
++	got, err := s.SearchComplete(context.Background(), "show", nil, []string{"fast", "slow", "broken"})
++	if err == nil || len(got.Results) != 2 {
++		t.Fatalf("lost delayed result or failure: %+v %v", got, err)
++	}
++	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
++	defer cancel()
++	got, err = s.SearchComplete(ctx, "show", nil, []string{"fast", "slow"})
++	if err == nil || len(got.Results) != 1 {
++		t.Fatalf("timeout lost completed sources: %+v %v", got, err)
++	}
++}

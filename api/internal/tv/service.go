@@ -19,6 +19,7 @@ type Repository interface {
 type Metadata struct {
 	Title    string
 	Poster   string
+	Rating   float64
 	Episodes []Episode
 }
 type Service struct {
@@ -60,6 +61,10 @@ func (s *Service) Refresh(ctx context.Context, id string) (Subscription, error) 
 	if err != nil {
 		return sub, err
 	}
+	if err := Validate(&sub.Draft); err != nil {
+		return sub, err
+	}
+	retrySearch := sub.LastError != ""
 	for i := range sub.Episodes {
 		if sub.Episodes[i].Season == 0 {
 			sub.Episodes[i].Season = sub.Season
@@ -82,11 +87,12 @@ func (s *Service) Refresh(ctx context.Context, id string) (Subscription, error) 
 			}
 		}
 		sub.Poster = data.Poster
+		sub.Rating = data.Rating
 	}
 	sub.MetadataCheckedAt = now.UTC().Format(time.RFC3339)
 	// Missing metadata and undated episodes use a daily fallback; never invent an air date.
 	searchDue, _ := schedule(sub, now)
-	if searchDue {
+	if searchDue || retrySearch {
 		search := s.Search
 		label := "PanSou"
 		if SourceOf(sub.Draft) == "tg" {
@@ -96,11 +102,12 @@ func (s *Service) Refresh(ctx context.Context, id string) (Subscription, error) 
 		// Sources are mutually exclusive, including when one fails or is empty.
 		if search == nil {
 			sub.LastError = label + "服务未连接"
-		} else if items, e := search(ctx, sub.Draft); e != nil {
-			sub.LastError = e.Error()
 		} else {
-			// Re-rank old and new results together so a later search cannot replace
-			// an existing 115 share with a smaller share or a magnet.
+			items, e := search(ctx, sub.Draft)
+			if e != nil {
+				sub.LastError = e.Error()
+			}
+			// Keep successful sources and previous results when a sibling fails.
 			selected := Select(sub.Draft, append(items, sub.Resources...))
 			merged := map[int]Candidate{}
 			for _, v := range sub.Resources {
@@ -146,6 +153,12 @@ func (s *Service) Refresh(ctx context.Context, id string) (Subscription, error) 
 	}
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		sub.LastError = "订阅检查超时，等待下次补查"
+	}
+	if sub.LastError != "" {
+		retry := now.Add(time.Hour)
+		if next.IsZero() || retry.Before(next) {
+			sub.NextCheckAt = retry.UTC().Format(time.RFC3339)
+		}
 	}
 	saved, err := s.Store.SaveTVRefresh(sub)
 	if err != nil {

@@ -13,6 +13,10 @@ import (
 
 type tvSearchFixture struct{ captureSearch }
 
+func (f *tvSearchFixture) SearchComplete(ctx context.Context, keyword string, channels, plugins []string) (model.SearchResponse, error) {
+	return f.Search(keyword, channels, 0, true, "results", "all", plugins, []string{"115", "magnet"}, nil)
+}
+
 func (f *tvSearchFixture) Search(keyword string, channels []string, concurrency int, refresh bool, mode, source string, plugins, clouds []string, ext map[string]interface{}) (model.SearchResponse, error) {
 	_, _ = f.captureSearch.Search(keyword, channels, concurrency, refresh, mode, source, plugins, clouds, ext)
 	return model.SearchResponse{Results: []model.SearchResult{{Title: "剧集 S01E01 4K", Content: "5 GB", Channel: "my_channel", Links: []model.Link{{Type: "115", URL: "https://115.com/s/one", Password: "abcd"}}}}}, nil

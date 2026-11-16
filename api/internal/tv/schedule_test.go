@@ -16,7 +16,7 @@ func TestMissedMondayRetriesUntilThursdayThenWaitsForNextMonday(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	sub, err := db.CreateTV(tv.Draft{Source: "tg", TMDBID: "123", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Channels: []string{"vip115hot"}}})
+	sub, err := db.CreateTV(tv.Draft{Source: "tg", TMDBID: "123", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Channels: []string{"vip115hot"}, Match: "测试"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestSourceFailureDoesNotTriggerOtherSource(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer db.Close()
-			d := tv.Draft{Source: source, TMDBID: "1", Title: "测试", Season: 1, Enabled: true}
+			d := tv.Draft{Source: source, TMDBID: "1", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}}
 			if source == "tg" {
 				d.Channels = []string{"vip115hot"}
 			}
@@ -116,7 +116,7 @@ func TestSourceFailureDoesNotTriggerOtherSource(t *testing.T) {
 }
 
 func TestPanSouClearsChannelSelection(t *testing.T) {
-	d := tv.Draft{Source: "pansou", TMDBID: "1", Title: "测试", Season: 1, Rules: tv.Rules{Channels: []string{"vip115hot"}}}
+	d := tv.Draft{Source: "pansou", TMDBID: "1", Title: "测试", Season: 1, Rules: tv.Rules{Channels: []string{"vip115hot"}, Match: "测试"}}
 	if err := tv.Validate(&d); err != nil || len(d.Channels) != 0 {
 		t.Fatalf("PanSou retained TG subscription: %+v %v", d, err)
 	}

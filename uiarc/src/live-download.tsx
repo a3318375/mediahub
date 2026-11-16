@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { directoryIdFromInput, is115ShareURL } from '../../hero/src/lib/download-api';
-import type { DownloadFile, DownloadReference } from '../../hero/src/lib/download-api';
+import { directoryIdFromInput, is115ShareURL } from './lib/download-api';
+import type { DownloadFile, DownloadReference, DownloadRequest } from './lib/download-api';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
 import { Input } from './arc/input/input';
@@ -43,8 +43,9 @@ export function DirectoryPicker({ api, choose, close, title = '选择 115 目标
   </Dialog>;
 }
 
-export function ResourceDownload({ api, resource, close, done }: {
+export function ResourceDownload({ api, resource, close, done, replace }: {
   api: LiveApi; resource: DownloadResource; close: () => void; done: (message: string) => void;
+  replace?: (request: DownloadRequest) => Promise<void>;
 }) {
   const share = is115ShareURL(resource.url);
   const [code, setCode] = useState(resource.password ?? '');
@@ -79,11 +80,13 @@ export function ResourceDownload({ api, resource, close, done }: {
     if (busy || (!share && !/^magnet:\?/i.test(resource.url))) return;
     setBusy(true); setError('');
     try {
-      const result = await api.createDownload({
+      const request: DownloadRequest = {
         kind: share ? 'share_transfer' : 'offline',
         url: resource.url, directoryId: destination.trim() ? directoryIdFromInput(destination) : '', reference: resource.reference,
         ...(share ? { wholeShare, receiveCode: code.trim(), ...(wholeShare ? {} : { sourceDirectoryId: directory, fileIds: selected }) } : {}),
-      });
+      };
+      if (replace) { await replace(request); done('已提交替换任务，可在逐集列表查看进度。'); close(); return; }
+      const result = await api.createDownload(request);
       done(result.created ? '已加入下载队列，完成后按设置自动整理。' : '此资源已在下载队列中。');
       close();
     } catch (reason) { setError(requestError(reason)); }
@@ -91,7 +94,7 @@ export function ResourceDownload({ api, resource, close, done }: {
   }
 
   return <><Dialog open onOpenChange={open => { if (!open && !busy && !picking) close(); }}>
-    <DialogContent className="wide-dialog" title={share ? '转存到 115' : '115 离线下载'} description={resource.title}>
+    <DialogContent className="wide-dialog" title={replace ? '确认替换这一集' : share ? '转存到 115' : '115 离线下载'} description={resource.title}>
       <div className="stack">
         {share && <>
           <form className="row fields" onSubmit={event => {
@@ -106,24 +109,25 @@ export function ResourceDownload({ api, resource, close, done }: {
           </div>}
           {listError ? <p role="alert">{listError}</p> : !files ? <p role="status">正在读取分享文件…</p> :
             files.length ? <ul className="anime-resources">{files.map(file => <li key={file.id} className="row">
-              <label className="row"><input type="checkbox" checked={selected.includes(file.id)} disabled={busy || code.trim() !== submittedCode}
-                onChange={event => setSelected(current => event.target.checked ? [...current, file.id] : current.filter(id => id !== file.id))} />
+              <label className="row"><input type={replace ? 'radio' : 'checkbox'} name={replace ? 'replacement-file' : undefined} checked={selected.includes(file.id)} disabled={busy || code.trim() !== submittedCode || Boolean(replace && file.directory)}
+                onChange={event => setSelected(current => event.target.checked ? replace ? [file.id] : [...current, file.id] : current.filter(id => id !== file.id))} />
                 {file.name}</label>
               {file.directory && <Button size="sm" variant="ghost" disabled={busy} onClick={() => setPath(current => [...current, file])}>打开文件夹</Button>}
             </li>)}</ul> : <p className="muted">此文件夹为空。</p>}
         </>}
-        <div className="row fields">
+        {!replace && <div className="row fields">
           <Input label="115 目标目录" placeholder="留空自动分类，或填写目录 ID / 链接" value={destination} disabled={busy}
             onChange={event => { setDestination(event.target.value); setDestinationName(''); }} />
           <Button variant="secondary" disabled={busy} onClick={() => setPicking(true)}>浏览文件夹</Button>
-        </div>
+        </div>}
+        {replace && <p className="muted">新资源先进入未整理目录下的 tmp 文件夹。核验成功后替换本集文件；已整理的集数会沿用现有整理规则。旧文件在新文件到位后删除，目录保留。{share ? '请选择一个正片视频文件。' : '合集磁力需能从文件名唯一识别本集，否则任务会停止并保留原文件。'}</p>}
         {destinationName && <small className="muted">已选择 {destinationName}</small>}
         {error && <p role="alert">{error}</p>}
         <div className="row form-actions">
           <Button variant="ghost" disabled={busy} onClick={close}>取消</Button>
-          {share && <Button variant="secondary" disabled={busy} onClick={() => void submit(true)}>转存整个分享</Button>}
+          {share && !replace && <Button variant="secondary" disabled={busy} onClick={() => void submit(true)}>转存整个分享</Button>}
           <Button disabled={busy || (share && (!files || !selected.length || code.trim() !== submittedCode))}
-            onClick={() => void submit()}>{busy ? '正在提交…' : share ? '转存所选文件' : '加入下载队列'}</Button>
+            onClick={() => void submit()}>{busy ? '正在提交…' : replace ? '确认替换' : share ? '转存所选文件' : '加入下载队列'}</Button>
         </div>
       </div>
     </DialogContent>

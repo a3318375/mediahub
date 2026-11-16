@@ -1,15 +1,19 @@
-import type { MediaDetail, MediaPage, MediaProvidersResponse, MediaSummary } from '../../hero/src/lib/media-contract';
-import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from '../../hero/src/lib/anime-api';
-import type { SettingsResponse, SettingsSection, SettingValue } from '../../hero/src/lib/settings-api';
-import type { AnimeDownloadCandidate, AnimeDownloadRule, DownloadFile, DownloadRequest, DownloadTask } from '../../hero/src/lib/download-api';
-import type { APIKeyInfo } from '../../hero/src/lib/api-keys-api';
-import type { OutputConfig, OutputJob, OutputKind } from '../../hero/src/lib/media-output-api';
-import type { ResourceSearchMeta } from '../../hero/src/lib/resource-search';
-import type { Resources, TV, TVDraft } from '../../hero/src/lib/media-service';
-import type { OrganizeMediaItem } from '../../hero/src/lib/organize-api';
+import type { MediaDetail, MediaPage, MediaProvidersResponse, MediaSummary } from './lib/media-contract';
+import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from './lib/anime-api';
+import type { SettingsResponse, SettingsSection, SettingValue } from './lib/settings-api';
+import type { AnimeDownloadCandidate, AnimeDownloadRule, DownloadFile, DownloadRequest, DownloadTask } from './lib/download-api';
+import type { APIKeyInfo } from './lib/api-keys-api';
+import type { OutputConfig, OutputJob, OutputKind } from './lib/media-output-api';
+import type { ResourceSearchMeta } from './lib/resource-search';
+import type { Resource, Resources, TV, TVDraft } from './lib/media-service';
+import type { OrganizeMediaItem } from './lib/organize-api';
 import type { Media } from './model';
 
 export type LiveUser = { account: string; name: string };
+export type ResourceHealth = { url: string; disk_type?: string; state: string; summary?: string; expires_at?: number };
+export type TVEpisodeFile = { file: DownloadFile; season: number; episode: number; organized: boolean };
+export type TVReplacement = { id: string; season: number; episode: number; taskId: string; state: string; error?: string; organized: boolean; resource: TV['resources'][number] };
+export type TVFiles = { files: TVEpisodeFile[]; replacements: TVReplacement[] | null };
 export type LiveSession = { accessToken: string; user: LiveUser };
 export type Platform = { id: number; name: string; logo?: string };
 export type ServerLog = { id: number; time: string; source: string; level: string; message: string };
@@ -169,6 +173,11 @@ export function createLiveApi(token: string, onExpired: () => void) {
     image: (path: string, signal: AbortSignal) => call<Blob>(path, { signal, image: true }),
     embyDashboard: (signal: AbortSignal) => call<EmbyDashboardData>('/api/emby/dashboard', { signal, timeoutMs: 105_000 }),
     tvSubscriptions: (signal: AbortSignal) => get<TV[]>('/api/v1/subscriptions/tv', signal),
+    searchReplacementResources: (query: string, signal: AbortSignal) => call<{ data: Resources; warning: string; complete: boolean }>('/api/v1/resources/search-complete', { method: 'POST', body: { query }, signal, timeoutMs: 90_000 }),
+    tvFiles: (id: string, signal: AbortSignal) => get<TVFiles>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/files', signal),
+    replaceTV: (id: string, body: { season: number; episode: number; resource: { title: string; url: string; password?: string }; download: DownloadRequest }) =>
+      call<TVReplacement>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/replacements', { method: 'POST', body, timeoutMs: 95_000 }),
+    retryTVReplacement: (id: string, job: string) => call<void>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/replacements/' + encodeURIComponent(job) + '/retry', { method: 'POST' }),
     saveTV: (body: TVDraft, id?: string) => call<TV>('/api/v1/subscriptions/tv' + (id ? '/' + encodeURIComponent(id) : ''),
       { method: id ? 'PUT' : 'POST', body }),
     refreshTV: (id: string) => call<TV>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/refresh', { method: 'POST', timeoutMs: 95_000 }),
@@ -249,6 +258,9 @@ export function createLiveApi(token: string, onExpired: () => void) {
     saveComicCredentials: (cookie: string) =>
       call<ComicCredentials>('/api/v1/comics/ehentai/settings', { method: 'PUT', body: { cookie } }),
     resourceMeta: (signal: AbortSignal) => get<{ data: ResourceSearchMeta }>('/api/v1/resources/meta', signal),
+    checkResources: (links: Resource[], signal: AbortSignal) => call<{ results: ResourceHealth[] }>('/api/v1/resources/check', {
+      method: 'POST', signal, body: { items: links.map(link => ({ disk_type: link.cloud, url: link.url, password: link.password })) },
+    }),
     searchResources: (query: string, source: string, selection: ResourceSearchMeta['selection'], signal: AbortSignal) =>
       call<{ data: Resources }>('/api/v1/resources/search',
         { method: 'POST', body: { ...selection, query, source, mode: 'merge', refresh: false }, signal }),

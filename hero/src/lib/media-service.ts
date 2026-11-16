@@ -18,6 +18,7 @@ export type TVDraft = {
   exclude: string;
 };
 export type TV = TVDraft & {
+	  rating?: number;
   id: string;
   poster: string;
   episodes: { season?: number; number: number; name: string; airDate: string }[];

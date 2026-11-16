@@ -51,17 +51,19 @@ type Candidate struct {
 }
 type Subscription struct {
 	Draft
-	ID                string      `json:"id"`
-	Poster            string      `json:"poster"`
-	Episodes          []Episode   `json:"episodes"`
-	Resources         []Candidate `json:"resources"`
-	LastCheckedAt     string      `json:"lastCheckedAt"`
-	NextCheckAt       string      `json:"nextCheckAt"`
-	LastError         string      `json:"lastError"`
-	MetadataError     string      `json:"metadataError"`
-	CreatedAt         string      `json:"createdAt"`
-	Revision          int         `json:"revision"`
-	MetadataCheckedAt string      `json:"metadataCheckedAt"`
+	ID                string        `json:"id"`
+	Poster            string        `json:"poster"`
+	Rating            float64       `json:"rating,omitempty"`
+	Replacements      []Replacement `json:"replacements,omitempty"`
+	Episodes          []Episode     `json:"episodes"`
+	Resources         []Candidate   `json:"resources"`
+	LastCheckedAt     string        `json:"lastCheckedAt"`
+	NextCheckAt       string        `json:"nextCheckAt"`
+	LastError         string        `json:"lastError"`
+	MetadataError     string        `json:"metadataError"`
+	CreatedAt         string        `json:"createdAt"`
+	Revision          int           `json:"revision"`
+	MetadataCheckedAt string        `json:"metadataCheckedAt"`
 }
 
 // SourceOf preserves old subscriptions: explicit channels become direct TG,
@@ -124,6 +126,9 @@ func Validate(d *Draft) error {
 			return fmt.Errorf("正则表达式无效: %v", err)
 		}
 	}
+	if strings.TrimSpace(d.Match) == "" {
+		return fmt.Errorf("请填写资源匹配正则")
+	}
 	return nil
 }
 
@@ -155,6 +160,9 @@ func ParseSize(text string) int64 {
 
 // Select keeps one resource per episode. Unknown episodes and explicit other seasons are ignored.
 func Select(d Draft, items []Candidate) []Candidate {
+	if strings.TrimSpace(d.Match) == "" {
+		return []Candidate{}
+	}
 	include, includeErr := textmatch.Compile(d.Match)
 	exclude, excludeErr := textmatch.Compile(d.Exclude)
 	best := map[int]Candidate{}
@@ -212,9 +220,6 @@ func Select(d Draft, items []Candidate) []Candidate {
 			}
 		}
 		item.Season = season
-		if SourceOf(d) == "pansou" && len(d.Sources) > 0 && sourcePriority(d, item) == len(d.Sources) {
-			continue
-		}
 		episode, ok := singleEpisode(parseTitle, season)
 		item.CollectionEnd = 0
 		if !ok {
@@ -232,7 +237,7 @@ func Select(d Draft, items []Candidate) []Candidate {
 		}
 		key := EpisodeKey(item.Season, item.Episode)
 		old, ok := best[key]
-		if !ok || sourcePriority(d, item) < sourcePriority(d, old) || (sourcePriority(d, item) == sourcePriority(d, old) && ((item.Cloud == "115" && old.Cloud != "115") || (item.Cloud == old.Cloud && (item.Size > old.Size || (item.Size == old.Size && item.URL < old.URL))))) {
+		if !ok || sourcePriority(d, item) < sourcePriority(d, old) || (sourcePriority(d, item) == sourcePriority(d, old) && ((item.Cloud == "115" && old.Cloud != "115") || (item.Cloud == old.Cloud && item.URL < old.URL))) {
 			best[key] = item
 		}
 	}

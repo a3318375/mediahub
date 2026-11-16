@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown, ChevronRight, Clapperboard, Plus, RefreshCw, Search } from 'lucide-react';
-import { animeResourceSize, emptyAnimeDraft } from '../../hero/src/lib/anime-api';
-import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from '../../hero/src/lib/anime-api';
-import { animeSeasonOptions, currentAnimeSeason } from '../../hero/src/lib/anime-season';
-import type { AnimeDownloadRule } from '../../hero/src/lib/download-api';
+import { animeResourceSize, emptyAnimeDraft } from './lib/anime-api';
+import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from './lib/anime-api';
+import { animeSeasonOptions, currentAnimeSeason } from './lib/anime-season';
+import type { AnimeDownloadRule } from './lib/download-api';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent } from './arc/dialog/dialog';
 import { Input } from './arc/input/input';

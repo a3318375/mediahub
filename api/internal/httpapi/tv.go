@@ -12,10 +12,54 @@ import (
 	"mediahub/internal/tv"
 )
 
+func MountCompleteResourceSearch(router *gin.Engine, db *store.Store, handler gin.HandlerFunc) {
+	a := &API{store: db}
+	router.POST("/api/v1/resources/search-complete", a.requireAPI(), handler)
+}
+
 // MountTV applies the same browser-session/API-key boundary as other application APIs.
-func MountTV(router *gin.Engine, db *store.Store, service *tv.Service) {
+func MountTV(router *gin.Engine, db *store.Store, service *tv.Service, replacements ...*tv.ReplacementService) {
 	api := &API{store: db}
 	group := router.Group("/api/v1/subscriptions/tv", api.requireAPI())
+	if len(replacements) > 0 {
+		r := replacements[0]
+		group.GET("/:id/files", func(c *gin.Context) {
+			sub, err := db.GetTV(c.Param("id"))
+			if err != nil {
+				fail(c, 404, "追剧订阅不存在")
+				return
+			}
+			files, err := r.Files(sub)
+			if err != nil {
+				fail(c, 503, err.Error())
+				return
+			}
+			c.JSON(200, gin.H{"files": files, "replacements": sub.Replacements})
+		})
+		group.POST("/:id/replacements", func(c *gin.Context) {
+			c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 32<<10)
+			var body tv.ReplaceRequest
+			if c.ShouldBindJSON(&body) != nil {
+				fail(c, 400, "替换参数无效")
+				return
+			}
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+			defer cancel()
+			job, err := r.Create(ctx, c.Param("id"), body)
+			if err != nil {
+				fail(c, 400, err.Error())
+				return
+			}
+			c.JSON(202, job)
+		})
+		group.POST("/:id/replacements/:job/retry", func(c *gin.Context) {
+			if err := r.Retry(c.Param("id"), c.Param("job")); err != nil {
+				fail(c, 409, err.Error())
+				return
+			}
+			c.Status(204)
+		})
+	}
 	failure := func(c *gin.Context, err error) {
 		status := 500
 		message := "追剧操作失败"

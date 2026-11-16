@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
+
+	"pansou/model"
 
 	"mediahub/internal/tv"
 )
@@ -20,8 +21,6 @@ func (b *Bootstrap) SearchTV(ctx context.Context, d tv.Draft) ([]tv.Candidate, e
 	channels := selected.Channels
 	plugins := selected.Plugins
 	if len(d.Sources) > 0 {
-		channels = []string{}
-		plugins = []string{}
 		for _, entry := range d.Sources {
 			if strings.HasPrefix(entry, "plugin:") {
 				plugins = append(plugins, strings.TrimPrefix(entry, "plugin:"))
@@ -31,42 +30,42 @@ func (b *Bootstrap) SearchTV(ctx context.Context, d tv.Draft) ([]tv.Candidate, e
 			}
 		}
 	}
-	source := "all"
 	if len(channels) == 0 && len(plugins) == 0 {
 		return nil, fmt.Errorf("请在全局设置中启用 PanSou 搜索来源")
 	}
-	if len(channels) == 0 {
-		source = "plugin"
-	}
-	if len(plugins) == 0 {
-		source = "tg"
-	}
-	// Preserve titles and channels for per-episode rules; merged links lose that context.
-	result, err := b.Search(ctx, d.Title, source, []string{"115", "magnet"}, plugins, channels, "results", false)
-	if err != nil {
-		return nil, err
-	}
-	data, ok := result.(searchData)
+	search, ok := b.adapter.service.(interface {
+		SearchComplete(context.Context, string, []string, []string) (model.SearchResponse, error)
+	})
 	if !ok {
-		return nil, fmt.Errorf("PanSou 返回格式异常")
+		return nil, fmt.Errorf("PanSou 不支持完整订阅搜索")
 	}
-	// Async plugins may populate their cache after the first pass.
-	if source != "tg" {
-		timer := time.NewTimer(3 * time.Second)
-		defer timer.Stop()
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-timer.C:
-		}
-		again, e := b.Search(ctx, d.Title, source, []string{"115", "magnet"}, plugins, channels, "results", false)
-		if e == nil {
-			if more, ok := again.(searchData); ok {
-				data.Items = append(data.Items, more.Items...)
+	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		return nil, ErrShuttingDown
+	}
+	b.active.Add(1)
+	b.mu.Unlock()
+	defer b.active.Done()
+	select {
+	case b.gate <- struct{}{}:
+		defer func() { <-b.gate }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	unique := func(items []string) []string {
+		out := []string{}
+		seen := map[string]bool{}
+		for _, item := range items {
+			if !seen[item] {
+				seen[item] = true
+				out = append(out, item)
 			}
 		}
+		return out
 	}
-	return tvCandidates(data), nil
+	result, err := search.SearchComplete(ctx, d.Title, unique(channels), unique(plugins))
+	return tvCandidates(mapSearchResponse(result)), err
 }
 
 func tvCandidates(data searchData) []tv.Candidate {

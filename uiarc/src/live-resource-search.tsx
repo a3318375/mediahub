@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Copy, Download, RefreshCw, Search } from 'lucide-react';
-import { is115ShareURL } from '../../hero/src/lib/download-api';
-import type { DownloadMediaContext, DownloadReference } from '../../hero/src/lib/download-api';
-import { resourceHealthKey, useResourceHealth } from '../../hero/src/hooks/useResourceHealth';
-import { normalizeResources } from '../../hero/src/lib/media-service';
-import type { Resource, Resources, Session } from '../../hero/src/lib/media-service';
-import { cloudLabels } from '../../hero/src/lib/parity';
+import { is115ShareURL } from './lib/download-api';
+import type { DownloadMediaContext, DownloadReference } from './lib/download-api';
+import { resourceHealthKey, useResourceHealth } from './use-resource-health';
+import { normalizeResources } from './lib/media-service';
+import type { Resource, Resources } from './lib/media-service';
+import { cloudLabels } from './lib/parity';
 import {
   readMediaSearchHistory, readResourceSearchHistory, RESOURCE_SEARCH_HISTORY_KEY, resourceSearchPlan, safeResourceURL, saveResourceSearchHistory,
-} from '../../hero/src/lib/resource-search';
-import { mergeResourceResults } from '../../hero/src/lib/resource-workflow';
+} from './lib/resource-search';
+import { mergeResourceResults } from './lib/resource-workflow';
 import { Button } from './arc/button/button';
 import { SearchField } from './arc/search-field/search-field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './arc/tabs/tabs';
@@ -21,8 +21,8 @@ import { NoResults, PageHeading, SectionHeading, Status } from './ui';
 const healthLabels: Record<string, string> = { ok: '有效', bad: '失效', locked: '需要提取码', unsupported: '暂不支持', uncertain: '待确认' };
 type SavedSearch = { query: string; result: Resources; cloud: string; media?: DownloadMediaContext };
 
-export function LiveResourceSearch({ api, token, account, active, initialQuery, media, backLabel, onBack, notify }: {
-  api: LiveApi; token: string; account: string; active: boolean; initialQuery: string; media?: DownloadMediaContext;
+export function LiveResourceSearch({ api, account, active, initialQuery, media, backLabel, onBack, notify }: {
+  api: LiveApi; account: string; active: boolean; initialQuery: string; media?: DownloadMediaContext;
   backLabel: string; onBack: () => void; notify: (message: string) => void;
 }) {
   const cacheKey = 'mediahub.uiarc.resource-result.' + account;
@@ -48,7 +48,6 @@ export function LiveResourceSearch({ api, token, account, active, initialQuery, 
   const [autoDetect, setAutoDetect] = useState(false);
   const [transfer, setTransfer] = useState<Resource>();
   const [context, setContext] = useState(originMedia);
-  const session = useMemo<Session>(() => ({ mode: 'live', name: account, token }), [account, token]);
 
   useEffect(() => {
     if (active) setMediaHistory(readMediaSearchHistory(localStorage));
@@ -114,7 +113,7 @@ export function LiveResourceSearch({ api, token, account, active, initialQuery, 
   const clouds = [...new Set(unique.map(link => link.cloud))];
   const selectedCloud = clouds.includes(cloud) ? cloud : clouds[0];
   const rows = unique.filter(link => selectedCloud === link.cloud);
-  const { health, checking, check } = useResourceHealth(rows, active && autoDetect, session, notify);
+  const { health, checking, check } = useResourceHealth(api, rows, active && autoDetect, notify);
   useEffect(() => {
     if (!result || !query) return;
     try {

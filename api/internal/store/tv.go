@@ -110,6 +110,7 @@ func (s *Store) SaveTVRefresh(v tv.Subscription) (tv.Subscription, error) {
 		return current, nil
 	}
 	v.Draft = current.Draft
+	v.Replacements = current.Replacements
 	v.Source = tv.SourceOf(v.Draft)
 	data, err := json.Marshal(v)
 	if err != nil {
@@ -164,7 +165,28 @@ func (s *Store) UpdateTV(id string, d tv.Draft) (tv.Subscription, error) {
 }
 
 func (s *Store) DeleteTV(id string) error {
-	r, err := s.db.Exec(`DELETE FROM tv_subscriptions WHERE id=?`, id)
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var raw []byte
+	if err = tx.QueryRow(`SELECT data FROM tv_subscriptions WHERE id=?`, id).Scan(&raw); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	var sub tv.Subscription
+	if err = json.Unmarshal(raw, &sub); err != nil {
+		return err
+	}
+	for _, job := range sub.Replacements {
+		if job.State != "completed" {
+			return fmt.Errorf("该订阅还有未完成的替换任务，请先处理后再删除")
+		}
+	}
+	r, err := tx.Exec(`DELETE FROM tv_subscriptions WHERE id=?`, id)
 	if err != nil {
 		return err
 	}
@@ -172,5 +194,5 @@ func (s *Store) DeleteTV(id string) error {
 	if n == 0 {
 		return ErrNotFound
 	}
-	return nil
+	return tx.Commit()
 }

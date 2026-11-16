@@ -11,6 +11,7 @@ import { Input } from './arc/input/input';
 import { EmbyHome, Discovery, Rankings, MediaDetail } from './catalog';
 import { LiveResourceSearch } from './live-resource-search';
 import { LiveSeriesCalendar, LiveTVEditor } from './live-calendar';
+import { LiveTVEpisodes } from './live-tv-episodes';
 import { Music } from './library';
 import { Reading } from './reading';
 import { LiveMusic } from './live-library';
@@ -25,10 +26,10 @@ import { LiveSettings } from './live-settings';
 import { MediaGrid } from './ui';
 import { ApiError, createLiveApi, liveIdentity, loginLive, logoutLive, presentLiveMedia, readLiveToken, readLiveUser, readSetupStatus, requestError, saveLiveToken, setupLive } from './live-api';
 import type { LiveSession } from './live-api';
-import type { SettingValue } from '../../hero/src/lib/settings-api';
-import { mediaContextFromRecord } from '../../hero/src/lib/download-api';
-import type { DownloadMediaContext } from '../../hero/src/lib/download-api';
-import type { TVDraft } from '../../hero/src/lib/media-service';
+import type { SettingValue } from './lib/settings-api';
+import { mediaContextFromRecord } from './lib/download-api';
+import type { DownloadMediaContext } from './lib/download-api';
+import type { TVDraft } from './lib/media-service';
 import { initialState, media, uid, workPath } from './model';
 import type { DemoState, Media, Notify, Task } from './model';
 import screeningRoom from './sign-in-screening-room.jpg';
@@ -52,7 +53,7 @@ const pages = groups.flatMap(group => group.items);
 const settingsMenus = pages.filter(item => !['emby', 'settings'].includes(item.id));
 const connectedPages = new Set(['emby', 'search', 'anime', 'calendar', 'music', 'comics', 'novels', 'processing', 'logs', 'settings']);
 const storageKey = 'mediahub.uiarc.preview.v1';
-const offline = window.location.protocol === 'file:';
+const offline = import.meta.env.STATIC_DEMO || window.location.protocol === 'file:';
 
 function readState(): DemoState {
   try {
@@ -381,7 +382,7 @@ function App() {
     switch (page) {
       case 'search': return api ? null : <ResourceSearch key={resourceSearch.version} state={state} initialQuery={resourceSearch.query} remember={remember} onDownload={startDownload} notify={notify} />;
       case 'anime': return api ? <LiveAnime api={api} /> : <Anime {...common} onOpen={openDetail} onDownload={startDownload} />;
-      case 'calendar': return api ? <LiveSeriesCalendar api={api} discover={() => {
+      case 'calendar': return api ? <LiveSeriesCalendar api={api} onOpen={openDetail} discover={() => {
         go('discover'); notify('在剧集详情中点击「订阅此剧」。');
       }} notify={notify} />
         : <SeriesCalendar {...common} onDownload={startDownload} />;
@@ -448,7 +449,7 @@ function App() {
         {(page === 'discover' || visitedCatalogs.includes('discover')) && <div hidden={page !== 'discover' || viewingDetail}><Discovery {...catalogActions} api={api} onSearch={remember} /></div>}
         {(page === 'rankings' || visitedCatalogs.includes('rankings')) && <div hidden={page !== 'rankings' || viewingDetail}><Rankings {...catalogActions} api={api} /></div>}
         {api && session && token && (page === 'search' || visitedSearch) && <div hidden={page !== 'search' || viewingDetail}>
-          <LiveResourceSearch key={session.user.account + ':' + resourceSearch.version} api={api} token={token} account={session.user.account}
+          <LiveResourceSearch key={session.user.account + ':' + resourceSearch.version} api={api} account={session.user.account}
             active={page === 'search' && !viewingDetail} initialQuery={resourceSearch.query} media={resourceSearch.media}
             backLabel={searchOrigin.current?.page === 'rankings' ? '返回榜单推荐' : '返回影视探索'}
             onBack={() => go(searchOrigin.current?.page || 'discover')} notify={notify} />
@@ -464,9 +465,11 @@ function App() {
             <div><Button variant="secondary" onClick={() => setDetailRetry(value => value + 1)}>重试</Button></div>
           </> : <p className="muted" role="status">正在加载作品详情…</p>}
         </div>}
-        {detail && <MediaDetail key={detail.id} item={detail} api={api} favorite={state.favorites.includes(detail.id)} subscribed={state.subscriptions.some(entry => entry.title === detail.title)}
+        {detail && <MediaDetail key={detail.id} item={detail} api={api} hideSubscribe={page === 'calendar'} favorite={state.favorites.includes(detail.id)} subscribed={state.subscriptions.some(entry => entry.title === detail.title)}
           detailError={detailFailure?.id === detail.id ? detailFailure.message : undefined} onRetry={() => setDetailRetry(value => value + 1)}
-          onClose={closeDetail} onFavorite={toggleFavorite} onSubscribe={toggleSubscription} onSearch={startSearch} onDownload={item => startDownload(item.title)} />}
+          onClose={closeDetail} onFavorite={toggleFavorite} onSubscribe={toggleSubscription} onSearch={startSearch} onDownload={item => startDownload(item.title)}>
+          {api && page === 'calendar' && <LiveTVEpisodes api={api} tmdbId={liveIdentity(detail.id)?.sourceId ?? ''} notify={notify} />}
+        </MediaDetail>}
       </main>
     </div>
     {download && <DownloadEditor seed={download} onClose={() => setDownload(null)} onSave={addTask} />}

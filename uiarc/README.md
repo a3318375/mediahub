@@ -2,7 +2,11 @@
 
 MediaHub 的 UIArc 前端。开发服务支持使用现有 MediaHub 账号登录。在浏览器中直接打开 `dist/index.html` 可离线预览。
 
-开发时打开 [本地 UIArc](http://127.0.0.1:5173/)。Vite 将 `/api` 转发到 `127.0.0.1:18080`。登录后，Emby 看板、搜索历史、影视探索及榜单、动漫订阅、追剧日历、音乐曲库、漫画、小说、媒体处理、日志和全局设置使用后端数据。
+开发时打开 [本地 UIArc](http://127.0.0.1:5174/)。Vite 将 `/api` 转发到 `127.0.0.1:18080`。登录后，Emby 看板、搜索历史、影视探索及榜单、动漫订阅、追剧日历、音乐曲库、漫画、小说、媒体处理、日志和全局设置使用后端数据。
+
+Docker 正式镜像默认构建本前端。`npm run build` 输出正式版 `dist/`；`npm run build:demo` 输出免后端演示版 `dist-demo/`，供 GitHub Pages 发布。演示模式由构建确定，正式部署不会因接口不可用而自动切换示例数据。
+
+本前端独立构建：`src/lib/` 定义后端接口类型、表单数据和工具函数，`src/use-resource-health.ts` 通过本前端的 `live-api` 检测分享链接，`src/assets/icons/` 保存来源图标。不引用 Hero 的源码、依赖或会话存储；两套前端共用同一个 Go 后端。来源图标的署名见仓库根目录 README。
 
 ## 页面
 
@@ -28,7 +32,9 @@ MediaHub 的 UIArc 前端。开发服务支持使用现有 MediaHub 账号登录
 ```powershell
 npm ci
 npm run dev
+npm test
 npm run build
+npm run build:demo
 ```
 
 构建产物 `dist/index.html` 内嵌脚本、样式、字体、海报和音频，可直接双击打开。UIArc 公共 Registry 组件位于 `src/arc/`，部分界面文案做了中文化。[UIArc 组件的 MIT 许可证](src/arc/LICENSE) 随源码保留。电影图片来自 TMDB。《葬送的芙莉莲》示例海报来自[动画官网](https://frieren-anime.jp/news/232/)。

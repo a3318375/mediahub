@@ -3,7 +3,7 @@ name: Deploy demo to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ["hero/**", ".github/workflows/pages.yml"]
+    paths: ["uiarc/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -23,24 +23,21 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: hero/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-        working-directory: hero
-      - run: pnpm build:demo
-        working-directory: hero
-      - run: pnpm test
-        working-directory: hero
+          node-version: 24
+          cache: npm
+          cache-dependency-path: uiarc/package-lock.json
+      - run: npm ci
+        working-directory: uiarc
+      - run: npm test
+        working-directory: uiarc
+      - run: npm run build:demo
+        working-directory: uiarc
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: hero/dist-demo
+          path: uiarc/dist-demo
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4

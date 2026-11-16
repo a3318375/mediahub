@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { Clapperboard, RefreshCw } from 'lucide-react';
-import { is115ShareURL } from '../../hero/src/lib/download-api';
-import type { DownloadTask } from '../../hero/src/lib/download-api';
-import type { OrganizeMediaItem } from '../../hero/src/lib/organize-api';
-import type { OutputJob } from '../../hero/src/lib/media-output-api';
+import { is115ShareURL } from './lib/download-api';
+import type { DownloadTask } from './lib/download-api';
+import type { OrganizeMediaItem } from './lib/organize-api';
+import type { OutputJob } from './lib/media-output-api';
 import { Button } from './arc/button/button';
 import { Dialog, DialogContent, DialogTrigger } from './arc/dialog/dialog';
 import { Input } from './arc/input/input';

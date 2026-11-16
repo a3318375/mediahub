@@ -38,7 +38,7 @@ func TestTVRoutesAuthRulesAndLifecycle(t *testing.T) {
 		return w
 	}
 	base := "/api/v1/subscriptions/tv"
-	draft := tv.Draft{TMDBID: "123", Title: "测试", Season: 1, Enabled: true}
+	draft := tv.Draft{TMDBID: "123", Title: "测试", Season: 1, Enabled: true, Rules: tv.Rules{Match: "测试"}}
 	if w := request("POST", base, draft, false); w.Code != 401 {
 		t.Fatalf("unprotected create: %d", w.Code)
 	}
