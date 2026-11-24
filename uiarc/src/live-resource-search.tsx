@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Copy, Download, RefreshCw, Search } from 'lucide-react';
 import { is115ShareURL } from './lib/download-api';
 import type { DownloadMediaContext, DownloadReference } from './lib/download-api';
@@ -46,12 +46,14 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
   const [busy, setBusy] = useState(Boolean(initialQuery.trim()));
   const [collecting, setCollecting] = useState(false);
   const [autoDetect, setAutoDetect] = useState(false);
-  const [transfer, setTransfer] = useState<Resource>();
+  const [offlineResource, setOfflineResource] = useState<Resource>();
+  const [transferringUrl, setTransferringUrl] = useState('');
+  const transferLock = useRef(false);
   const [context, setContext] = useState(originMedia);
 
   useEffect(() => {
     if (active) setMediaHistory(readMediaSearchHistory(localStorage));
-    else setTransfer(undefined);
+    else setOfflineResource(undefined);
   }, [active]);
 
   useEffect(() => {
@@ -128,6 +130,27 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
       media: { ...context, type: context?.type ?? 'movie', title: context?.title || titleFor(link) },
     };
   }
+  async function transferShare(link: Resource) {
+    if (transferLock.current) return;
+    transferLock.current = true;
+    setTransferringUrl(link.url);
+    try {
+      const result = await api.createDownload({
+        kind: 'share_transfer',
+        url: link.url,
+        wholeShare: true,
+        receiveCode: link.password?.trim() ?? '',
+        directoryId: '',
+        reference: referenceFor(link),
+      });
+      notify(result.created ? '已加入下载队列，完成后按设置自动整理。' : '此资源已在下载队列中。');
+    } catch (reason) {
+      notify(requestError(reason));
+    } finally {
+      transferLock.current = false;
+      setTransferringUrl('');
+    }
+  }
   function clearHistory() {
     try { localStorage.setItem(RESOURCE_SEARCH_HISTORY_KEY, '[]'); }
     catch { notify('无法清除浏览器里的历史记录。'); return; }
@@ -187,7 +210,9 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
                   <div className="row resource-result-actions">
                     <Button size="sm" variant="ghost" disabled={Boolean(checking)} onClick={() => void check(link)}>{checking === link.url ? '检测中…' : '检测链接'}</Button>
                     <Button size="sm" variant="secondary" onClick={() => void copy(link.url + (link.password ? ' 提取码：' + link.password : ''), '链接')}><Copy size={14} aria-hidden="true" />复制链接</Button>
-                    {(magnet || is115ShareURL(link.url)) && <Button size="sm" onClick={() => setTransfer(link)}>
+                    {(magnet || is115ShareURL(link.url)) && <Button size="sm" loading={transferringUrl === link.url}
+                      disabled={!magnet && Boolean(transferringUrl) && transferringUrl !== link.url}
+                      onClick={() => magnet ? setOfflineResource(link) : void transferShare(link)}>
                       <Download size={14} aria-hidden="true" />{magnet ? '115 离线下载' : '转存到 115'}
                     </Button>}
                   </div>
@@ -197,8 +222,8 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
           </Tabs> : !collecting && <NoResults title="没有找到资源" description="试试原名、其他译名或缩短关键词。" />}
         </>}
     </section>
-    {transfer && <ResourceDownload api={api} close={() => setTransfer(undefined)} done={notify} resource={{
-      ...transfer, title: transfer.note || titleFor(transfer), reference: referenceFor(transfer),
+    {offlineResource && <ResourceDownload api={api} close={() => setOfflineResource(undefined)} done={notify} resource={{
+      ...offlineResource, title: offlineResource.note || titleFor(offlineResource), reference: referenceFor(offlineResource),
     }} />}
   </>;
 }
