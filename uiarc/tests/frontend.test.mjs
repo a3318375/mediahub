@@ -7,6 +7,7 @@ import { directoryIdFromInput, is115ShareURL } from '../src/lib/download-api.ts'
 import { resourceSearchPlan, normalizeResourceChannel, safeResourceURL, readMediaSearchHistory, readResourceSearchHistory, saveMediaSearchHistory, saveResourceSearchHistory } from '../src/lib/resource-search.ts';
 import { normalizeResources } from '../src/lib/media-service.ts';
 import { mergeResourceResults } from '../src/lib/resource-workflow.ts';
+import { lookupResourceMedia } from '../src/lib/resource-media.ts';
 import { currentAnimeSeason, animeSeasonOptions } from '../src/lib/anime-season.ts';
 
 test('UIArc TypeScript dependency graph stays inside its frontend and dependencies', () => {
@@ -66,6 +67,37 @@ test('source plans and channel validation respect enabled sources', () => {
   assert.equal(normalizeResourceChannel('https://t.me/s/channel/'), 'channel');
   assert.equal(normalizeResourceChannel('https://t.me.evil.test/channel'), null);
   assert.equal(safeResourceURL('javascript:alert(1)'), undefined);
+});
+
+test('direct resource search resolves the entered title and optional year across TV and movies', async () => {
+  const movie = { title: '同名', mediaId: 'tmdb:movie:42', year: 1999 };
+  const tv = { title: '剧集译名', originalTitle: '同名', mediaId: 'tmdb:tv:42', year: 2026 };
+  const calls = [];
+  const api = { discover: async params => {
+    calls.push(params);
+    const items = params.mediaType === 'tv' ? [tv, { ...tv, title: '同名续集', originalTitle: '', mediaId: 'tmdb:tv:99' }] : [movie];
+    return { items, total: items.length, hasMore: false };
+  } };
+  const signal = new AbortController().signal;
+  assert.deepEqual(await lookupResourceMedia(api, '同名', signal), { items: [movie, tv], complete: true });
+  assert.deepEqual(await lookupResourceMedia(api, '同名（2026）', signal), { items: [tv], complete: true });
+  assert.deepEqual(calls.slice(2).map(({ source, mediaType, query, year }) => [source, mediaType, query, year]), [
+    ['tmdb', 'movie', '同名', '2026'], ['tmdb', 'tv', '同名', '2026'],
+  ]);
+});
+
+test('partial or failed TMDB searches cannot establish a unique identity', async () => {
+  const signal = new AbortController().signal;
+  const item = { title: '作品', mediaId: 'tmdb:tv:1' };
+  const paginated = { discover: async ({ mediaType }) => mediaType === 'tv'
+    ? { items: [item], total: 1 } : { items: [], hasMore: true } };
+  assert.deepEqual(await lookupResourceMedia(paginated, '作品', signal), { items: [item], complete: false });
+  assert.deepEqual(await lookupResourceMedia(paginated, '作品续集', signal), { items: [], complete: false });
+  const unavailable = { discover: async params => {
+    if (params.mediaType === 'movie') throw new Error('TMDB unavailable');
+    return paginated.discover(params);
+  } };
+  await assert.rejects(lookupResourceMedia(unavailable, '作品', signal), /TMDB unavailable/);
 });
 
 test('anime quarters use Beijing time across a UTC quarter boundary', () => {
