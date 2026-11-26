@@ -49,7 +49,23 @@ func (s *Store) CreateDownload(account, hash string, r download.Request) (downlo
 			return download.Task{}, false, err
 		}
 	}
-	t, err := scanDownload(tx.QueryRow(`SELECT data,revision FROM download_tasks WHERE account_id=? AND resource_id=?`, account, hash))
+	manualShare := r.Kind == "share_transfer" && (r.Reference.Source == "media_search" || r.Reference.Source == "manual" || r.Reference.Source == "tv_subscription")
+	query := `SELECT data,revision FROM download_tasks WHERE account_id=? AND resource_id=?`
+	args := []any{account, hash}
+	if r.Kind == "share_transfer" {
+		// Older transfers use the bare share hash. Each new manual attempt also
+		// includes its task ID in the storage key, so history remains intact.
+		query = `SELECT data,revision FROM download_tasks WHERE account_id=? AND (resource_id=? OR resource_id GLOB ?)`
+		args = append(args, hash+"/*", r.DirectoryID)
+		if manualShare {
+			query += ` AND json_extract(data,'$.directoryId')=? AND state NOT IN ('completed','failed','cancelled')`
+		} else {
+			// Keep automatic retries attached to the original task at that destination.
+			query += ` ORDER BY (json_extract(data,'$.directoryId')=?) DESC, created_at, id`
+		}
+		query += ` LIMIT 1`
+	}
+	t, err := scanDownload(tx.QueryRow(query, args...))
 	created := false
 	if errors.Is(err, download.ErrNotFound) {
 		var count int
@@ -72,7 +88,11 @@ func (s *Store) CreateDownload(account, hash string, r download.Request) (downlo
 		if e != nil {
 			return t, false, e
 		}
-		if _, err = tx.Exec(`INSERT INTO download_tasks(id,account_id,resource_id,state,data,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, t.ID, account, hash, t.State, string(data), now, now); err != nil {
+		storageKey := hash
+		if manualShare {
+			storageKey += "/" + t.ID
+		}
+		if _, err = tx.Exec(`INSERT INTO download_tasks(id,account_id,resource_id,state,data,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, t.ID, account, storageKey, t.State, string(data), now, now); err != nil {
 			return t, false, err
 		}
 		if _, err = tx.Exec(`INSERT INTO download_events(task_id,state,error_code,occurred_at) VALUES(?,'queued','',?)`, t.ID, now); err != nil {

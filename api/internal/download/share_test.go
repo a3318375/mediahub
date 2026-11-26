@@ -55,17 +55,21 @@ func TestShareTransferConfirmsNewIDsAndDoesNotExposePassword(t *testing.T) {
 	if err != nil || password != "fixture" {
 		t.Fatal("missing encrypted secret", err)
 	}
+	if again, created, err := s.Enqueue(shareRequest()); err != nil || created || again.ID != task.ID {
+		t.Fatal("concurrent clicks should share one queued transfer", again.ID, err)
+	}
 	tick(t, s)
 	v := read(t, db, task.ID)
 	if v.State != "completed" || len(v.Artifacts) != 2 || v.Artifacts[0].ID == "7" || base.submits != 0 || base.queries != 0 || g.receives != 1 {
 		t.Fatal(v, g.receives, base.submits, base.queries)
 	}
-	if _, created, err = s.Enqueue(shareRequest()); err != nil || created {
-		t.Fatal(created, err)
+	next, created, err := s.Enqueue(shareRequest())
+	if err != nil || !created || next.ID == task.ID || next.ResourceID != task.ResourceID {
+		t.Fatal("new transfer after completion", next, err)
 	}
 	tick(t, s)
-	if g.receives != 1 {
-		t.Fatal("duplicate transfer")
+	if g.receives != 2 || read(t, db, next.ID).State != "completed" || read(t, db, task.ID).State != "completed" {
+		t.Fatal("both transfers should be recorded", g.receives)
 	}
 }
 func TestShareUncertainPartialTransferOnlyReconciles(t *testing.T) {
@@ -115,6 +119,8 @@ func TestWholeShareDiscoversAndPersistsSelectionInBackground(t *testing.T) {
 	r := shareRequest()
 	r.WholeShare = true
 	r.FileIDs = nil
+	// The bare storage key is also the format of existing NAS records.
+	r.Reference.Source = "tv_replacement"
 	task, created, e := s.Enqueue(r)
 	if e != nil || !created || len(task.FileIDs) != 0 || !task.WholeShare {
 		t.Fatalf("%+v %v", task, e)
@@ -124,11 +130,31 @@ func TestWholeShareDiscoversAndPersistsSelectionInBackground(t *testing.T) {
 	if v.State != "completed" || len(v.FileIDs) != 2 || len(v.Manifest) != 2 || g.receives != 1 {
 		t.Fatalf("%+v receives=%d", v, g.receives)
 	}
-	if _, created, e = s.Enqueue(r); e != nil || created {
-		t.Fatal("whole-share duplicate", e)
+	if again, created, err := s.Enqueue(r); err != nil || created || again.ID != task.ID {
+		t.Fatal("background retry should reuse its transfer", again, err)
 	}
-	tick(t, s)
-	if g.receives != 1 {
-		t.Fatal("whole share submitted twice")
+	r.Reference = download.Reference{Source: "media_search", Media: download.MediaContext{Type: "tv", Title: "剧集"}}
+	r.DirectoryID = "200"
+	next, created, err := s.Enqueue(r)
+	if err != nil || !created || next.ID == task.ID || next.DirectoryID != "200" {
+		t.Fatal("manual transfer to a new directory", next, err)
+	}
+	r.DirectoryID = "100"
+	other, created, err := s.Enqueue(r)
+	if err != nil || !created || other.ID == next.ID || other.ID == task.ID {
+		t.Fatal("manual transfer to the original directory", other, err)
+	}
+	r.DirectoryID = "200"
+	if again, created, err := s.Enqueue(r); err != nil || created || again.ID != next.ID {
+		t.Fatal("repeat click should find the active task for this directory", again, err)
+	}
+	if old := read(t, db, task.ID); old.State != "completed" || old.DirectoryID != "100" || len(old.Artifacts) != 2 {
+		t.Fatal("original transfer history changed", old)
+	}
+	r.DirectoryID = "100"
+	r.Reference = shareRequest().Reference
+	r.Reference.Source = "tv_replacement"
+	if again, created, err := s.Enqueue(r); err != nil || created || again.ID != task.ID {
+		t.Fatal("background retry switched to a later manual transfer", again, err)
 	}
 }
