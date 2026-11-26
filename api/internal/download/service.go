@@ -17,6 +17,7 @@ import (
 var ErrNotFound = errors.New("download not found")
 var ErrConflict = errors.New("download changed")
 var ErrQueueFull = errors.New("download queue full")
+var ErrTaskActive = errors.New("请先取消排队或停止跟踪，再删除任务记录")
 
 type Repository interface {
 	ReadSecret(section, key string) (string, error)
@@ -301,6 +302,9 @@ func (s *Service) tick(ctx context.Context, onlyID string) (resultErr error) {
 		}
 		// Reload to observe cancellations/reference additions made during remote queries.
 		t, e := s.Store.GetDownload(snapshot.ID)
+		if errors.Is(e, ErrNotFound) {
+			continue
+		}
 		if e != nil {
 			return e
 		}
@@ -314,7 +318,7 @@ func (s *Service) tick(ctx context.Context, onlyID string) (resultErr error) {
 			continue
 		}
 		if t.Kind == "share_transfer" {
-			if e = s.processShare(gateway, t); e != nil && !errors.Is(e, ErrConflict) {
+			if e = s.processShare(gateway, t); e != nil && !errors.Is(e, ErrConflict) && !errors.Is(e, ErrNotFound) {
 				return e
 			}
 			continue
@@ -402,6 +406,9 @@ func (s *Service) tick(ctx context.Context, onlyID string) (resultErr error) {
 				t, e = s.Store.GetDownload(t.ID)
 				if e != nil {
 					<-slots
+					if errors.Is(e, ErrNotFound) {
+						continue
+					}
 					return e
 				}
 				if t.State != "submitting" {
@@ -445,6 +452,9 @@ func (s *Service) submitOffline(gateway pan115.Gateway, t Task) error {
 	// Check cancellations again at dispatch, and retain the original revision so a
 	// cancellation during the request cannot be overwritten by its response.
 	current, e := s.Store.GetDownload(t.ID)
+	if errors.Is(e, ErrNotFound) {
+		return nil
+	}
 	if e != nil {
 		return e
 	}

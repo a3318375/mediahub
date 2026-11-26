@@ -1,10 +1,13 @@
+import { MediaBrand } from "@/components/media-brand"
 import {
   SidebarGroup,
+  SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useWorkspace } from "./workspace-context"
 import { navigationSections, type NavigationLink } from "./navigation-data"
 
 function navigateFromLink(
@@ -26,6 +29,28 @@ function navigateFromLink(
   onNavigate(path)
 }
 
+export function MediaHomeLink({ onNavigate }: { onNavigate: (path: string) => void }) {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          size="lg"
+          tooltip="Emby 看板"
+          render={
+            <a
+              href="/emby"
+              aria-label="MediaHub 首页"
+              onClick={(event) => navigateFromLink(event, "/emby", onNavigate)}
+            />
+          }
+        >
+          <MediaBrand />
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
 function NavigationLinkItem({
   link,
   activePath,
@@ -43,15 +68,18 @@ function NavigationLinkItem({
         size="lg"
         isActive={activePath === link.path}
         tooltip={link.title}
-        className="h-11 rounded-lg px-3 text-[15px] font-medium transition-colors data-active:font-semibold [&_svg]:size-[18px]"
+        className="text-base [&_svg]:size-5"
         render={
           <a
             href={link.path}
+            aria-current={activePath === link.path ? "page" : undefined}
             onClick={(event) => navigateFromLink(event, link.path, onNavigate)}
           />
         }
       >
-        <LinkIcon />
+        <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center">
+          <LinkIcon />
+        </span>
         <span>{link.title}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -65,15 +93,18 @@ export function MediaNav({
   activePath: string
   onNavigate: (path: string) => void
 }) {
-  return (
-    <div className="flex flex-col gap-3 px-2.5 py-4 group-data-[collapsible=icon]:px-2">
-      {navigationSections.map((section) => (
-        <SidebarGroup key={section.title} className="p-0">
-          <SidebarGroupLabel className="mb-1 h-9 px-3 text-xs font-semibold tracking-wide text-muted-foreground">
-            {section.title}
-          </SidebarGroupLabel>
-          <SidebarMenu className="gap-1">
-            {section.links?.map((link) => (
+  const { menus } = useWorkspace()
+
+  return navigationSections.map(({ title, links }) => {
+    const visibleLinks = links.filter((link) => menus[`menus.${link.id}`] !== false)
+    if (!visibleLinks.length) return null
+
+    return (
+      <SidebarGroup key={title}>
+        <SidebarGroupLabel>{title}</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {visibleLinks.map((link) => (
               <NavigationLinkItem
                 key={link.path}
                 link={link}
@@ -82,8 +113,8 @@ export function MediaNav({
               />
             ))}
           </SidebarMenu>
-        </SidebarGroup>
-      ))}
-    </div>
-  )
+        </SidebarGroupContent>
+      </SidebarGroup>
+    )
+  })
 }

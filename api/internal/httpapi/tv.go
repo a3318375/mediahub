@@ -70,7 +70,7 @@ func MountTV(router *gin.Engine, db *store.Store, service *tv.Service, replaceme
 		case errors.Is(err, store.ErrSubscriptionExists):
 			status = 409
 			message = "该剧或季度已经订阅"
-		case errors.Is(err, tv.ErrBusy):
+		case errors.Is(err, tv.ErrBusy), errors.Is(err, tv.ErrPendingReplacement):
 			status = 409
 			message = err.Error()
 		case errors.Is(err, tv.ErrIdentityImmutable):

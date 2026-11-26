@@ -18,6 +18,8 @@ export function storeAccessToken(accessToken: string) {
   sessionStorage.setItem(TOKEN_KEY, accessToken)
 }
 
+export function clearAccessToken() { sessionStorage.removeItem(TOKEN_KEY) }
+
 export function getAccessToken() {
   return sessionStorage.getItem(TOKEN_KEY)
 }
@@ -32,7 +34,7 @@ async function readError(response: Response) {
 export async function login(account: string, password: string) {
   const response = await fetch(`${API_PREFIX}/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-MediaHub-Origin": "null" },
     body: JSON.stringify({ account, password }),
   })
 
@@ -54,7 +56,7 @@ export async function getSetupStatus() {
 export async function setup(account: string, password: string) {
   const response = await fetch(`${API_PREFIX}/setup`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-MediaHub-Origin": "null" },
     body: JSON.stringify({ account, password }),
   })
   if (!response.ok) throw new Error(await readError(response))
@@ -90,11 +92,11 @@ export async function changePassword(currentPassword: string, newPassword: strin
 export async function getCurrentUser() {
   const token = sessionStorage.getItem(TOKEN_KEY)
   const response = await fetch(`${API_PREFIX}/me`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    headers: token ? { Authorization: `Bearer ${token}`, "X-MediaHub-Origin": "null" } : undefined,
   })
 
   if (!response.ok) {
-    sessionStorage.removeItem(TOKEN_KEY)
+    if(response.status === 401) clearAccessToken()
     throw new Error(await readError(response))
   }
 

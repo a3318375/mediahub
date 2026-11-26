@@ -157,12 +157,12 @@ export const downloadApi = {
 
 export function is115ShareURL(raw: string): boolean {
   try {
-    const url = new URL(raw)
+    const url = new URL(raw.trim())
     return (
       ["http:", "https:"].includes(url.protocol) &&
       ["115.com", "115cdn.com", "anxia.com"].includes(url.host) &&
       /^\/s\/[A-Za-z0-9]{4,64}$/.test(url.pathname) &&
-      !url.username
+      !url.username && !url.password
     )
   } catch {
     return false
@@ -194,22 +194,14 @@ export function mediaContextFromRecord(media: {
 }
 
 export function directoryIdFromInput(value: string): string {
-  const text = value.trim()
-  if (/^[0-9]{1,30}$/.test(text) && text !== "0") return text
-  try {
-    const url = new URL(text)
-    const cid = url.searchParams.get("cid") ?? ""
-    if (
-      url.protocol === "https:" &&
-      (url.hostname === "115.com" || url.hostname === "www.115.com") &&
-      /^[0-9]{1,30}$/.test(cid) &&
-      cid !== "0"
-    )
-      return cid
-  } catch {
-    /* Show the same validation error for malformed URLs. */
+  let id = value.trim();
+  if (!/^\d{1,30}$/.test(id)) {
+    try {
+      const link = new URL(id);
+      id = link.protocol === 'https:' && ['115.com', 'www.115.com'].includes(link.host) && !link.username && !link.password
+        ? link.searchParams.get('cid') ?? '' : '';
+    } catch { id = ''; }
   }
-  throw new Error(
-    "请填写 115 目标文件夹链接（包含 cid），或具体文件夹的数字 ID。"
-  )
+  if (/^\d{1,30}$/.test(id) && /[1-9]/.test(id)) return id;
+  throw new Error('请填写具体文件夹的数字 ID，或包含 cid 的 115 文件夹链接。');
 }

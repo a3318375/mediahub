@@ -38,7 +38,7 @@
 
 演示版与正式版共用 UIArc 界面，通过独立构建模式区分。`uiarc` 目录执行 `npm run build:demo` 输出 `dist-demo/`，可部署到 GitHub Pages 等静态托管；正常 `npm run build` 输出 `dist/`，保持正式登录和后端接口行为。推送前端更新到 `main` 后，Pages 工作流自动更新演示站。首次需在仓库 Settings → Pages 中将 Source 设为 GitHub Actions。
 
-[UIArc 前端说明](uiarc/README.md)：正式镜像和线上演示均以 `uiarc/` 为构建入口。UIArc 的组件、工具、接口类型和图标均在本目录内，不引用 `hero/`；HeroUI 保留为可选前端，两套前端共用同一个 Go 后端。
+[UIArc 前端说明](uiarc/README.md)：正式镜像和线上演示均以 `uiarc/` 为构建入口。UIArc 的组件、工具、接口类型和图标均在本目录内。
 
 ## Docker 部署
 
@@ -144,8 +144,7 @@ cd mediahub
 ```text
 mediahub/
 ├── uiarc/                  # React + UIArc 前端，默认发布界面
-├── hero/                   # 可选 HeroUI 前端，独立构建
-├── web/                    # 已放弃维护的旧 shadcn/ui 前端，仅供历史参考
+├── web/                    # 维护中的 shadcn/ui 前端
 ├── api/
 │   ├── cmd/server/          # Go 服务入口
 │   ├── internal/            # API、业务逻辑与 SQLite 存储
@@ -167,13 +166,11 @@ $env:HTTP_ADDR = '127.0.0.1:18080'
 
 ```sh
 # 前端，仓库根目录执行
-npm --prefix uiarc ci
-npm --prefix uiarc run dev
+pnpm --dir web install --frozen-lockfile
+pnpm --dir web dev
 ```
 
 打开 `http://127.0.0.1:5174`。前端将 `/api` 转发到 `127.0.0.1:18080`，后端脚本默认使用仓库根目录的 `data/`。需要代理时，在后端终端设置 `HTTP_PROXY`、`HTTPS_PROXY` 后再启动。
-
-如需使用 HeroUI 界面，停止当前前端开发服务后，运行 `pnpm --dir hero install --frozen-lockfile` 和 `pnpm --dir hero dev`。两套前端共用 Go 后端，按需选一套开发即可；`web/` 仅作历史参考。
 
 PanSou 插件位于 `api/third_party/pansou/plugin/`，接口适配位于 `api/internal/pansoubridge/`，以内嵌方式运行，无需再启动独立服务。修改插件注册后运行 `api/scripts/generate-pansou.ps1`；升级子模块可使用 `api/scripts/update-pansou.ps1`。
 
@@ -181,7 +178,7 @@ PanSou 插件位于 `api/third_party/pansou/plugin/`，接口适配位于 `api/i
 
 ## 致谢
 
-资源搜索基于 [PanSou](https://github.com/fish2018/pansou)，项目通过固定版本的 fork 子模块集成。115 接口适配使用 [115driver](https://github.com/SheltonZhu/115driver)，默认前端使用 React、Vite 和 UIArc，另保留 HeroUI 界面。
+资源搜索基于 [PanSou](https://github.com/fish2018/pansou)，项目通过固定版本的 fork 子模块集成。115 接口适配使用 [115driver](https://github.com/SheltonZhu/115driver)，前端使用 React、Vite 和 UIArc。
 
 TMDB、豆瓣与 AniList 图标来自 [Simple Icons](https://simpleicons.org/)，Bangumi 图标来自其[官方客户端仓库](https://github.com/bangumi/Bangumi-iOS)。品牌标识归各自所有。
 

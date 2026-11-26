@@ -1,20 +1,30 @@
-import { GalleryVerticalEnd } from "lucide-react"
-
+import filmStill from "@/assets/man-with-a-movie-camera.jpg"
 import { LoginForm } from "@/components/login-form"
+import { MediaBrand } from "@/components/media-brand"
+import { ThemeToggle } from "@/layouts/media-shell/theme-toggle"
 import type { AuthUser } from "@/lib/auth-api"
+import "./login.css"
 
 export function LoginPage({ onLogin }: { onLogin: (user: AuthUser) => void }) {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          FRAME Media Center
-        </div>
-        <LoginForm onLogin={onLogin} />
+    <main className="login-page">
+      <div className="login-panel">
+        <header className="login-bar">
+          <MediaBrand />
+          <ThemeToggle />
+        </header>
+        <div className="login-body"><LoginForm onLogin={onLogin} /></div>
       </div>
-    </div>
+      <div className="login-film">
+        <figure>
+          <img src={filmStill} loading="lazy" decoding="async" width="640" height="480"
+            alt="摄影师在巨大的电影摄影机上架起了三脚架" />
+          <figcaption>
+            <cite>持摄影机的人</cite>
+            <span>吉加·维尔托夫 <span aria-hidden="true">·</span> <time dateTime="1929">1929</time></span>
+          </figcaption>
+        </figure>
+      </div>
+    </main>
   )
 }

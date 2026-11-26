@@ -4,6 +4,7 @@ import (
 	"context"
 	"mediahub/internal/download"
 	"mediahub/internal/pan115"
+	"strings"
 	"testing"
 	"time"
 )
@@ -28,6 +29,22 @@ func (f fakeFiles) ListFiles(id string) ([]pan115.File, error) { return f.lists[
 func fixture() (fakeFiles, Rule) {
 	return fakeFiles{files: map[string]pan115.File{"10": {ID: "10", ParentID: "0", Directory: true}, "20": {ID: "20", ParentID: "0", Directory: true}}, lists: map[string][]pan115.File{}}, Rule{Name: "test", SourceID: "10", TVTargetID: "20", DailyAt: "03:00", TypeHint: "anime", Binding: &download.MediaContext{Type: "anime", Title: "测试番剧", Season: 1}, AllowExisting: true}
 }
+func TestPendingFileMissingFromRecordedDirectory(t *testing.T) {
+	g, rule := fixture()
+	for _, parent := range []string{"10", ""} {
+		candidate := pan115.File{ID: "42", ParentID: parent, Name: "episode.mkv"}
+		p, err := PreviewFiles(context.Background(), g, rule, nil, []pan115.File{candidate})
+		if err != nil || len(p.Actions) != 0 || len(p.Issues) != 1 {
+			t.Fatal(p, err)
+		}
+		issue := p.Issues[0]
+		if issue.Code != "source" || !strings.Contains(issue.Message, "missing") ||
+			strings.Contains(issue.Message, "原目录列出 0 项") != (parent != "") {
+			t.Fatal(issue)
+		}
+	}
+}
+
 func TestPreviewSubtitlesAndConflict(t *testing.T) {
 	g, r := fixture()
 	g.lists["10"] = []pan115.File{{ID: "1", ParentID: "10", Name: "Show - 02 [1080p].mkv", Size: 100}, {ID: "2", ParentID: "10", Name: "Show - 02 [1080p].zh-Hans.ass", Size: 10}}

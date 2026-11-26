@@ -22,6 +22,7 @@ func (g *tracedFiles) begin(operation, id string) func(error, int) {
 		reason := ""
 		if err != nil {
 			reason = pan115.SafeError(err).Error()
+			count = 0
 		}
 		g.service.trace("115结束 connection=%p request=%d op=%s id=%s count=%d elapsed=%s reason=%q", g, sequence, operation, id, count, time.Since(start).Round(time.Millisecond), reason)
 	}

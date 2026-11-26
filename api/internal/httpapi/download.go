@@ -11,6 +11,7 @@ import (
 	"mediahub/internal/download"
 	"mediahub/internal/pan115"
 	"mediahub/internal/store"
+	"mediahub/internal/tv"
 )
 
 func downloadFailure(c *gin.Context, err error) {
@@ -22,6 +23,8 @@ func downloadFailure(c *gin.Context, err error) {
 		fail(c, 503, "请先在设置中配置 115 Cookie")
 	case errors.Is(err, download.ErrConflict):
 		fail(c, 409, "任务已变更或同一资源的目标目录不同，请刷新后核对")
+	case errors.Is(err, download.ErrTaskActive), errors.Is(err, tv.ErrPendingReplacement):
+		fail(c, 409, err.Error())
 	case errors.Is(err, download.ErrQueueFull):
 		fail(c, 429, "下载队列已满")
 	case errors.As(err, &upstream):
@@ -153,6 +156,13 @@ func (a *API) mountDownloads(v1 *gin.RouterGroup) {
 			return
 		}
 		c.JSON(200, t)
+	})
+	v1.DELETE("/downloads/:id", func(c *gin.Context) {
+		if err := a.store.DeleteDownload(c.Request.Context(), c.Param("id")); err != nil {
+			downloadFailure(c, err)
+			return
+		}
+		c.Status(http.StatusNoContent)
 	})
 	v1.POST("/downloads/:id/cancel", func(c *gin.Context) {
 		t, err := a.downloads.Cancel(c.Param("id"))

@@ -1,3 +1,4 @@
+import { ResourceSearchForm } from './resource-search-form';
 import { useEffect, useState } from 'react';
 import { Copy, Download, FolderOpen, Plus, RefreshCw } from 'lucide-react';
 import { Accordion } from './arc/accordion/accordion';
@@ -11,7 +12,7 @@ import { Select } from './arc/select/select';
 import { SortableDataTable } from './arc/sortable-data-table/sortable-data-table';
 import { Switch } from './arc/switch/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './arc/tabs/tabs';
-import { PageHeading, SectionHeading, Status, WorkspaceTabs } from './ui';
+import { NoResults, PageHeading, SectionHeading, Status, WorkspaceTabs } from './ui';
 import { includes, options, resources, uid } from './model';
 import type { DemoState, Notify, Task, Update } from './model';
 import { requestError } from './live-api';
@@ -23,8 +24,8 @@ const states = ['所有状态', '下载中', '排队中', '已暂停', '已完�
 const levelTone = { 信息: 'info', 警告: 'warning', 错误: 'danger' } as const;
 const taskTone = { 下载中: 'info', 已暂停: 'neutral', 已完成: 'success', 失败: 'danger', 排队中: 'warning' } as const;
 
-export function ResourceSearch({ state, initialQuery, remember, onDownload, notify }: {
-  state: DemoState; initialQuery: string; remember: (value: string) => void; onDownload: (title: string, source: string) => void; notify: Notify;
+export function ResourceSearch({ state, initialQuery, remember, onDownload, notify, backLabel, onBack }: {
+  state: DemoState; backLabel: string; onBack: () => void; initialQuery: string; remember: (value: string) => void; onDownload: (title: string, source: string) => void; notify: Notify;
 }) {
   const [draft, setDraft] = useState(initialQuery);
   const [query, setQuery] = useState(initialQuery);
@@ -43,14 +44,10 @@ export function ResourceSearch({ state, initialQuery, remember, onDownload, noti
     catch { setCopyError(`提取码 ${value}，可手动复制。`); }
   }
   return <>
-    <PageHeading title="搜索历史" description="搜索示例资源、切换网盘来源，并将结果加入下载管理。" />
-    <section className="panel stack">
-      <form className="inline-form" onSubmit={event => { event.preventDefault(); search(draft); }}>
-        <SearchField label="资源关键词" value={draft} onValueChange={value => { setDraft(value); if (!value) search(''); }} placeholder="搜索片名、清晰度或集数" />
-        <Button type="submit">搜索资源</Button>
-      </form>
-      {!!state.history.length && <div className="row"><span className="muted">最近搜索</span>{state.history.slice(0, 6).map(item => <Button key={item} size="sm" variant="secondary" onClick={() => search(item)}>{item}</Button>)}</div>}
-    </section>
+    <ResourceSearchForm draft={draft} onDraft={setDraft} search={search} backLabel={backLabel} onBack={onBack}>
+      {!!state.history.length && <div className="row resource-search-recent"><span className="muted">最近搜索</span>{state.history.slice(0, 6).map(item => <Button key={item} size="sm" variant="secondary" onClick={() => search(item)}>{item}</Button>)}</div>}
+    </ResourceSearchForm>
+    {!query ? <div className="section"><NoResults title="等待搜索" description="输入关键词，或从作品卡片和详情页进入资源搜索。" /></div> :
     <div className="section stack">
       <SectionHeading title="资源结果" description={`${results.length} 条示例资源`}
         action={<Button variant="secondary" disabled={!shown.length} onClick={() => { setDetected(true); notify(`已检查 ${shown.length} 条本地样例`); }}>检查可见结果</Button>} />
@@ -71,7 +68,7 @@ export function ResourceSearch({ state, initialQuery, remember, onDownload, noti
           ]} /></div>
         </TabsContent>
       </Tabs>
-    </div>
+    </div>}
   </>;
 }
 

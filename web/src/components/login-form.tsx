@@ -1,29 +1,12 @@
 import { useEffect, useState } from "react"
-import { cn } from "cn"
-
+import { Eye, EyeOff, LoaderCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { getSetupStatus, login, setup } from "@/lib/auth-api"
 import type { AuthUser } from "@/lib/auth-api"
 
-export function LoginForm({
-  className,
-  onLogin,
-  ...props
-}: React.ComponentProps<"div"> & { onLogin: (user: AuthUser) => void }) {
+export function LoginForm({ onLogin }: { onLogin: (user: AuthUser) => void }) {
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [setupRequired, setSetupRequired] = useState(false)
@@ -68,64 +51,38 @@ export function LoginForm({
   }
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">{setupRequired ? "创建管理员账号" : "欢迎回来"}</CardTitle>
-          <CardDescription>{setupRequired ? "首次使用，请创建单用户管理员账号" : "使用账号和密码登录媒体中心"}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <FieldGroup>
-              <Field>
-                <FieldLabel htmlFor="account">账号</FieldLabel>
-                <Input
-                  id="account"
-                  name="account"
-                  type="text"
-                  placeholder={setupRequired ? "设置登录账号（3 位以上）" : "请输入账号"}
-                  autoComplete="username"
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="password">密码</FieldLabel>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  placeholder={setupRequired ? "设置登录密码" : "请输入密码"}
-                  autoComplete={setupRequired ? "new-password" : "current-password"}
-                  required
-                />
-              </Field>
-              {setupRequired && (
-                <Field>
-                  <FieldLabel htmlFor="confirmPassword">确认密码</FieldLabel>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    placeholder="再次输入密码"
-                    autoComplete="new-password"
-                    required
-                  />
-                </Field>
-              )}
-              <Field>
-                <Button type="submit" disabled={isSubmitting || isCheckingSetup}>
-                  {isSubmitting ? "正在处理…" : isCheckingSetup ? "连接服务端…" : setupRequired ? "创建账号并登录" : "登录"}
-                </Button>
-                {error && (
-                  <FieldDescription role="alert" className="text-center text-destructive">
-                    {error}
-                  </FieldDescription>
-                )}
-              </Field>
-            </FieldGroup>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+    <form className="login-form" onSubmit={handleSubmit} aria-labelledby="login-title">
+      <header>
+        <h1 id="login-title">{setupRequired ? "创建管理员账号" : "登录媒体中心"}</h1>
+        {setupRequired && <p>首次使用，此账号将用于管理媒体中心。</p>}
+      </header>
+      <div className="login-field">
+        <label htmlFor="account">账号</label>
+        <Input id="account" name="account" autoComplete="username" required
+          placeholder={setupRequired ? "设置登录账号（3 位以上）" : "输入账号"} />
+      </div>
+      <div className="login-field">
+        <label htmlFor="password">密码</label>
+        <div className="login-password">
+          <Input id="password" name="password" type={showPassword ? "text" : "password"} required
+            autoComplete={setupRequired ? "new-password" : "current-password"}
+            placeholder={setupRequired ? "设置登录密码" : "输入密码"} />
+          <Button type="button" variant="ghost" size="icon" aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>
+            {showPassword ? <EyeOff /> : <Eye />}
+          </Button>
+        </div>
+      </div>
+      {setupRequired && <div className="login-field">
+        <label htmlFor="confirmPassword">确认密码</label>
+        <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password"
+          placeholder="再次输入密码" required />
+      </div>}
+      {error && <p className="login-error" role="alert">{error}</p>}
+      <Button type="submit" size="lg" className="login-submit" disabled={isSubmitting || isCheckingSetup}>
+        {isSubmitting ? "正在处理…" : isCheckingSetup ? "连接服务端…" : setupRequired ? "创建账号并登录" : "登录"}
+        {(isSubmitting || isCheckingSetup) && <LoaderCircle aria-hidden="true" className="animate-spin" />}
+      </Button>
+    </form>
   )
 }

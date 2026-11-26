@@ -36,6 +36,7 @@ export type SavedAnimeSubscription = AnimeDraft & {
   resources: AnimeEntry[]
 }
 export type AnimeEntry = {
+  contentLength?: number
   title: string
   url: string
   publishedAt: string
@@ -209,4 +210,12 @@ export function presentAnime(saved: SavedAnimeSubscription): AnimeSubscription {
     })),
     saved,
   }
+}
+
+export function animeResourceSize(bytes?: number): string {
+  if (bytes === undefined || !Number.isFinite(bytes) || bytes <= 0) return '大小未知';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = bytes, unit = 0;
+  while (size >= 1024 && unit < units.length - 1) { size /= 1024; unit++; }
+  return `${Number(size.toFixed(unit > 1 ? 1 : 0))} ${units[unit]}`;
 }

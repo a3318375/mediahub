@@ -6,7 +6,7 @@ MediaHub 的 UIArc 前端。开发服务支持使用现有 MediaHub 账号登录
 
 Docker 正式镜像默认构建本前端。`npm run build` 输出正式版 `dist/`；`npm run build:demo` 输出免后端演示版 `dist-demo/`，供 GitHub Pages 发布。演示模式由构建确定，正式部署不会因接口不可用而自动切换示例数据。
 
-本前端独立构建：`src/lib/` 定义后端接口类型、表单数据和工具函数，`src/use-resource-health.ts` 通过本前端的 `live-api` 检测分享链接，`src/assets/icons/` 保存来源图标。不引用 Hero 的源码、依赖或会话存储；两套前端共用同一个 Go 后端。来源图标的署名见仓库根目录 README。
+本前端独立构建：`src/lib/` 定义后端接口类型、表单数据和工具函数，`src/use-resource-health.ts` 通过本前端的 `live-api` 检测分享链接，`src/assets/icons/` 保存来源图标。来源图标的署名见仓库根目录 README。
 
 ## 页面
 

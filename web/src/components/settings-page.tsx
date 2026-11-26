@@ -314,7 +314,7 @@ export function SettingsPage() {
       ...tabs
         .map((tab) => tab.value)
         .filter(
-          (section): section is SettingsSection =>
+          (section): section is Extract<Tab, SettingsSection> =>
             section !== "basic" &&
             section !== "account" &&
             section !== "api-keys"

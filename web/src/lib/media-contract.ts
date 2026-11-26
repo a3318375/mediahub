@@ -17,7 +17,7 @@ export type MediaIdentity = {
 }
 
 export type ProviderRating = {
-  source: MediaSource
+  source: MediaSource | "popcorn" | "tomatoes"
   value: number
   voteCount?: number
 }
@@ -47,6 +47,7 @@ export type MediaSummary = MediaIdentity & {
 }
 
 export type MediaDetail = MediaSummary & {
+  ratingsMessage?: string
   runtimeMinutes?: number
   status?: string
   tagline?: string

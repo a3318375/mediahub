@@ -7,6 +7,8 @@ import {
   safeResourceURL,
   readResourceSearchHistory,
   readMediaSearchHistory,
+  readSearchHistory,
+  saveSearchHistory,
   RESOURCE_SEARCH_HISTORY_KEY,
   saveResourceSearchHistory,
 } from "../src/lib/resource-search.ts"
@@ -19,6 +21,17 @@ function memoryStorage() {
     removeItem: (key: string) => values.delete(key),
   }
 }
+
+test("合并展示两类同名记录，重复搜索只更新对应的记录", () => {
+  const storage = memoryStorage()
+  const resource = { keyword: "同名", source: "all", mode: "merge", cloudTypes: [], plugins: [], channels: [], at: 1 }
+  const media = { kind: "media" as const, keyword: "同名", source: "tmdb", at: 2 }
+  saveSearchHistory(storage, resource)
+  saveSearchHistory(storage, media)
+  assert.deepEqual(readSearchHistory(storage), [media, resource])
+  const latest = { ...resource, at: 3 }
+  assert.deepEqual(saveSearchHistory(storage, latest), [latest, media])
+})
 
 test("历史记录过滤合法 JSON 中的坏条目，保留旧格式资源与媒体历史", () => {
   const storage = memoryStorage()

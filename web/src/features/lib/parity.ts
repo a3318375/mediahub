@@ -1,0 +1,16 @@
+export const cloudLabels: Record<string, string> = {
+  baidu: "百度网盘",
+  aliyun: "阿里云盘",
+  "115": "115 网盘",
+  "123": "123 网盘",
+  quark: "夸克网盘",
+  xunlei: "迅雷网盘",
+  tianyi: "天翼云盘",
+  uc: "UC 网盘",
+  mobile: "移动云盘",
+  pikpak: "PikPak",
+  magnet: "磁力链接",
+  ed2k: "电驴链接",
+  guangya: "光鸭云盘",
+  others: "其他",
+};

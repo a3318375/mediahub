@@ -320,7 +320,7 @@ function App() {
     const query = item.title;
     const identity = liveIdentity(item.id);
     if (!api) remember(query);
-    if (!mediaId && (page === 'discover' || page === 'rankings')) searchOrigin.current = { page, scroll: window.scrollY };
+    if (page === 'discover' || page === 'rankings') searchOrigin.current = { page, scroll: mediaId ? workOrigin.current?.scroll ?? 0 : window.scrollY };
     go('search', query, identity ? mediaContextFromRecord({ ...identity, title: item.title, year: item.year || undefined }) : undefined);
   }
   function startDownload(title = '', source = '115 网盘') {
@@ -378,9 +378,13 @@ function App() {
   const catalogActions = { onOpen: openDetail, onSearchResource: startSearch, onFavorite: toggleFavorite, favorites: state.favorites };
   const name = session?.user.name || session?.user.account || String(state.settings['account.name'] || '演示用户');
   const account = String(state.settings['account.user'] || '').trim() || 'demo';
+  const searchBack = {
+    backLabel: searchOrigin.current?.page === 'rankings' ? '返回榜单推荐' : '返回影视探索',
+    onBack: () => go(searchOrigin.current?.page || 'discover'),
+  };
   const renderPage = () => {
     switch (page) {
-      case 'search': return api ? null : <ResourceSearch key={resourceSearch.version} state={state} initialQuery={resourceSearch.query} remember={remember} onDownload={startDownload} notify={notify} />;
+      case 'search': return api ? null : <ResourceSearch {...searchBack} key={resourceSearch.version} state={state} initialQuery={resourceSearch.query} remember={remember} onDownload={startDownload} notify={notify} />;
       case 'anime': return api ? <LiveAnime api={api} /> : <Anime {...common} onOpen={openDetail} onDownload={startDownload} />;
       case 'calendar': return api ? <LiveSeriesCalendar api={api} onOpen={openDetail} discover={() => {
         go('discover'); notify('在剧集详情中点击「订阅此剧」。');
@@ -451,8 +455,7 @@ function App() {
         {api && session && token && (page === 'search' || visitedSearch) && <div hidden={page !== 'search' || viewingDetail}>
           <LiveResourceSearch key={session.user.account + ':' + resourceSearch.version} api={api} account={session.user.account}
             active={page === 'search' && !viewingDetail} initialQuery={resourceSearch.query} media={resourceSearch.media}
-            backLabel={searchOrigin.current?.page === 'rankings' ? '返回榜单推荐' : '返回影视探索'}
-            onBack={() => go(searchOrigin.current?.page || 'discover')} notify={notify} />
+            {...searchBack} notify={notify} />
         </div>}
         {page !== 'discover' && page !== 'rankings' && <div hidden={viewingDetail}>
           {session && !connectedPages.has(page) && <p className="muted catalog-status">此页使用本地演示数据。</p>}

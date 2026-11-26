@@ -177,6 +177,7 @@ export function LiveSeriesCalendar({ api, discover, notify, onOpen }: {
         await api.removeTV(item.id);
         setItems(current => current.filter(entry => entry.id !== item.id));
         setRemove(undefined);
+        notify(`已删除《${item.title}》的追剧订阅。`);
       } else {
         update(type === 'refresh' ? await api.refreshTV(item.id) : await api.saveTV({ ...item, enabled: !item.enabled }, item.id));
       }
@@ -234,6 +235,8 @@ export function LiveSeriesCalendar({ api, discover, notify, onOpen }: {
           <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => void action(item, 'toggle')}>{item.enabled ? '暂停' : '恢复'}</Button>
           <Button size="sm" variant="ghost" className="icon-button" disabled={Boolean(busy)} aria-label={`检查《${item.title}》更新`}
             onClick={() => void action(item, 'refresh')}><RefreshCw size={15} aria-hidden="true" /></Button>
+          <Button size="sm" variant="ghost" disabled={Boolean(busy)} aria-label={`删除《${item.title}》的追剧订阅`}
+            onClick={() => { setError(''); setRemove(item); }}>删除订阅</Button>
         </div>
       </div>
     </article>)}</div> : !error && <NoResults title="没有符合条件的追剧订阅" description="可在影视探索的剧集详情中添加订阅。" />}
@@ -249,12 +252,12 @@ export function LiveSeriesCalendar({ api, discover, notify, onOpen }: {
       </DialogContent>
     </Dialog>}
     {remove && <Dialog open onOpenChange={open => { if (!open && !busy) setRemove(undefined); }}>
-      <DialogContent title="删除订阅" description={`删除《${remove.title}》的订阅和跟踪记录？`}>
+      <DialogContent title="删除追剧订阅？" description={`《${remove.title}》会从追剧日历移除并停止追踪。已转存的文件会保留。`}>
         <div className="stack">
           {error && <p role="alert">{error}</p>}
           <div className="row form-actions">
             <Button variant="secondary" disabled={Boolean(busy)} onClick={() => setRemove(undefined)}>取消</Button>
-            <Button disabled={Boolean(busy)} onClick={() => void action(remove, 'remove')}>确认删除</Button>
+            <Button variant="danger" loading={Boolean(busy)} disabled={Boolean(busy)} onClick={() => void action(remove, 'remove')}>删除订阅</Button>
           </div>
         </div>
       </DialogContent>

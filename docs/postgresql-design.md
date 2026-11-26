@@ -10,7 +10,7 @@
 
 ```mermaid
 flowchart LR
-  UI[React / HeroUI] --> API[现有 Go HTTP API]
+  UI[React / UIArc] --> API[现有 Go HTTP API]
   API --> Store[共享 Store 业务方法]
   Store --> PG[PostgreSQL 默认]
   Store --> SQ[SQLite 显式兼容模式]

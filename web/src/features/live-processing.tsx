@@ -1,0 +1,293 @@
+import {scheduleRequest} from './schedule-request';
+import { Button, ConfirmDeleteDialog, Dialog, DialogContent, DialogTrigger, Input, Progress, SearchField, Select, SortableDataTable } from './controls';
+import { useEffect, useState } from 'react';
+import type { ComponentProps } from 'react';
+import { Clapperboard, RefreshCw, Trash2 } from 'lucide-react';
+import { is115ShareURL } from '@/lib/download-api';
+import type { DownloadTask } from '@/lib/download-api';
+import type { OrganizeMediaItem } from '@/lib/organize-api';
+import type { OutputJob } from './lib/media-output-api';
+import { requestError, type LiveApi } from './live-api';
+import { ResourceDownload, type DownloadResource } from './live-download';
+import { PageHeading, Status, WorkspaceTabs } from './ui';
+
+
+const processingTabs = [['downloads', '下载管理'], ['organize', '媒体整理'], ['strm', 'STRM 生成'], ['scraping', '元数据刮削']] as const;
+
+type Mode = (typeof processingTabs)[number][0];
+type Tone = ComponentProps<typeof Status>['tone'];
+const runLabels = { downloads: '立即下载', organize: '立即整理', strm: '生成 STRM', scraping: '开始刮削' };
+const mediaTypes: Record<string, string> = { anime: '番剧', tv: '电视剧', movie: '电影', program: '节目' };
+const states: Record<string, [string, Tone]> = {
+  queued: ['排队中', 'neutral'], preparing: ['准备中', 'info'], submitting: ['提交中', 'info'],
+  submitted: ['已提交', 'info'], downloading: ['下载中', 'info'], awaiting_files: ['等待文件', 'warning'],
+  completed: ['已完成', 'success'], failed: ['失败', 'danger'], cancelled: ['已停止跟踪', 'neutral'],
+  unknown: ['待确认', 'warning'], running: ['执行中', 'info'], interrupted: ['已中断', 'warning'],
+  completed_with_issues: ['部分完成', 'warning'],
+};
+const dateTime = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'short', timeStyle: 'medium' });
+function formatTime(value: string) {
+  const time = Date.parse(value);
+  return Number.isFinite(time) ? dateTime.format(time) : '—';
+}
+
+function TaskState({ state }: { state: string }) {
+  const [label, tone] = states[state] ?? ['未知状态', 'neutral'];
+  return <Status tone={tone}>{label}</Status>;
+}
+
+function DownloadProgress({ task }: { task: DownloadTask }) {
+  const measured = Number.isFinite(task.progress) && (task.progress > 0 || ['downloading', 'completed'].includes(task.state));
+  return measured ? <Progress className="processing-progress" data-state={task.state} value={task.progress} showValue aria-label="下载进度" /> : <span className="muted">—</span>;
+}
+
+function taskTitle(task: DownloadTask) {
+  return task.references?.find(ref => ref.media?.title)?.media.title || task.artifacts?.[0]?.name || `任务 ${task.id.slice(0, 8)}`;
+}
+
+function canDeleteTask(task: DownloadTask) {
+  return ['completed', 'failed', 'cancelled'].includes(task.state);
+}
+
+export function DownloadQueue({ api, tasks, refresh, onDeleted }: { api: LiveApi; tasks: DownloadTask[]; refresh: () => void; onDeleted: (id: string) => void }) {
+  const [manual, setManual] = useState(false);
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [resource, setResource] = useState<DownloadResource>();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState('all');
+  const [remove, setRemove] = useState<DownloadTask>();
+  const [removeError, setRemoveError] = useState('');
+  const trimmed = url.trim();
+  const valid = /^magnet:\?/i.test(trimmed) || is115ShareURL(trimmed);
+  const needle = query.trim().toLowerCase().replace(/^(?:.*\/)?mediahub-([0-9a-f]{32})\/?$/, '$1');
+  const visible = tasks.filter(task => (filter === 'all' || filter === task.state) &&
+    `${taskTitle(task)} mediahub-${task.id}`.toLowerCase().includes(needle));
+
+  async function change(id: string, action: 'cancel' | 'retry' | 'resume') {
+    if (busy) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      const result = await api.changeDownload(id, action);
+      setMessage(result.message || (action === 'resume' ? '已恢复排队或跟踪。' : '任务已重新排队。'));
+      refresh();
+    } catch (reason) { setError(requestError(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteRecord() {
+    if (!remove || busy) return;
+    setBusy(true); setRemoveError(''); setError(''); setMessage('');
+    try {
+      await api.deleteDownload(remove.id);
+      onDeleted(remove.id);
+      setMessage(`已删除《${taskTitle(remove)}》的任务记录。`);
+      setRemove(undefined);
+      refresh();
+    } catch (reason) { setRemoveError(requestError(reason)); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="processing-section">
+    <div className="row processing-toolbar">
+      <div className="row processing-count"><h2>下载任务</h2><span className="muted">{visible.length} 项</span></div>
+      <SearchField id="download-task-search" label="搜索任务" placeholder="搜索下载任务" value={query} onValueChange={setQuery} />
+      <Select label="任务状态" value={filter} onValueChange={setFilter} options={[
+        { value: 'all', label: '全部状态' },
+        ...Object.entries(states).filter(([value]) => !['running', 'interrupted', 'completed_with_issues'].includes(value))
+          .map(([value, [label]]) => ({ value, label })),
+      ]} />
+      <Button size="sm" onClick={() => { setTitle(''); setUrl(''); setManual(true); }}>新建下载</Button>
+    </div>
+    {message && <p role="status" className="muted">{message}</p>}
+    {error && <p role="alert" className="processing-error">{error}</p>}
+    <div className="table-panel"><SortableDataTable rows={visible} rowKey="id" caption="下载任务" emptyMessage="没有符合条件的下载任务" columns={[
+      { key: 'name', label: '任务', sortable: false, render: (_, task) => {
+        const title = taskTitle(task);
+        return <div className="table-main"><strong title={title}>{title}</strong><small>{task.kind === 'share_transfer' ? '115 分享转存' : '115 离线下载'}</small></div>;
+      } },
+      { key: 'state', label: '状态', width: '7rem', render: (_, task) => <TaskState state={task.state} /> },
+      { key: 'progress', label: '进度', width: '10rem', sortable: true, numeric: false, render: (_, task) => <DownloadProgress task={task} /> },
+      { key: 'updatedAt', label: '最近更新', width: '11rem', render: (_, task) => <time>{formatTime(task.updatedAt || task.createdAt)}</time> },
+      { key: 'details', label: '操作', sortable: false, width: '10rem', render: (_, task) => <div className="flex items-center gap-1"><Dialog>
+        <DialogTrigger asChild><Button size="sm" variant="ghost" aria-label={`查看${taskTitle(task)}的下载详情`}>详情</Button></DialogTrigger>
+        <DialogContent title={taskTitle(task)} description={`最近更新 ${formatTime(task.updatedAt || task.createdAt)}`}>
+          <div className="stack"><div><TaskState state={task.state} /></div><DownloadProgress task={task} />
+            <dl className="comic-facts">
+              <dt>任务 ID</dt><dd>{task.id}</dd>
+              <dt>资源 ID</dt><dd>{task.resourceId || '—'}</dd>
+              <dt>115 远程任务 ID</dt><dd>{task.remoteId || '—'}</dd>
+              <dt>115 目标目录</dt><dd>{task.directoryId || '自动分类'}</dd>
+            </dl>
+            {task.error && <p role="status">{task.error}</p>}
+            {!!task.references?.length && <div className="stack">
+              <h3>关联来源</h3>
+              <ul>{task.references.map((ref, index) => <li key={index}>{[ref.media.title, ref.source,
+                ref.media.season ? '第 ' + ref.media.season + ' 季' : ''].filter(Boolean).join(' · ')}</li>)}</ul>
+            </div>}
+            {!!task.artifacts?.length && <div className="stack">
+              <h3>生成文件</h3>
+              <ul>{task.artifacts.map(file => <li key={file.id}>{file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB · ID {file.id}</li>)}</ul>
+            </div>}
+            <div className="row form-actions">
+              {task.state === 'cancelled' && <Button disabled={busy} onClick={() => void change(task.id, 'resume')}>恢复排队或跟踪</Button>}
+              {task.state === 'failed' && !task.remoteId && <Button disabled={busy} onClick={() => void change(task.id, 'retry')}>重试排队</Button>}
+              {!canDeleteTask(task) && <Button variant="secondary" disabled={busy} onClick={() => void change(task.id, 'cancel')}>
+                {task.state === 'queued' ? '取消排队' : '停止跟踪'}
+              </Button>}
+            </div>
+            {!canDeleteTask(task) && <p className="muted">停止跟踪只影响 MediaHub。115 已接受的任务可能继续运行。</p>}
+            {error && <p role="alert" className="processing-error">{error}</p>}
+            {message && <p role="status" className="muted">{message}</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+        {canDeleteTask(task) && <Button variant="ghost" size="sm" disabled={busy} id={`delete-download-${task.id}`}
+          aria-label={`删除《${taskTitle(task)}》的任务记录`} onClick={() => { setRemoveError(''); setRemove(task); }}>
+          <Trash2 aria-hidden="true" />删除记录
+        </Button>}
+      </div> },
+    ]} /></div>
+    {remove && <ConfirmDeleteDialog title="删除任务记录？" label="删除记录" busy={busy} error={removeError}
+      description={`《${taskTitle(remove)}》将从下载任务中移除。115 网盘里的文件会保留。`}
+      finalFocus={() => document.getElementById(`delete-download-${remove.id}`) ?? document.getElementById('download-task-search')}
+      onCancel={() => setRemove(undefined)} onConfirm={() => void deleteRecord()}>
+        <p className="text-sm text-muted-foreground">任务 ID <code className="break-all">{remove.id}</code></p>
+    </ConfirmDeleteDialog>}
+    {manual && <Dialog open onOpenChange={setManual}><DialogContent title="新建下载">
+      <form className="stack" onSubmit={event => {
+        event.preventDefault();
+        if (!valid) return;
+        const name = title.trim() || '手动下载';
+        setManual(false);
+        setResource({ url: trimmed, title: name, reference: { source: 'manual', media: { title: name } } });
+      }}>
+        <Input label="作品标题" value={title} onChange={event => setTitle(event.target.value)} />
+        <Input label="磁力或 115 分享链接" value={url} onChange={event => setUrl(event.target.value)} required />
+        <div className="row form-actions"><Button variant="ghost" onClick={() => setManual(false)}>取消</Button>
+          <Button type="submit" disabled={!valid}>下一步</Button></div>
+      </form>
+    </DialogContent></Dialog>}
+    {resource && <ResourceDownload api={api} resource={resource} close={() => setResource(undefined)} done={text => {
+      setError(''); setMessage(text); refresh();
+    }} />}
+  </section>;
+}
+
+function ProcessingRecords({ mode, items, emptyMessage }: { mode: Mode; items: OrganizeMediaItem[]; emptyMessage: string }) {
+  const counts = mode === 'strm' ? [
+    { key: 'strmCount', label: '已生成' },
+  ] : mode === 'scraping' ? [
+    { key: 'scrapedCount', label: '已刮削' }, { key: 'incompleteScrapeCount', label: '未完全刮削' },
+  ] : [{ key: 'organized', label: '已整理' }, { key: 'pending', label: '未整理' }];
+  return <div className="table-panel"><SortableDataTable rows={items} rowKey="id" caption="最近作品记录" emptyMessage={emptyMessage} columns={[
+    { key: 'work', label: '作品', sortable: false, render: (_, item) => <div className="row no-wrap processing-work">
+      <span className="processing-work-icon"><Clapperboard size={18} aria-hidden="true" /></span>
+      <div className="processing-work-name">
+        <strong title={item.media.title}>{item.media.title || '未命名作品'}</strong>
+        <small>{[mediaTypes[item.media.type ?? ''], item.media.season ? `第 ${item.media.season} 季` : ''].filter(Boolean).join(' · ')}</small>
+      </div>
+      {item.active && <Status tone="info">处理中</Status>}
+    </div> },
+    { key: 'lastActivityAt', label: '最近活动', width: '11rem', render: (_, item) => <time>{formatTime(item.lastActivityAt || item.createdAt)}</time> },
+    ...[{ key: 'downloaded', label: '资源数' }, ...counts].map(({ key, label }) => ({
+      key, label, sortable: true, numeric: true, width: '7rem', render: (value: unknown) => typeof value === 'number' ? value : '—',
+    })),
+  ]} /></div>;
+}
+
+function ProcessingPanel({ api, mode }: { api: LiveApi; mode: Mode }) {
+  const [items, setItems] = useState<OrganizeMediaItem[]>();
+  const [tasks, setTasks] = useState<DownloadTask[]>();
+  const [job, setJob] = useState<OutputJob>();
+  const [configured, setConfigured] = useState<boolean>();
+  const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [notice, setNotice] = useState('');
+  const [runError, setRunError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [query, setQuery] = useState('');
+  const [kind, setKind] = useState('all');
+  const running = job?.status.state === 'running' || job?.status.state === 'queued';
+  const refresh = () => setRevision(value => value + 1);
+
+  useEffect(() => scheduleRequest(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    let timer: ReturnType<typeof setTimeout>;
+    setLoading(true);
+    async function load() {
+      const [records, downloads, output, organize] = await Promise.allSettled([
+        api.processingItems(signal), mode === 'downloads' ? api.downloadTasks(signal) : undefined,
+        mode === 'strm' || mode === 'scraping' ? api.outputConfig(mode, signal) : undefined,
+        mode === 'organize' ? api.organizeConfig(signal) : undefined,
+      ]);
+      if (signal.aborted) return;
+      if (records.status === 'fulfilled') setItems(records.value.items ?? []);
+      if (downloads.status === 'fulfilled' && downloads.value) setTasks(downloads.value.items ?? []);
+      if (output.status === 'fulfilled') setJob(output.value);
+      const rule = organize.status === 'fulfilled' ? organize.value : undefined;
+      setConfigured(mode === 'downloads' ? true : rule ? Boolean(rule.sourceId && rule.targetId) : output.status === 'fulfilled' ? output.value?.configured : undefined);
+      setErrors([records, downloads, output, organize].flatMap((result, index) => result.status === 'rejected'
+        ? [`${['作品记录', '下载任务', '执行状态', '整理配置'][index]}读取失败。${requestError(result.reason)}`] : []));
+      setLoading(false);
+      timer = setTimeout(load, 10_000);
+    }
+    void load();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }), [api, mode, revision]);
+
+  async function run() {
+    setBusy(true);
+    setRunError('');
+    setNotice('');
+    try {
+      setNotice((await api.runProcessing(mode)).message);
+      refresh();
+    } catch (error) { setRunError(requestError(error)); }
+    finally { setBusy(false); }
+  }
+
+  const visible = items?.filter(item => (kind === 'all' || item.media.type === kind)
+    && (item.media.title ?? '').toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) ?? [];
+  const status = job?.status;
+  return <div className="processing-content">
+    <div className="row processing-toolbar">
+      <div className="row processing-count"><h2>最近记录</h2>{items && <span className="muted">{visible.length} 部作品</span>}</div>
+      <div className="processing-search"><SearchField label="搜索作品" placeholder="按作品名称搜索" value={query} onValueChange={setQuery} /></div>
+      <div className="processing-kind"><Select label="作品类型" options={[
+        { value: 'all', label: '全部类型' }, ...Object.entries(mediaTypes).map(([value, label]) => ({ value, label })),
+      ]} value={kind} onValueChange={setKind} /></div>
+      <div className="row processing-actions">
+        <Button variant="ghost" size="sm" aria-label="刷新状态" title="刷新状态" disabled={loading || busy} onClick={refresh}><RefreshCw size={16} aria-hidden="true" /></Button>
+        <Button size="sm" disabled={!configured || loading || busy || running} onClick={() => void run()}>{busy ? '正在触发…' : running ? '执行中…' : runLabels[mode]}</Button>
+      </div>
+    </div>
+    {errors.map(error => <p key={error} role="alert" className="processing-error">{error}</p>)}
+    {runError && <p role="alert" className="processing-error">{runError}</p>}
+    {notice && <p role="status" className="muted">{notice}</p>}
+    {configured === false && <p className="muted">请先在全局设置中配置{processingTabs.find(([id]) => id === mode)?.[1]}。</p>}
+    {status && status.state !== 'idle' && <div className="panel processing-job">
+      <div className="row"><TaskState state={status.state} /><span className="muted">{formatTime(status.finishedAt || status.startedAt)}</span></div>
+      <div className="row processing-job-counts"><span>扫描 {status.scanned}</span><span>完成 {status.completed}</span><span>跳过 {status.skipped}</span><span>失败 {status.failed}</span></div>
+      {status.error && <p className="processing-error">{status.error}</p>}
+      {!!status.issues?.length && <details><summary>查看未完成原因</summary><ul>{status.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}
+    </div>}
+    <ProcessingRecords mode={mode} items={visible} emptyMessage={items ? (kind !== 'all' || query.trim() ? '没有符合条件的作品' : '暂无作品处理记录') : loading ? '正在读取最近记录…' : '暂时无法读取作品记录'} />
+    {mode === 'downloads' && <DownloadQueue api={api} tasks={tasks ?? []} refresh={refresh}
+      onDeleted={id => setTasks(current => current?.filter(task => task.id !== id))} />}
+  </div>;
+}
+
+export function LiveProcessing({ api, defaultTab }: { api: LiveApi; defaultTab?: string }) {
+  return <section className="processing-page">
+    <PageHeading title="媒体处理" description="管理下载、媒体整理、STRM 生成与元数据刮削。" />
+    <WorkspaceTabs defaultValue={defaultTab} label="媒体处理功能" items={processingTabs.map(([id, label]) => ({
+      id, label, content: <ProcessingPanel api={api} mode={id} />,
+    }))} />
+  </section>;
+}

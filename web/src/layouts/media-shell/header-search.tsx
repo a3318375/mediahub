@@ -1,115 +1,103 @@
-import { useId, useMemo, useState } from "react"
-import { SearchIcon } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { searchableNavigation } from "./navigation-data"
-
+import { useWorkspace } from "./workspace-context"
 export function HeaderSearch({
   onNavigate,
 }: {
   onNavigate: (path: string) => void
 }) {
+  const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [activeIndex, setActiveIndex] = useState(0)
-  const listId = useId()
-  const results = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase()
-    if (!normalizedQuery) return []
-
-    return searchableNavigation
-      .filter((item) =>
-        `${item.title} ${"section" in item ? item.section : ""}`
-          .toLocaleLowerCase()
-          .includes(normalizedQuery)
-      )
-      .slice(0, 8)
-  }, [query])
-
-  function selectResult(path: string) {
-    setQuery("")
-    setActiveIndex(0)
+  const [index, setIndex] = useState(0)
+  const { menus } = useWorkspace()
+  const results = searchableNavigation.filter(
+    (l) =>
+      menus["menus." + l.id] !== false &&
+      (l.title + l.section).includes(query.trim())
+  )
+  function select(path: string) {
+    setOpen(false)
     onNavigate(path)
   }
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Escape") {
-      setQuery("")
-      setActiveIndex(0)
-      return
-    }
-
-    if (event.key === "ArrowDown" && results.length > 0) {
-      event.preventDefault()
-      setActiveIndex((index) => (index + 1) % results.length)
-    }
-
-    if (event.key === "ArrowUp" && results.length > 0) {
-      event.preventDefault()
-      setActiveIndex((index) => (index - 1 + results.length) % results.length)
-    }
-
-    if (event.key === "Enter" && results[activeIndex]) {
-      event.preventDefault()
-      selectResult(results[activeIndex].path)
-    }
+  function show() {
+    setQuery("")
+    setIndex(0)
+    setOpen(true)
   }
-
+  useEffect(() => {
+    function key(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        show()
+      }
+    }
+    window.addEventListener("keydown", key)
+    return () => window.removeEventListener("keydown", key)
+  }, [])
   return (
-    <div className="relative hidden w-full max-w-sm lg:block">
-      <SearchIcon className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        type="search"
-        role="combobox"
-        aria-label="搜索菜单"
-        aria-autocomplete="list"
-        aria-expanded={query.trim().length > 0}
-        aria-controls={listId}
-        placeholder="搜索菜单…"
-        value={query}
-        className="h-9 rounded-lg pl-10"
-        onChange={(event) => {
-          setQuery(event.target.value)
-          setActiveIndex(0)
-        }}
-        onKeyDown={handleKeyDown}
-      />
-
-      {query.trim() && (
-        <div className="absolute inset-x-0 top-11 z-20 overflow-hidden rounded-lg border bg-popover shadow-md">
-          {results.length > 0 ? (
-            <ul id={listId} role="listbox" aria-label="菜单搜索结果" className="p-1">
-              {results.map((item, index) => {
-                const ResultIcon = item.icon
-                const section =
-                  "section" in item && typeof item.section === "string"
-                    ? item.section
-                    : ""
-                return (
-                  <li key={item.path} role="presentation">
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={activeIndex === index}
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
-                      onMouseEnter={() => setActiveIndex(index)}
-                      onClick={() => selectResult(item.path)}
-                    >
-                      <ResultIcon className="shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                      <span className="hidden truncate text-xs text-muted-foreground sm:block">
-                        {section}
-                      </span>
-                    </button>
-                  </li>
+    <>
+      <Button variant="outline" className="media-menu-search" aria-label="搜索菜单" onClick={show}>
+        <Search />
+        <span className="hidden sm:inline">搜索菜单</span>
+        <kbd className="hidden text-xs text-muted-foreground md:inline">
+          Ctrl K
+        </kbd>
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>搜索菜单</DialogTitle>
+          </DialogHeader>
+          <Input
+            aria-label="菜单名称"
+            placeholder="输入菜单名称…"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setIndex(0)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && results[index])
+                select(results[index].path)
+              if (
+                results.length &&
+                (e.key === "ArrowDown" || e.key === "ArrowUp")
+              ) {
+                e.preventDefault()
+                setIndex(
+                  (i) =>
+                    (i + (e.key === "ArrowDown" ? 1 : -1) + results.length) %
+                    results.length
                 )
-              })}
-            </ul>
-          ) : (
-            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
-              没有找到匹配的菜单
-            </p>
-          )}
-        </div>
-      )}
-    </div>
+              }
+            }}
+          />
+          <div className="grid max-h-[55dvh] gap-1 overflow-y-auto">
+            {results.map((l, i) => (
+              <Button
+                key={l.id}
+                className="justify-start"
+                variant={i === index ? "secondary" : "ghost"}
+                onPointerMove={() => setIndex(i)}
+                onClick={() => select(l.path)}
+              >
+                <l.icon />
+                {l.title}
+              </Button>
+            ))}
+            {!results.length && <p>没有匹配的菜单</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

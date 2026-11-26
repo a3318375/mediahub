@@ -140,7 +140,11 @@ func preview(ctx context.Context, g pan115.Gateway, r Rule, lookup Lookup, candi
 				if ctx.Err() != nil {
 					return p, ctx.Err()
 				}
-				p.Issues = append(p.Issues, Issue{candidate, "source", pan115.SafeError(e).Error()})
+				reason := "按文件 ID 查询失败：" + pan115.SafeError(e).Error()
+				if listing, ok := listings[candidate.ParentID]; ok {
+					reason = fmt.Sprintf("原目录列出 %d 项，未找到该文件。%s", len(listing), reason)
+				}
+				p.Issues = append(p.Issues, Issue{candidate, "source", reason})
 				continue
 			}
 			id, eligible := f.ParentID, false

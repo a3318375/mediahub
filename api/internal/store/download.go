@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
@@ -10,6 +11,7 @@ import (
 
 	"mediahub/internal/download"
 	"mediahub/internal/pan115"
+	"mediahub/internal/tv"
 )
 
 func scanDownload(row interface{ Scan(...any) error }) (download.Task, error) {
@@ -112,11 +114,18 @@ func (s *Store) CreateDownload(account, hash string, r download.Request) (downlo
 }
 
 func (s *Store) DownloadReceiveCode(id string) (string, error) {
-	var encrypted string
-	if err := s.db.QueryRow(`SELECT value FROM download_task_secrets WHERE task_id=?`, id).Scan(&encrypted); err != nil {
+	var encrypted sql.NullString
+	err := s.db.QueryRow(`SELECT s.value FROM download_tasks t LEFT JOIN download_task_secrets s ON s.task_id=t.id WHERE t.id=?`, id).Scan(&encrypted)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", download.ErrNotFound
+	}
+	if err != nil {
 		return "", err
 	}
-	raw, err := s.decrypt(encrypted)
+	if !encrypted.Valid {
+		return "", sql.ErrNoRows
+	}
+	raw, err := s.decrypt(encrypted.String)
 	return string(raw), err
 }
 func (s *Store) references(t *download.Task) error {
@@ -145,6 +154,52 @@ func (s *Store) GetDownload(id string) (download.Task, error) {
 	}
 	return t, err
 }
+
+func (s *Store) DeleteDownload(ctx context.Context, id string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var task download.Task
+	err = tx.QueryRowContext(ctx, `SELECT state FROM download_tasks WHERE id=?`, id).Scan(&task.State)
+	if errors.Is(err, sql.ErrNoRows) {
+		return download.ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if task.Active() {
+		return download.ErrTaskActive
+	}
+	// A replacement needs its transfer through verification and file moves.
+	// Its download reference is saved before the job is attached to the subscription.
+	var pending bool
+	err = tx.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM download_references r JOIN tv_subscriptions s ON s.id=json_extract(r.data,'$.sourceId')
+		WHERE r.task_id=? AND json_extract(r.data,'$.source')='tv_replacement'
+		AND NOT EXISTS (SELECT 1 FROM json_each(s.data,'$.replacements') j
+			WHERE json_extract(j.value,'$.taskId')=r.task_id AND json_extract(j.value,'$.state')='completed')
+	)`, id).Scan(&pending)
+	if err != nil {
+		return err
+	}
+	if pending {
+		return tv.ErrPendingReplacement
+	}
+	// Linked task events, references and secrets cascade. Subscription history
+	// keeps its episode deduplication marker even after the task is forgotten.
+	if _, err = tx.ExecContext(ctx, `DELETE FROM download_tasks WHERE id=?`, id); err != nil {
+		return err
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+	s.NotifyProcessing()
+	return nil
+}
+
 func (s *Store) ListDownloads(active bool) ([]download.Task, error) {
 	query := `SELECT data,revision FROM download_tasks ORDER BY created_at DESC LIMIT 200`
 	if active {

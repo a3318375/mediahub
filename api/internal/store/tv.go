@@ -183,7 +183,7 @@ func (s *Store) DeleteTV(id string) error {
 	}
 	for _, job := range sub.Replacements {
 		if job.State != "completed" {
-			return fmt.Errorf("该订阅还有未完成的替换任务，请先处理后再删除")
+			return tv.ErrPendingReplacement
 		}
 	}
 	r, err := tx.Exec(`DELETE FROM tv_subscriptions WHERE id=?`, id)

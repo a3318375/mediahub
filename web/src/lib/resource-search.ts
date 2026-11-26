@@ -16,7 +16,7 @@ export type MediaSearchHistoryEntry = {
   at: number
 }
 
-type SearchHistoryEntry = ResourceSearchHistoryEntry | MediaSearchHistoryEntry
+export type SearchHistoryEntry = ResourceSearchHistoryEntry | MediaSearchHistoryEntry
 
 export const RESOURCE_SEARCH_HISTORY_KEY = "mediahub-search-history"
 export const RESOURCE_SEARCH_RESULT_KEY = "mediahub-last-search-result"
@@ -54,7 +54,7 @@ export function chooseSearchSource(
 export function readResourceSearchHistory(
   storage: Pick<Storage, "getItem">
 ): ResourceSearchHistoryEntry[] {
-  return readAllSearchHistory(storage).filter(
+  return readSearchHistory(storage).filter(
     (item): item is ResourceSearchHistoryEntry => item.kind !== "media"
   )
 }
@@ -62,7 +62,7 @@ export function readResourceSearchHistory(
 export function readMediaSearchHistory(
   storage: Pick<Storage, "getItem">
 ): MediaSearchHistoryEntry[] {
-  return readAllSearchHistory(storage).filter(
+  return readSearchHistory(storage).filter(
     (item): item is MediaSearchHistoryEntry => item.kind === "media"
   )
 }
@@ -89,7 +89,7 @@ function isSearchHistoryEntry(value: unknown): value is SearchHistoryEntry {
   )
 }
 
-function readAllSearchHistory(
+export function readSearchHistory(
   storage: Pick<Storage, "getItem">
 ): SearchHistoryEntry[] {
   try {
@@ -102,15 +102,15 @@ function readAllSearchHistory(
   }
 }
 
-export function saveResourceSearchHistory(
+export function saveSearchHistory(
   storage: Pick<Storage, "getItem" | "setItem">,
-  entry: ResourceSearchHistoryEntry
-): ResourceSearchHistoryEntry[] {
-  const normalized = { ...entry, kind: "resource" as const }
+  entry: SearchHistoryEntry
+): SearchHistoryEntry[] {
+  const media = entry.kind === "media"
   const next = [
-    normalized,
-    ...readAllSearchHistory(storage).filter(
-      (item) => !(item.keyword === entry.keyword && item.kind !== "media")
+    entry,
+    ...readSearchHistory(storage).filter(
+      (item) => item.keyword !== entry.keyword || (item.kind === "media") !== media
     ),
   ].slice(0, 20)
   try {
@@ -118,7 +118,14 @@ export function saveResourceSearchHistory(
   } catch {
     /* Search remains usable when browser storage is full. */
   }
-  return next.filter(
+  return next
+}
+
+export function saveResourceSearchHistory(
+  storage: Pick<Storage, "getItem" | "setItem">,
+  entry: ResourceSearchHistoryEntry
+): ResourceSearchHistoryEntry[] {
+  return saveSearchHistory(storage, entry).filter(
     (item): item is ResourceSearchHistoryEntry => item.kind !== "media"
   )
 }
@@ -127,18 +134,7 @@ export function saveMediaSearchHistory(
   storage: Pick<Storage, "getItem" | "setItem">,
   entry: MediaSearchHistoryEntry
 ): MediaSearchHistoryEntry[] {
-  const next = [
-    entry,
-    ...readAllSearchHistory(storage).filter(
-      (item) => !(item.keyword === entry.keyword && item.kind === "media")
-    ),
-  ].slice(0, 20)
-  try {
-    storage.setItem(RESOURCE_SEARCH_HISTORY_KEY, JSON.stringify(next))
-  } catch {
-    /* Search remains usable when browser storage is full. */
-  }
-  return next.filter(
+  return saveSearchHistory(storage, entry).filter(
     (item): item is MediaSearchHistoryEntry => item.kind === "media"
   )
 }

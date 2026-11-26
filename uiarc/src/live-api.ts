@@ -1,3 +1,5 @@
+import { mediaContextFromRecord } from './lib/download-api';
+import { lookupResourceMedia } from './lib/resource-media';
 import type { MediaDetail, MediaPage, MediaProvidersResponse, MediaSummary } from './lib/media-contract';
 import type { AnimeDraft, AnimePreview, MikanGroup, MikanItem, SavedAnimeSubscription } from './lib/anime-api';
 import type { SettingsResponse, SettingsSection, SettingValue } from './lib/settings-api';
@@ -169,6 +171,8 @@ export function createLiveApi(token: string, onExpired: () => void) {
     }
   }
   const get = <T>(path: string, signal: AbortSignal) => call<T>(path, { signal });
+  const discover = (query: Record<string, string>, signal: AbortSignal) =>
+    get<MediaPage<MediaSummary>>('/api/media/discover?' + new URLSearchParams(query), signal);
   return {
     image: (path: string, signal: AbortSignal) => call<Blob>(path, { signal, image: true }),
     embyDashboard: (signal: AbortSignal) => call<EmbyDashboardData>('/api/emby/dashboard', { signal, timeoutMs: 105_000 }),
@@ -182,9 +186,24 @@ export function createLiveApi(token: string, onExpired: () => void) {
       { method: id ? 'PUT' : 'POST', body }),
     refreshTV: (id: string) => call<TV>('/api/v1/subscriptions/tv/' + encodeURIComponent(id) + '/refresh', { method: 'POST', timeoutMs: 95_000 }),
     removeTV: (id: string) => call<void>('/api/v1/subscriptions/tv/' + encodeURIComponent(id), { method: 'DELETE' }),
-    createDownload: (body: DownloadRequest) => call<{ task: DownloadTask; created: boolean }>('/api/v1/downloads', { method: 'POST', body }),
+    createDownload: async (body: DownloadRequest) => {
+      const { media, source } = body.reference;
+      if (!body.directoryId && source === 'media_search' && media.title && !(media.provider && media.providerId && media.type)) {
+        let match: MediaSummary | undefined;
+        try {
+          const result = await lookupResourceMedia({ discover }, media.title, AbortSignal.timeout(16_000));
+          if (result.complete && result.items.length === 1) match = result.items[0];
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 401) throw error;
+          // Without a confirmed identity the library routes the task to 待识别.
+        }
+        body = { ...body, reference: { source, sourceId: match?.mediaId, media: match ? mediaContextFromRecord(match) : { title: media.title } } };
+      }
+      return call<{ task: DownloadTask; created: boolean }>('/api/v1/downloads', { method: 'POST', body });
+    },
     changeDownload: (id: string, action: 'cancel' | 'retry' | 'resume') =>
       call<{ message?: string }>('/api/v1/downloads/' + encodeURIComponent(id) + '/' + action, { method: 'POST' }),
+    deleteDownload: (id: string) => call<void>('/api/v1/downloads/' + encodeURIComponent(id), { method: 'DELETE' }),
     downloadDirectories: (parentId: string, signal: AbortSignal) =>
       get<{ items: DownloadFile[] }>('/api/v1/115/directories?' + new URLSearchParams({ parentId }), signal),
     shareFiles: (url: string, receiveCode: string, directoryId: string, signal: AbortSignal) =>
@@ -197,8 +216,7 @@ export function createLiveApi(token: string, onExpired: () => void) {
       return call<{ message: string }>('/api/v1/' + path + '/run', { method: 'POST' });
     },
     providers: (signal: AbortSignal) => get<MediaProvidersResponse>('/api/media/providers', signal),
-    discover: (query: Record<string, string>, signal: AbortSignal) =>
-      get<MediaPage<MediaSummary>>('/api/media/discover?' + new URLSearchParams(query), signal),
+    discover,
     detail: ({ source, sourceId, mediaType }: LiveMedia, signal: AbortSignal) =>
       get<MediaDetail>('/api/media/' + source + '/' + encodeURIComponent(sourceId) + '?' + new URLSearchParams({ mediaType }), signal),
     ranking: async (source: string, name: string, signal: AbortSignal) => {

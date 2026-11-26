@@ -111,6 +111,9 @@ export function ThemeProvider({
 
       root.classList.remove("light", "dark")
       root.classList.add(resolvedTheme)
+      document.querySelector('meta[name="theme-color"]')?.setAttribute(
+        "content", getComputedStyle(root).getPropertyValue("--sidebar").trim()
+      )
 
       if (restoreTransitions) {
         restoreTransitions()

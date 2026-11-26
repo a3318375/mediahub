@@ -1,11 +1,14 @@
+import {useWorkspace} from "./workspace-context"
 import { useState } from "react"
 import {
+  ChevronsUpDown,
   LogOutIcon,
   MailIcon,
   Settings2Icon,
   UserRoundIcon,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { SidebarMenuButton, useSidebar } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -42,6 +45,8 @@ export function ProfileSheet({
   onLogout: () => void
   onNavigate: (path: string) => void
 }) {
+  const { isMobile, setOpenMobile } = useSidebar()
+  const {favorites,openWork}=useWorkspace()
   const [open, setOpen] = useState(false)
 
   function openSettings() {
@@ -53,27 +58,30 @@ export function ProfileSheet({
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         render={
-          <Button
+          <SidebarMenuButton
             type="button"
-            variant="ghost"
-            size="icon-lg"
-            className="rounded-full"
-            aria-label={`打开${user.name}的用户菜单`}
-            title="用户菜单"
+            size="lg"
+            tooltip="个人账户"
+            aria-label={`打开${user.name || user.account}的用户菜单`}
           />
         }
       >
         <Avatar>
           <AvatarImage src={user.avatar} alt="" />
-          <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+          <AvatarFallback>{getInitials(user.name || user.account)}</AvatarFallback>
         </Avatar>
+        <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+          <span className="truncate font-medium">{user.name || user.account}</span>
+          <span className="truncate text-xs text-muted-foreground">个人账户</span>
+        </span>
+        <ChevronsUpDown aria-hidden="true" className="ml-auto" />
       </SheetTrigger>
 
       <SheetContent side="right" className="w-full sm:max-w-sm">
         <SheetHeader className="items-center border-b px-6 pb-6 pt-12 text-center">
           <Avatar size="lg" className="mb-2">
             <AvatarImage src={user.avatar} alt="" />
-            <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+            <AvatarFallback>{getInitials(user.name || user.account)}</AvatarFallback>
           </Avatar>
           <SheetTitle>{user.name}</SheetTitle>
           <SheetDescription className="flex items-center gap-2">
@@ -98,6 +106,7 @@ export function ProfileSheet({
           </div>
         </div>
 
+        {favorites.length>0 && <section className="grid gap-1 overflow-y-auto px-6"><h3 className="font-medium">我的收藏</h3>{favorites.map(item=><Button className="justify-start truncate" variant="ghost" key={item.id} onClick={()=>{setOpen(false); if (isMobile) setOpenMobile(false); openWork(item)}}>{item.title}</Button>)}</section>}
         <SheetFooter className="border-t px-6 py-4">
           <SheetClose
             render={

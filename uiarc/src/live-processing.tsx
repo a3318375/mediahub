@@ -49,7 +49,11 @@ function taskTitle(task: DownloadTask) {
   return task.references?.find(ref => ref.media?.title)?.media.title || task.artifacts?.[0]?.name || `任务 ${task.id.slice(0, 8)}`;
 }
 
-function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadTask[]; refresh: () => void }) {
+function canDeleteTask(task: DownloadTask) {
+  return ['completed', 'failed', 'cancelled'].includes(task.state);
+}
+
+function DownloadQueue({ api, tasks, refresh, onDeleted }: { api: LiveApi; tasks: DownloadTask[]; refresh: () => void; onDeleted: (id: string) => void }) {
   const [manual, setManual] = useState(false);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
@@ -59,10 +63,13 @@ function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadT
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
+  const [remove, setRemove] = useState<DownloadTask>();
+  const [removeError, setRemoveError] = useState('');
   const trimmed = url.trim();
   const valid = /^magnet:\?/i.test(trimmed) || is115ShareURL(trimmed);
+  const needle = query.trim().toLowerCase().replace(/^(?:.*\/)?mediahub-([0-9a-f]{32})\/?$/, '$1');
   const visible = tasks.filter(task => (filter === 'all' || filter === task.state) &&
-    `${taskTitle(task)} ${task.id}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+    `${taskTitle(task)} mediahub-${task.id}`.toLowerCase().includes(needle));
 
   async function change(id: string, action: 'cancel' | 'retry' | 'resume') {
     if (busy) return;
@@ -72,6 +79,19 @@ function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadT
       setMessage(result.message || (action === 'resume' ? '已恢复排队或跟踪。' : '任务已重新排队。'));
       refresh();
     } catch (reason) { setError(requestError(reason)); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteRecord() {
+    if (!remove || busy) return;
+    setBusy(true); setRemoveError(''); setError(''); setMessage('');
+    try {
+      await api.deleteDownload(remove.id);
+      onDeleted(remove.id);
+      setMessage(`已删除《${taskTitle(remove)}》的任务记录。`);
+      setRemove(undefined);
+      refresh();
+    } catch (reason) { setRemoveError(requestError(reason)); }
     finally { setBusy(false); }
   }
 
@@ -96,11 +116,12 @@ function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadT
       { key: 'state', label: '状态', width: '7rem', render: (_, task) => <TaskState state={task.state} /> },
       { key: 'progress', label: '进度', width: '10rem', sortable: true, numeric: false, render: (_, task) => <DownloadProgress task={task} /> },
       { key: 'updatedAt', label: '最近更新', width: '11rem', render: (_, task) => <time>{formatTime(task.updatedAt || task.createdAt)}</time> },
-      { key: 'details', label: '操作', sortable: false, width: '5rem', render: (_, task) => <Dialog>
+      { key: 'details', label: '操作', sortable: false, width: '10rem', render: (_, task) => <div className="row no-wrap"><Dialog>
         <DialogTrigger asChild><Button size="sm" variant="ghost" aria-label={`查看${taskTitle(task)}的下载详情`}>详情</Button></DialogTrigger>
         <DialogContent title={taskTitle(task)} description={`最近更新 ${formatTime(task.updatedAt || task.createdAt)}`}>
           <div className="stack"><div><TaskState state={task.state} /></div><DownloadProgress task={task} />
             <dl className="comic-facts">
+              <dt>任务 ID</dt><dd>{task.id}</dd>
               <dt>资源 ID</dt><dd>{task.resourceId || '—'}</dd>
               <dt>115 远程任务 ID</dt><dd>{task.remoteId || '—'}</dd>
               <dt>115 目标目录</dt><dd>{task.directoryId || '自动分类'}</dd>
@@ -118,17 +139,30 @@ function DownloadQueue({ api, tasks, refresh }: { api: LiveApi; tasks: DownloadT
             <div className="row form-actions">
               {task.state === 'cancelled' && <Button disabled={busy} onClick={() => void change(task.id, 'resume')}>恢复排队或跟踪</Button>}
               {task.state === 'failed' && !task.remoteId && <Button disabled={busy} onClick={() => void change(task.id, 'retry')}>重试排队</Button>}
-              {!['completed', 'failed', 'cancelled'].includes(task.state) && <Button variant="secondary" disabled={busy} onClick={() => void change(task.id, 'cancel')}>
+              {!canDeleteTask(task) && <Button variant="secondary" disabled={busy} onClick={() => void change(task.id, 'cancel')}>
                 {task.state === 'queued' ? '取消排队' : '停止跟踪'}
               </Button>}
             </div>
-            {!['completed', 'failed', 'cancelled'].includes(task.state) && <p className="muted">停止跟踪只影响 MediaHub。115 已接受的任务可能继续运行。</p>}
+            {!canDeleteTask(task) && <p className="muted">停止跟踪只影响 MediaHub。115 已接受的任务可能继续运行。</p>}
             {error && <p role="alert" className="processing-error">{error}</p>}
             {message && <p role="status" className="muted">{message}</p>}
           </div>
         </DialogContent>
-      </Dialog> },
+      </Dialog>
+        {canDeleteTask(task) && <Button size="sm" variant="ghost" disabled={busy}
+          aria-label={`删除《${taskTitle(task)}》的任务记录`} onClick={() => { setRemoveError(''); setRemove(task); }}>删除记录</Button>}
+      </div> },
     ]} /></div>
+    {remove && <Dialog open onOpenChange={open => { if (!open && !busy) setRemove(undefined); }}>
+      <DialogContent title="删除任务记录？" description={`《${taskTitle(remove)}》将从下载任务中移除。115 网盘里的文件会保留。`}>
+        <p className="muted">任务 ID {remove.id}</p>
+        {removeError && <p role="alert">{removeError}</p>}
+        <div className="row form-actions">
+          <Button variant="secondary" disabled={busy} onClick={() => setRemove(undefined)}>取消</Button>
+          <Button variant="danger" loading={busy} disabled={busy} onClick={() => void deleteRecord()}>删除记录</Button>
+        </div>
+      </DialogContent>
+    </Dialog>}
     {manual && <Dialog open onOpenChange={setManual}><DialogContent title="新建下载">
       <form className="stack" onSubmit={event => {
         event.preventDefault();
@@ -250,7 +284,8 @@ function ProcessingPanel({ api, mode }: { api: LiveApi; mode: Mode }) {
       {!!status.issues?.length && <details><summary>查看未完成原因</summary><ul>{status.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul></details>}
     </div>}
     <ProcessingRecords mode={mode} items={visible} emptyMessage={items ? (kind !== 'all' || query.trim() ? '没有符合条件的作品' : '暂无作品处理记录') : loading ? '正在读取最近记录…' : '暂时无法读取作品记录'} />
-    {mode === 'downloads' && <DownloadQueue api={api} tasks={tasks ?? []} refresh={refresh} />}
+    {mode === 'downloads' && <DownloadQueue api={api} tasks={tasks ?? []} refresh={refresh}
+      onDeleted={id => setTasks(current => current?.filter(task => task.id !== id))} />}
   </div>;
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowUpRight, Copy, Download, RefreshCw, Search } from 'lucide-react';
-import { is115ShareURL, mediaContextFromRecord } from './lib/download-api';
+import { ArrowUpRight, Copy, Download, RefreshCw } from 'lucide-react';
+import { is115ShareURL } from './lib/download-api';
 import type { DownloadMediaContext, DownloadReference } from './lib/download-api';
 import { resourceHealthKey, useResourceHealth } from './use-resource-health';
 import { normalizeResources } from './lib/media-service';
@@ -10,19 +10,16 @@ import {
   readMediaSearchHistory, readResourceSearchHistory, RESOURCE_SEARCH_HISTORY_KEY, resourceSearchPlan, safeResourceURL, saveResourceSearchHistory,
 } from './lib/resource-search';
 import { mergeResourceResults } from './lib/resource-workflow';
-import { lookupResourceMedia } from './lib/resource-media';
 import { Button } from './arc/button/button';
-import { SearchField } from './arc/search-field/search-field';
-import { Select } from './arc/select/select';
+import { ResourceSearchForm } from './resource-search-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './arc/tabs/tabs';
 import { ResourceDownload } from './live-download';
 import { requestError } from './live-api';
 import type { LiveApi } from './live-api';
-import { NoResults, PageHeading, SectionHeading, Status } from './ui';
+import { NoResults, SectionHeading, Status } from './ui';
 
 const healthLabels: Record<string, string> = { ok: '有效', bad: '失效', locked: '需要提取码', unsupported: '暂不支持', uncertain: '待确认' };
 type SavedSearch = { query: string; result: Resources; cloud: string; media?: DownloadMediaContext };
-type MediaLookup = Awaited<ReturnType<typeof lookupResourceMedia>> & { query: string; choice: string; error?: string };
 
 export function LiveResourceSearch({ api, account, active, initialQuery, media, backLabel, onBack, notify }: {
   api: LiveApi; account: string; active: boolean; initialQuery: string; media?: DownloadMediaContext;
@@ -53,18 +50,6 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
   const [transferringUrl, setTransferringUrl] = useState('');
   const transferLock = useRef(false);
   const [context, setContext] = useState(originMedia);
-  const [lookup, setLookup] = useState<MediaLookup>();
-
-  useEffect(() => {
-    if (!query || context) return;
-    const controller = new AbortController();
-    lookupResourceMedia(api, query, controller.signal).then(result => {
-      if (!controller.signal.aborted) setLookup({ query, ...result, choice: '' });
-    }).catch(reason => {
-      if (!controller.signal.aborted) setLookup({ query, items: [], complete: false, choice: '', error: requestError(reason) });
-    });
-    return () => controller.abort();
-  }, [api, context, query, revision]);
 
   useEffect(() => {
     if (active) setMediaHistory(readMediaSearchHistory(localStorage));
@@ -119,7 +104,6 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
   function search(value: string) {
     const keyword = value.trim();
     if (keyword !== query) setContext(undefined);
-    setLookup(undefined);
     setDraft(value); setQuery(keyword); setCloud(''); setResult(undefined); setError(''); setBusy(Boolean(keyword)); setCollecting(false);
     try { sessionStorage.removeItem(cacheKey); } catch { /* Storage unavailable. */ }
     setRevision(current => current + 1);
@@ -139,19 +123,11 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
     } catch { /* Large results can exceed browser storage. */ }
   }, [cacheKey, context, query, result, selectedCloud]);
   const titleFor = (link: Resource) => result?.items.find(item => item.links?.some(entry => entry.url === link.url))?.title || query;
-  const match = !context && lookup?.query === query ? lookup : undefined;
-  const uniqueMatch = match?.complete && match.items.length === 1;
-  const selected = uniqueMatch ? match.items[0] : match?.items.find(item => item.mediaId === match.choice);
-  const transferMedia = context ?? (selected ? mediaContextFromRecord(selected) : undefined);
-  const needsChoice = Boolean(match?.items.length && !uniqueMatch);
-  const identifying = !context && !match;
-  const canDownload = !identifying && (!needsChoice || Boolean(match?.choice));
   function referenceFor(): DownloadReference {
-    return {
-      source: 'media_search',
-      sourceId: transferMedia?.providerId ? `${transferMedia.provider}:${transferMedia.type}:${transferMedia.providerId}` : undefined,
-      media: transferMedia ?? { title: query },
-    };
+    if (context?.provider && context.providerId && context.type) {
+      return { source: 'media_search', sourceId: `${context.provider}:${context.type}:${context.providerId}`, media: context };
+    }
+    return { source: 'media_search', media: { title: query } };
   }
   async function transferShare(link: Resource) {
     if (transferLock.current) return;
@@ -184,22 +160,12 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
     catch { notify('复制失败，请手动复制' + label); }
   }
   return <>
-    <PageHeading title="搜索历史" description="搜索网盘分享和磁力资源。" action={
-      <Button variant="secondary" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" />{backLabel}</Button>
-    } />
-    <section className="panel stack resource-search-panel">
-      <span className="resource-search-icon"><Search size={23} aria-hidden="true" /></span>
-      <h2>搜索资源</h2>
-      <form className="inline-form resource-search-form" onSubmit={event => { event.preventDefault(); if (draft.trim()) search(draft); }}>
-        <SearchField label="资源关键词" value={draft} maxLength={120} placeholder="输入电影、剧集或资源关键词"
-          onValueChange={value => { if (value) setDraft(value); else search(''); }} />
-        <Button type="submit" disabled={!draft.trim()}><Search size={16} aria-hidden="true" />搜索资源</Button>
-      </form>
+    <ResourceSearchForm draft={draft} onDraft={setDraft} search={keyword => { setContext(undefined); search(keyword); }} backLabel={backLabel} onBack={onBack} maxLength={120}>
       {(history.length > 0 || mediaHistory.length > 0) && <div className="row resource-search-recent"><span className="muted">最近搜索</span>
         {history.slice(0, 8).map(item => <Button key={item.keyword} variant="secondary" size="sm" onClick={() => { setContext(undefined); search(item.keyword); }}>{item.keyword}</Button>)}
         <Button variant="ghost" size="sm" onClick={clearHistory}>清空历史</Button>
       </div>}
-    </section>
+    </ResourceSearchForm>
     <section className="section panel stack">
       <SectionHeading title="影视探索搜索记录" />
       {mediaHistory.length ? <ul className="resource-media-history">{mediaHistory.map(item => <li key={item.keyword + ':' + item.source}>
@@ -213,15 +179,6 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
         : result && <>
           <SectionHeading title="资源结果" description={`「${query}」 · ${unique.length} 条链接`}
             action={<Button variant="secondary" onClick={() => search(query)}><RefreshCw size={15} aria-hidden="true" />重新搜索</Button>} />
-          {!context && unique.some(link => is115ShareURL(link.url) || /^magnet:\?/i.test(link.url)) && <div className="row">
-            {needsChoice && match ? <Select label="转存对应的作品" placeholder="请选择作品" value={match.choice}
-              onValueChange={choice => setLookup({ ...match, choice })} options={[
-                ...match.items.map(item => ({ value: item.mediaId, label: `${item.title} · ${item.mediaType === 'tv' ? '电视剧' : '电影'} · ${item.year ?? '年份未知'} · TMDB ${item.providerId}` })),
-                { value: 'unidentified', label: '存入待识别' },
-              ]} /> : <small className="muted" role="status">{identifying ? '正在查询作品类型…'
-                : selected ? `转存分类：${selected.mediaType === 'tv' ? '电视剧' : '电影'} · ${selected.title}${selected.year ? '（' + selected.year + '）' : ''}`
-                : (match?.error ? 'TMDB 查询失败：' + match.error : '未找到可确认的同名作品。') + ' 转存将进入「待识别」。'}</small>}
-          </div>}
           {collecting && <p className="muted" role="status">正在收集插件结果…</p>}
           {rows.length ? <Tabs value={selectedCloud || 'unknown'} onValueChange={value => setCloud(value === 'unknown' ? '' : value)}>
             <TabsList aria-label="网盘来源" appearance="underline">{clouds.map(value => <TabsTrigger key={value} value={value || 'unknown'}>
@@ -243,7 +200,7 @@ export function LiveResourceSearch({ api, account, active, initialQuery, media, 
                     <Button size="sm" variant="ghost" disabled={Boolean(checking)} onClick={() => void check(link)}>{checking === link.url ? '检测中…' : '检测链接'}</Button>
                     <Button size="sm" variant="secondary" onClick={() => void copy(link.url + (link.password ? ' 提取码：' + link.password : ''), '链接')}><Copy size={14} aria-hidden="true" />复制链接</Button>
                     {(magnet || is115ShareURL(link.url)) && <Button size="sm" loading={transferringUrl === link.url}
-                      disabled={!canDownload || (!magnet && Boolean(transferringUrl) && transferringUrl !== link.url)}
+                      disabled={!magnet && Boolean(transferringUrl) && transferringUrl !== link.url}
                       onClick={() => magnet ? setOfflineResource(link) : void transferShare(link)}>
                       <Download size={14} aria-hidden="true" />{magnet ? '115 离线下载' : '转存到 115'}
                     </Button>}

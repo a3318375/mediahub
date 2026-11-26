@@ -3,7 +3,7 @@ import { getAccessToken } from "@/lib/auth-api"
 
 export type SettingValue = string | boolean | number | string[]
 export type SettingsSection =
-  "tmdb" | "emby" | "115" | "organize" | "search" | "pansou" | "notifications"
+  "tmdb" | "emby" | "115" | "organize" | "search" | "pansou" | "notifications" | "menus" | "subsonic"
 
 export type SettingsResponse = {
   values: Record<string, SettingValue>

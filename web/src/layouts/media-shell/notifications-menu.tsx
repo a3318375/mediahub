@@ -1,3 +1,4 @@
+import {useWorkspace} from "./workspace-context"
 import { BellIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 export function NotificationsMenu() {
+  const {activity}=useWorkspace()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -28,9 +30,9 @@ export function NotificationsMenu() {
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>通知</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-          暂无新通知
-        </p>
+        <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+          {activity.length?activity.map((text,i)=><p key={i}>{text}</p>):'暂无新通知'}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )

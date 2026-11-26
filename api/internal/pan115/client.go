@@ -257,14 +257,43 @@ func fromFile(f *sdk.File) File {
 	return File{f.FileID, f.ParentID, f.Name, f.Size, f.Sha1, f.IsDirectory}
 }
 func (c *Client) GetFile(id string) (File, error) {
-	f, err := c.sdk.GetFile(id)
+	resp, err := c.sdk.NewRequest().SetQueryParam("file_id", id).Get(sdk.ApiFileInfo)
 	if err != nil {
 		return File{}, SafeError(err)
 	}
-	if f == nil || f.FileID != id {
-		return File{}, &Error{"not_found", "115 文件尚不可见", true}
+	// A failed lookup can have a different data shape. Read its status before decoding files.
+	var result struct {
+		sdk.BasicResp
+		Data json.RawMessage `json:"data"`
 	}
-	return fromFile(f), nil
+	if err = json.Unmarshal(resp.Body(), &result); err != nil {
+		return File{}, &Error{"upstream", "115 文件详情接口返回了无法解析的响应", false}
+	}
+	if err = result.Err(); err != nil {
+		reason := SafeError(err)
+		if reason.Code == "upstream" {
+			code := int(result.Errno)
+			if code == 0 {
+				code = result.ErrNo
+			}
+			reason.Message = "115 文件详情接口返回失败"
+			if code != 0 {
+				reason.Message += fmt.Sprintf("（错误码 %d）", code)
+			}
+		}
+		return File{}, reason
+	}
+	var files []*sdk.FileInfo
+	if len(result.Data) > 0 && json.Unmarshal(result.Data, &files) != nil {
+		return File{}, &Error{"upstream", "115 文件详情接口返回的文件信息格式异常", false}
+	}
+	if len(files) > 0 && files[0] != nil {
+		file := fromFile((&sdk.File{}).From(files[0]))
+		if file.ID == id {
+			return file, nil
+		}
+	}
+	return File{}, &Error{"not_found", "115 文件尚不可见", true}
 }
 func (c *Client) ListFiles(directory string) ([]File, error) {
 	if !ValidDirectory(directory) {

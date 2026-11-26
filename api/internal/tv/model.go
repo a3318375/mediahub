@@ -22,6 +22,7 @@ type Rules struct {
 
 // ErrIdentityImmutable prevents changing the work or season behind a saved subscription ID.
 var ErrIdentityImmutable = errors.New("不能修改订阅的作品或季数")
+var ErrPendingReplacement = errors.New("该订阅还有未完成的剧集替换任务，请先处理后再删除")
 
 type Draft struct {
 	Source  string `json:"source"`

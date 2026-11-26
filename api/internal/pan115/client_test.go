@@ -62,6 +62,37 @@ func TestErrorDoesNotExposeUpstreamBodyAndResponseBound(t *testing.T) {
 	}
 }
 
+func TestGetFileReportsLookupStatusWithoutExposingResponse(t *testing.T) {
+	for _, tc := range []struct{ body, code, message string }{
+		{`{"state":false,"errno":"54321","data":{},"error":"private-text"}`, "upstream", "错误码 54321"},
+		{`{"state":false,"errNo":98765,"error":"private-text"}`, "upstream", "错误码 98765"},
+		{`{"state":false,"errno":99,"error":"private-text"}`, "credential", "登录失效"},
+		{`{"state":true,"data":[]}`, "not_found", "文件尚不可见"},
+		{`{"state":true,"data":{"x":"private-text"}}`, "upstream", "文件信息格式异常"},
+		{`<html>private-text</html>`, "upstream", "无法解析"},
+		{`{"state":true,"data":[{"fid":"42","cid":"10","n":"a.mkv","s":"123"}]}`, "", ""},
+		{`{"state":true,"data":[{"cid":"42","pid":"10","n":"folder"}]}`, "", ""},
+	} {
+		c, err := New(context.Background(), "UID=123_A1; CID=fixture; SEID=fixture", nil, transportFunc(func(r *http.Request) (*http.Response, error) {
+			if r.Method != http.MethodGet || r.URL.Path != "/files/get_info" || r.URL.Query().Get("file_id") != "42" {
+				t.Fatal("unexpected file lookup")
+			}
+			return response(tc.body), nil
+		}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := c.GetFile("42")
+		if tc.code == "" {
+			if err != nil || f.ID != "42" || f.ParentID != "10" || f.Directory != (f.Name == "folder") {
+				t.Fatal(f, err)
+			}
+		} else if err == nil || SafeError(err).Code != tc.code || !strings.Contains(err.Error(), tc.message) || strings.Contains(err.Error(), "private-text") {
+			t.Fatalf("expected %s and %q, got %v", tc.code, tc.message, err)
+		}
+	}
+}
+
 func TestDecryptedSubmissionChecksEachResult(t *testing.T) {
 	hash := "0123456789abcdef0123456789abcdef01234567"
 	got, err := parseSubmission([]byte(`{"state":true,"result":[{"info_hash":"` + hash + `","state":true}]}`))

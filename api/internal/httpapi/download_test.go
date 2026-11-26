@@ -118,6 +118,13 @@ func TestDownloadsAuthenticatedSharedQueueAndCancellation(t *testing.T) {
 	if w = call("GET", "/api/v1/downloads/"+result.Task.ID, nil, key); w.Code != 200 {
 		t.Fatal(w.Code, w.Body)
 	}
+	taskPath := "/api/v1/downloads/" + result.Task.ID
+	if w = call("DELETE", taskPath, nil, ""); w.Code != 401 {
+		t.Fatal("unauthenticated deletion", w.Code)
+	}
+	if w = call("DELETE", taskPath, nil, token); w.Code != 409 {
+		t.Fatal("running task deletion", w.Code, w.Body)
+	}
 	request.Kind = "share_transfer"
 	if w = call("POST", "/api/v1/downloads", request, token); w.Code != 400 {
 		t.Fatal("unsupported kind accepted", w.Code)
@@ -130,6 +137,15 @@ func TestDownloadsAuthenticatedSharedQueueAndCancellation(t *testing.T) {
 	}
 	if w = call("GET", "/api/v1/downloads/missing", nil, token); w.Code != 404 {
 		t.Fatal(w.Code, w.Body)
+	}
+	if w = call("DELETE", taskPath, nil, token); w.Code != 204 || w.Body.Len() != 0 {
+		t.Fatal("cancelled task deletion", w.Code, w.Body)
+	}
+	if w = call("GET", taskPath, nil, token); w.Code != 404 {
+		t.Fatal("deleted task is still readable", w.Code, w.Body)
+	}
+	if w = call("DELETE", taskPath, nil, token); w.Code != 404 {
+		t.Fatal("missing task deletion", w.Code, w.Body)
 	}
 }
 
